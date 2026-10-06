@@ -1,0 +1,14 @@
+// the names the stages share (the same code or data in each)
+copyPlacePoints = 0x800A5DE0; // type:func
+updateStage = 0x800A5EE0; // type:func
+startStage = 0x800A5F54; // type:func
+setupStage = 0x800A5FB0; // type:func
+placePoints = 0x800A623C; // size:0x40
+stageFuncs = 0x800A6DCC; // size:0x4
+
+// named by their use (D_800990B4, the field state, in setupStage)
+stageObjects = 0x800A6D88;
+stageSlots = 0x800A6D9C;
+stageImages = 0x800A627C;
+stageActors = 0x800A6D34;
+stageBattles = 0x800A7A30;

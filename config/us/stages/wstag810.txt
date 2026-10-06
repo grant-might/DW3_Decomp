@@ -1,0 +1,22 @@
+D_800A6058 = 0x800A6058; // size:0x3C
+
+// the names the stages share (the same code or data in each)
+stepTileAnimation = 0x800A4CA4; // type:func
+updateStage = 0x800A517C; // type:func
+startStage = 0x800A52DC; // type:func
+stepAnimation = 0x800A5338; // type:func
+drawStageEffect = 0x800A5458; // type:func
+isOnScreen = 0x800A5540; // type:func
+updateStageEffect = 0x800A5604; // type:func
+createStageEffect = 0x800A5894; // type:func
+setupStage = 0x800A5AB0; // type:func
+effectClutFrames = 0x800A6398; // size:0x18
+effectFrames = 0x800A63B0; // size:0x58
+stageFuncs = 0x800A6E90; // size:0x4
+
+// named by their use (D_800990B4, the field state, in setupStage)
+stageObjects = 0x800A6770;
+stageImages = 0x800A6634;
+stageActors = 0x800A6760;
+stageBattles = 0x800A6618;
+stageEvents = 0x800A6E94;

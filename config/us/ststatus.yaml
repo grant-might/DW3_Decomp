@@ -1,0 +1,81 @@
+# Digimon World 3, USA (SLUS-01436): ststatus
+name: ststatus
+sha1: 472f0d2543b64c9e0410cdf33d82e783afc4f348
+options:
+  basename: ststatus
+  target_path: disks/us/AAA/PRO/STSTATUS.PRO
+  base_path: ../..
+  platform: psx
+  compiler: GCC
+
+  asm_path: asm/us/ststatus
+  src_path: src/ststatus
+  build_path: build/us
+
+  ld_script_path: build/us/generated/ststatus.ld
+
+  global_vram_start: 0x80000000
+  global_vram_end: 0x80200000
+
+  find_file_boundaries: True
+
+  generate_asm_macros_files: False
+
+  section_order: [".rodata", ".text", ".data", ".bss"]
+
+  symbol_addrs_path:
+    - config/us/symbols.txt
+    - config/us/symbols_ststatus.txt
+
+  undefined_funcs_auto_path: build/us/generated/undefined_funcs_auto_ststatus.txt
+  undefined_syms_auto_path: build/us/generated/undefined_syms_auto_ststatus.txt
+
+  string_encoding: ASCII
+  data_string_encoding: ASCII
+  rodata_string_guesser_level: 2
+  data_string_guesser_level: 2
+
+  ld_bss_is_noload: False
+
+  migrate_rodata_to_functions: True
+  create_data_pads: False
+
+segments:
+  - name: ststatus
+    type: code
+    start: 0x0
+    vram: 0x80082448
+    vram_symbol: OVERLAY_VRAM
+    align: 4
+    subalign: 4
+    subsegments:
+      - [0x0, .rodata, ststatus]
+      - [0x19C, .rodata, ststatus_2]
+      - [0x284, .rodata, ststatus_3]
+      - [0x358, .rodata, ststatus_4]
+      - [0x468, .rodata, ststatus_5]
+      - [0x588, .rodata, ststatus_6]
+      - [0x748, .rodata, ststatus_7]
+      - [0x75C, .rodata, ststatus_8]
+      - [0x840, .rodata, ststatus_9]
+      - [0x8A8, c, ststatus]
+      - [0x2278, c, ststatus_2]
+      - [0x3790, c, ststatus_3]
+      - [0x55F4, c, ststatus_4]
+      - [0x8710, c, ststatus_5]
+      - [0xBAB0, c, ststatus_6]
+      - [0xEF18, c, ststatus_7]
+      - [0x10738, c, ststatus_8]
+      - [0x13534, c, ststatus_9]
+      - [0x151FC, c, ststatus_10]
+      # each object's data
+      - [0x17650, .data, ststatus]
+      - [0x17664, .data, ststatus_2]
+      - [0x17678, .data, ststatus_3]
+      - [0x176C8, .data, ststatus_4]
+      - [0x176FC, .data, ststatus_5]
+      - [0x1775C, .data, ststatus_6]
+      - [0x17808, .data, ststatus_8]
+      - [0x17830, .data, ststatus_9]
+      - [0x17844, .data, ststatus_10]
+  - [0x185C4]

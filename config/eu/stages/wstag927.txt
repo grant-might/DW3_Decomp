@@ -1,0 +1,21 @@
+D_800A6244 = 0x800A6244; // size:0x50
+D_800A6294 = 0x800A6294; // size:0x50
+
+// names from the C of the modules this version builds (tools/version_symbols.py)
+func_80084B80 = 0x800853F8;
+
+// the names the stages share (the same code or data in each)
+stepLoopingAnimation = 0x800A5DE0; // type:func
+updateTileAnims = 0x800A5ED4; // type:func
+createTileAnims = 0x800A5FCC; // type:func
+updateStage = 0x800A5FF8; // type:func
+startStage = 0x800A60BC; // type:func
+setupStage = 0x800A6164; // type:func
+stageFuncs = 0x800A64C8; // size:0x4
+
+// named by their use (D_800990B4, the field state, in setupStage)
+stageObjects = 0x800A6370;
+stageImages = 0x800A62E4;
+stageActors = 0x800A6368;
+stageBattles = 0x800A68E0;
+stageEvents = 0x800A64CC;

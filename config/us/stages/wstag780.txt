@@ -1,0 +1,12 @@
+// the names the stages share (the same code or data in each)
+stepLoopingAnimation = 0x800A5250; // type:func
+updateStage = 0x800A6390; // type:func
+startStage = 0x800A6474; // type:func
+setupStage = 0x800A6508; // type:func
+stageFuncs = 0x800A80B4; // size:0x4
+
+// named by their use (D_800990B4, the field state, in setupStage)
+stageObjects = 0x800A8034;
+stageImages = 0x800A7CDC;
+stageActors = 0x800A7FEC;
+stageEvents = 0x800A80B8;

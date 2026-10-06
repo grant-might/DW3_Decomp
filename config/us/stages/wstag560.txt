@@ -1,0 +1,14 @@
+// the names the stages share (the same code or data in each)
+updateStage = 0x800A4CA8; // type:func
+startStage = 0x800A4CF0; // type:func
+setupStage = 0x800A4D78; // type:func
+stageFuncs = 0x800A5594; // size:0x4
+
+// named by their use (D_800990B4, the field state, in setupStage)
+stageObjects = 0x800A52DC;
+stageSlots = 0x800A54D4;
+stageImages = 0x800A5144;
+stageActors = 0x800A52C8;
+stageColor = 0x800A4CA4;
+stageBattles = 0x800A5128;
+stageEvents = 0x800A5598;

@@ -1,0 +1,18 @@
+D_800A5FD4 = 0x800A5FD4; // size:0x3C
+D_800A6010 = 0x800A6010; // size:0x34
+D_800A6044 = 0x800A6044; // size:0x1C
+D_800A6060 = 0x800A6060; // size:0x1C
+
+// the names the stages share (the same code or data in each)
+stepAnimation = 0x800A4CA8; // type:func
+updateStage = 0x800A54D0; // type:func
+startStage = 0x800A5574; // type:func
+setupStage = 0x800A55E0; // type:func
+stageFuncs = 0x800A6494; // size:0x4
+
+// named by their use (D_800990B4, the field state, in setupStage)
+stageObjects = 0x800A62C0;
+stageImages = 0x800A607C;
+stageActors = 0x800A628C;
+stageColor = 0x800A4CA4;
+stageEvents = 0x800A6498;
