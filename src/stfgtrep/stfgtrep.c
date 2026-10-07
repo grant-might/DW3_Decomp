@@ -1,14 +1,5 @@
 #include "stfgtrep.h"
 
-void STFGTREP_drawPartner(ReportPartner *partner);
-s32 STFGTREP_learnDigimon(s32 partner);
-void STFGTREP_runPartner(ReportPartner *partner, ReportPartnerWindows *windows);
-void STFGTREP_runReport(FightReport *report, FightReportChildren *children);
-void STFGTREP_updatePartner();
-void STFGTREP_updateReport();
-FightReport *STFGTREP_createScreen(void);
-extern s32 STFGTREP_animations[][7];
-
 void STFGTREP_updateScene(Task *task, Task **children) {
     RECT rect;
     Layer *layer;
@@ -18,12 +9,12 @@ void STFGTREP_updateScene(Task *task, Task **children) {
     default:
         GFX.funcs.reset();
         GFX.funcs.allocPrimBuffers(0x14000);
-        GFX.funcs.setDisplayMode(0x140, 0xF0, 0, 0);
+        GFX.funcs.setDisplayMode(SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0);
         rect.x = 0;
         rect.y = 0;
         rect.w = 0x140;
         rect.h = 0xF0;
-        layer = GFX.funcs.createLayer(&rect, 3, 0x1000);
+        layer = GFX.funcs.createLayer(&rect, 3, SCREEN_LAYER);
         layer->setBgColor(layer, 0, 0, 0);
         children[0] = (Task *)STFGTREP_createScreen();
         task->nextState(task);
@@ -106,7 +97,7 @@ ScreenFade *STFGTREP_createFader(void) {
     ScreenFade *task = createTask(STFGTREP_updateFader, sizeof(ScreenFade), 0);
 
     task->start = STFGTREP_startFader;
-    task->layerId = 0x1000;
+    task->layerId = SCREEN_LAYER;
     task->depth = 6;
     return task;
 }
@@ -581,7 +572,7 @@ ReportPartner *STFGTREP_createPartner(FightReport *report, s32 index, s32 exp) {
     partner->raise = STFGTREP_raisePartner;
     partner->boostExp = STFGTREP_boostExp;
     partner->select = STFGTREP_selectPartner;
-    partner->layer = 0x1000;
+    partner->layer = SCREEN_LAYER;
     partner->depth = 6;
     partner->report = report;
     partner->voice = -1;
@@ -908,7 +899,7 @@ void STFGTREP_updateReport(FightReport *report, FightReportChildren *children) {
 FightReport *STFGTREP_createScreen(void) {
     FightReport *report = createTask(STFGTREP_updateReport, sizeof(FightReport), 0x1C);
 
-    report->layer = 0x1000;
+    report->layer = SCREEN_LAYER;
     report->depth = 7;
     return report;
 }

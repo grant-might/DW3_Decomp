@@ -1,23 +1,25 @@
 #ifndef DW3_TASK_H
 #define DW3_TASK_H
 
-/* The task system (system.c, game3_2.c) */
+/* The task system and its registry (task/) */
 
 #include "common.h"
 #include <sys/types.h>
 #include <libgte.h>
 #include <libgpu.h>
 
+struct Task;
+
 /* The task registry's methods (TASK_REGISTRY.funcs) */
 typedef struct TaskFuncs {
-    /* 0x00 */ void (*clear)();
-    /* 0x04 */ void (*add)();
-    /* 0x08 */ void (*remove)();
+    /* 0x00 */ void (*clear)(void);
+    /* 0x04 */ void (*add)(struct Task *task);
+    /* 0x08 */ void (*remove)(struct Task *task);
     /* 0x0C */ void *(*find)(s32 id, s32 key1, s32 key2);
     /* 0x10 */ void *(*findNext)(void);
-    /* 0x14 */ void (*runChildren)();
-    /* 0x18 */ void *(*run)(void *task);
-    /* 0x1C */ void (*kill)(s32 task);
+    /* 0x14 */ void (*runChildren)(struct Task *task);
+    /* 0x18 */ struct Task *(*run)(struct Task *task);
+    /* 0x1C */ void (*kill)(struct Task *task);
 } TaskFuncs;
 
 /*
@@ -61,9 +63,12 @@ typedef struct Task {
     TASK_HEADER(Task);
 } Task;
 
+/* The tasks the registry holds at most */
+#define TASK_REGISTRY_SIZE 100
+
 /* Tasks created with an id, so that other code can find them */
 typedef struct TaskRegistry {
-    /* 0x000 */ s32 tasks[100]; /* Task pointers, 0 for a free entry */
+    /* 0x000 */ Task *tasks[TASK_REGISTRY_SIZE]; /* NULL for a free entry */
     /* 0x190 */ s32 findId; /* -1 matches anything */
     /* 0x194 */ s32 findKey1;
     /* 0x198 */ s32 findKey2;

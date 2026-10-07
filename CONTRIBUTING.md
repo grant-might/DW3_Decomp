@@ -33,9 +33,8 @@ The folder is relative to `asm/<version>/`, so the function above is
    differing instructions marked `**`. Relocated fields are masked, so a
    different symbol name doesn't count as a difference. Set `UNIT=wstag210`
    (any part of the path) when several units have a function of that name, as
-   the stages do; `VERSION` picks the version. For a `-G8` file (`inn.c`,
-   `system.c`, `memcard.c`, `game3.c`, `game3_2.c`, `graphics.c`, `sound.c`, `overlay.c`), pass the
-   same flags as the Makefile: `CFLAGS='-O2 -G8 -fsigned-char -fno-builtin
+   the stages do; `VERSION` picks the version. For a `-G8` file (`G8_SRC` in the
+   Makefile), pass the same flags as the Makefile: `CFLAGS='-O2 -G8 -fsigned-char -fno-builtin
    -fdollars-in-identifiers' MASPSXFLAGS='--aspsx-version=2.86 -G8'`.
 3. **Search for a near miss.** When only register allocation or instruction
    order is left, try other source shapes first: types, the order of
@@ -156,6 +155,10 @@ how to fix what they find:
   size changed or a word that changed without a relocation, with the label
   before it. Something there depends on where the code is, such as a pad
   or an alignment: write it so that the layout is the same at any address.
+  It also fails on a relocation's absolute symbol, with the name of
+  something in a binary, that didn't move: a symbol file gives that name's
+  unpadded address. Drop the name from the file, so that the binary takes
+  it from the executable's or the parent's symbols.
 - `tools/inputcheck.py`, which every link runs, fails on an object that
   isn't one of the binary's or on a blob. The first is a stale object in
   `build/` (`make regenerate` after changing a config) or one that a splat
@@ -163,6 +166,18 @@ how to fix what they find:
   version's `C_SRC`). A blob, a `.bin` or assembly that `.incbin`s one, has
   no relocations: make it data (C, or splat's words) so that its pointers
   get them. Only the executable's tail, a picture, may stay one.
+
+`make smoke` (`tools/smoke.py`) is an optional check for your machine, never
+the CI's: it writes the build into a copy of your disc image under `build/`
+and boots it in DuckStation under `xvfb-run`, with settings of its own,
+until the first menu (the title screen, or the European language menu),
+then watches it for an exception or code that runs outside the BIOS, the
+kernel and the build.
+`make PAD=0x10004 smoke` boots a padding build, which shows that the code
+and data that moved still work. It needs `DISC=` (the original image, a
+`.bin`), `BIOS=` (a directory with a PlayStation BIOS) and, if DuckStation
+isn't `duckstation-qt`, `DUCKSTATION=`, on the command line or in
+`local.mk`.
 
 ## Versions
 
@@ -258,12 +273,44 @@ does:
 - One folder per binary under `src/`: `src/main/` for the executable,
   `src/<overlay>/` for each overlay, and `src/stages/` with one
   `wstag###.c` per stage.
-- The executable's files follow its original objects (`inn.c`, `system.c`,
-  `memcard.c`, ...). The SDK, Sony's code, isn't in `src/`: the build takes
-  it from the original as splat's disassembly (`asm/<version>/main/psyq/`),
-  and the C decompiled of it earlier is in this repository's history.
-- A file `X_2.c` is the second half of an original object that the splat
-  config splits in two; the report counts both halves as the unit `X`.
+- Code that several binaries have, each its own copy of the same C, is one
+  `.inc.c` file that their C files include where the function is, named
+  after it: `src/stages/common/` for the stages, `src/menu_common/` for the
+  menu overlays. An overlay's copy keeps the overlay's prefix: its header
+  defines `OVL_NAME(name)` (`STGMCARD_##name`), and the shared file names
+  its functions with it (`void OVL_NAME(drawFader)(ScreenFade *task)` is
+  `STGMCARD_drawFader` in STGMCARD). A copy that differs in a constant
+  takes it from a macro that the including file defines just before the
+  include (`FADER_DEPTH` for `create_fader.inc.c`).
+- The executable is split into modules, a folder each under `src/main/`:
+
+  | Folder | What | Header (`include/dw3/`) |
+  |---|---|---|
+  | `system/` | the boot and the frame loop (`main.c`), the heap, the random numbers, the modes' overlays | `overlay.h`, `heap.h`, `random.h` |
+  | `task/` | the tasks' methods and creation, the task registry | `task.h` |
+  | `file/` | the CD reader, the file cache, the disc's file table, the RLE decompressor | `file.h` |
+  | `gfx/` | the display and the frame, the layers, the card, sprite and TIM drawers, the screen fade | `gfx.h` |
+  | `text/` | the text windows, the cursor, the message and talk boxes, the font, the text tools | `text.h` |
+  | `pad/` | the controllers and the demos | `pad.h` |
+  | `sound/` | the sound banks | `sound.h` |
+  | `memcard/` | the memory card saves | `memcard.h` |
+  | `game/` | the game state and modes, the events, the party, the stats, the partners, the Digimon and the items | `game_state.h` |
+  | `menu/` | the inn and the field menu | `menu.h` |
+
+  The original's objects (`inn`, `system`, `memcard`, `game3`...) are cut
+  into these files in their link order: each file is a run of the original's
+  code, and its rodata and data are runs of the original's too, in the same
+  order. `config/<version>/main.yaml` lists each file's `c`, `.rodata` and
+  `.data` subsegments, so a file can only move or split where all three stay
+  in order (and a datum that starts a file is word-aligned). The modules cut
+  from a `-G8` object keep `-G8` (`G8_SRC` in the Makefile). Each module
+  declares its types, functions and data once, in its header;
+  `include/game.h` includes them all.
+- The SDK, Sony's code, isn't in `src/`: the build takes it from the
+  original as splat's disassembly (`asm/<version>/main/psyq/`), and the C
+  decompiled of it earlier is in this repository's history.
+- An overlay's file `X_2.c` is the second half of an original object that
+  the splat config splits in two; the report counts both halves as the unit `X`.
 - The executable's data is in `src/main/data/` until it moves to the module
   that defines it. Its European tables differ all over (file numbers,
   screen positions, overlay addresses) and splat names them at other
@@ -272,7 +319,7 @@ does:
   differ. Give a table the same name in both versions when you name it.
   A module's data moves from its first datum on, as a whole or up to a
   datum where the rest can wait: give it a `.data` subsegment
-  of its own in both versions' `main.yaml` (`[0x2F1D8, .data, inn]`).
+  of its own in both versions' `main.yaml` (`[0x2F1D8, .data, menu/inn]`).
   What is left on each side stays
   in `src/main/data/`, one file per range, listed in address order in
   `GAME_DATA` (`tools/objdiff_generate.py`) and in `mk/version/eu.mk`. A
@@ -322,7 +369,11 @@ says what they are, as `symbols_cnty_sel.txt` does. Then
 The stages are all loaded at the same address and many have functions at the
 same addresses, so their functions keep splat's names for now; the
 Makefile already reads a stage's own symbol file,
-`config/<version>/stages/<stage>.txt`, when there is one.
+`config/<version>/stages/<stage>.txt`, when there is one. Their data is
+named after where the tables of `include/stage.h` put it (`actor3Talks`,
+`area0Battle2`, `script50`): `tools/name_stage_data.py` names it in the C
+and in both versions' symbol files, and can be run again after new data
+comes in.
 
 The versions share their names: a function or datum is called the same in
 every version, each at its own address, and a name in `eu`'s symbol files

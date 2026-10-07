@@ -14,7 +14,7 @@ void updateStage(StageTask *task, void **children) {
                 children[i] = createStageEffect(D_800A56BC[i].x, D_800A56BC[i].y, D_800A56BC[i].frame);
             }
         }
-        if (FLAGS_00.checkCondition(0x4082, 1) && FLAGS_00.checkCondition(0x4083, 0)) {
+        if (FLAGS_00.checkCondition(FLAG(0x40, 0x82), 1) && FLAGS_00.checkCondition(FLAG(0x40, 0x83), 0)) {
             children[10] = FIELDSTG_startEvent(0x50E);
         }
         task->nextState(task);
@@ -35,13 +35,13 @@ void updateStage(StageTask *task, void **children) {
 #include "common/create_stage_effect.inc.c"
 
 void func_800A53BC(void) {
-    FLAGS_00.applyAction(0x4082, 1);
-    FLAGS_00.applyAction(0x7400, 1);
+    FLAGS_00.applyAction(FLAG(0x40, 0x82), 1);
+    FLAGS_00.applyAction(EVENT_BATTLE(0), 1);
 }
 
 void func_800A5408(void) {
-    FLAGS_00.applyAction(0x4083, 1);
-    FLAGS_00.applyAction(0x8230, 1);
+    FLAGS_00.applyAction(FLAG(0x40, 0x83), 1);
+    FLAGS_00.applyAction(ITEM(1, 0x30), 1);
 }
 
 #if VERSION_US
@@ -54,110 +54,27 @@ void func_800A5408(void) {
 #define STAGE_FILE 0x6CA
 #endif
 void setupStage(void) {
-    D_800990B4.textFile = STAGE_TEXT;
-    D_800990B4.mapFile = STAGE_FILE - 1;
-    D_800990B4.sheetEntry = STAGE_FILE << 16;
-    D_800990B4.objects = stageObjects;
-    D_800990B4.slots = stageSlots;
-    D_800990B4.imageFile = STAGE_FILE - 2;
-    D_800990B4.start = (Vec2){0x12700, 0x24B00};
-    D_800990B4.images.actors = stageImages;
-    D_800990B4.soundBank = 0x19;
-    D_800990B4.music = 0x60640000;
-    D_800990B4.actors = stageActors;
-    D_800990B4.battles = stageBattles;
-    D_800990B4.startDir = 0;
-    D_800990B4.events = stageEvents;
-    D_8009A70C.setFile(0, STAGE_FILE << 16 | 1);
-    D_8009A70C.setFile(7, STAGE_FILE << 16 | 2);
-    D_8009A70C.setFile(4, STAGE_FILE << 16 | 3);
-    D_8009A70C.unk50(0);
+    FIELDSTG_state.textFile = STAGE_TEXT;
+    FIELDSTG_state.mapFile = STAGE_FILE - 1;
+    FIELDSTG_state.sheetEntry = STAGE_FILE << 16;
+    FIELDSTG_state.objects = stageObjects;
+    FIELDSTG_state.slots = stageSlots;
+    FIELDSTG_state.imageFile = STAGE_FILE - 2;
+    FIELDSTG_state.start = (Vec2){0x12700, 0x24B00};
+    FIELDSTG_state.images.actors = stageImages;
+    FIELDSTG_state.soundBank = 0x19;
+    FIELDSTG_state.music = MUSIC(0x19, 0);
+    FIELDSTG_state.actors = stageActors;
+    FIELDSTG_state.battles = stageBattles;
+    FIELDSTG_state.startDir = 0;
+    FIELDSTG_state.events = stageEvents;
+    FIELDSTG_map.setFile(0, STAGE_FILE << 16 | 1);
+    FIELDSTG_map.setFile(7, STAGE_FILE << 16 | 2);
+    FIELDSTG_map.setFile(4, STAGE_FILE << 16 | 3);
+    FIELDSTG_map.setFirstMap(0);
 }
 
-extern Battle D_800A57A4;
-extern Battle D_800A57B0;
-extern Battle D_800A57BC;
-extern Battle D_800A57C8;
-extern Battle D_800A57D4;
-extern Battle D_800A57E0;
-extern Battle D_800A57EC;
-extern Battle D_800A57F8;
-extern Battle D_800A5828;
-extern Battle D_800A5834;
-extern Battle D_800A5840;
-extern Battle D_800A584C;
-extern Battle D_800A5858;
-extern Battle D_800A5864;
-extern Battle D_800A5870;
-extern Battle D_800A587C;
-extern Battle D_800A58AC;
-extern Battle D_800A58B8;
-extern Battle D_800A58C4;
-extern Battle D_800A58D0;
-extern Battle D_800A58DC;
-extern Battle D_800A58E8;
-extern Battle D_800A58F4;
-extern Battle D_800A5900;
-extern Battle D_800A5930;
-extern Battle D_800A593C;
-extern Battle D_800A5948;
-extern Battle D_800A5954;
-extern Battle D_800A5960;
-extern Battle D_800A596C;
-extern Battle D_800A5978;
-extern Battle D_800A5984;
-extern BattleList D_800A5804;
-extern BattleList D_800A5888;
-extern BattleList D_800A590C;
-extern BattleList D_800A5990;
-extern u16 D_800A5A80[];
-extern u16 D_800A5A88[];
-extern u16 D_800A5A90[];
-extern u16 D_800A5A98[];
-extern u16 D_800A5AA0[];
-extern u16 D_800A5AA8[];
-extern u16 D_800A5AB0[];
-extern u16 D_800A5AB8[];
-extern u16 D_800A5AC0[];
-extern u16 D_800A5AC8[];
-extern u16 D_800A5AD0[];
-extern u16 D_800A5AD8[];
-extern u16 D_800A5AE0[];
-extern u16 D_800A5AE8[];
-extern u16 D_800A5C58[];
-extern FieldTalk D_800A5AF0[];
-extern u16 D_800A5C64[];
-extern FieldTalk D_800A5B20[];
-extern u16 D_800A5C6C[];
-extern FieldTalk D_800A5B38[];
-extern u16 D_800A5C74[];
-extern FieldTalk D_800A5B68[];
-extern u16 D_800A5C7C[];
-extern FieldTalk D_800A5B80[];
-extern u16 D_800A5C84[];
-extern FieldTalk D_800A5B98[];
-extern u16 D_800A5C90[];
-extern FieldTalk D_800A5BB0[];
-extern u16 D_800A5C9C[];
-extern FieldTalk D_800A5BC8[];
-extern u16 D_800A5CA4[];
-extern FieldTalk D_800A5BE0[];
-extern u16 D_800A5CB4[];
-extern FieldTalk D_800A5C1C[];
-extern FieldActorEntry D_800A5CC4;
-extern FieldActorEntry D_800A5CD8;
-extern FieldActorEntry D_800A5CEC;
-extern FieldActorEntry D_800A5D00;
-extern FieldActorEntry D_800A5D14;
-extern FieldActorEntry D_800A5D28;
-extern FieldActorEntry D_800A5D3C;
-extern FieldActorEntry D_800A5D50;
-extern FieldActorEntry D_800A5D64;
-extern FieldActorEntry D_800A5D78;
-extern s16 D_800A5568[];
-extern s16 D_800A5604[];
-
-s16 D_800A5568[] = {
+s16 script1293[] = {
     0x600, 1, 2,
     0x102, 2, 0x138, 0x25C, 3,
     0x100, 0xCB, 0x120, 0x251,
@@ -188,7 +105,7 @@ s16 D_800A5568[] = {
 #if VERSION_US
 __asm__(".section .data\n\t.half 0x1\n");
 #endif
-s16 D_800A5604[] = {
+s16 script1294[] = {
     0x600, 1, 0xCB,
     0x100, 2, 0x138, 0x25C,
     0x101, 2, 1, 3,
@@ -243,60 +160,60 @@ AnimFrame effectFrames[] = {
     { 7, 4 }, { 4, 4 }, { 3, 4 }, { 2, 4 },
     { 1, 4 }, { 255, 0x3E7 },
 };
-Battle D_800A57A4 = { 187, 25, 0x60080000 };
-Battle D_800A57B0 = { 187, 25, 0x60080000 };
-Battle D_800A57BC = { 187, 25, 0x60080000 };
-Battle D_800A57C8 = { 187, 25, 0x60080000 };
-Battle D_800A57D4 = { 129, 25, 0x60080000 };
-Battle D_800A57E0 = { 129, 25, 0x60080000 };
-Battle D_800A57EC = { 129, 25, 0x60080000 };
-Battle D_800A57F8 = { 129, 25, 0x60080000 };
-BattleList D_800A5804 = {
+Battle area0Battle0 = { 187, 25, MUSIC(2, 0) };
+Battle area0Battle1 = { 187, 25, MUSIC(2, 0) };
+Battle area0Battle2 = { 187, 25, MUSIC(2, 0) };
+Battle area0Battle3 = { 187, 25, MUSIC(2, 0) };
+Battle area0Battle4 = { 129, 25, MUSIC(2, 0) };
+Battle area0Battle5 = { 129, 25, MUSIC(2, 0) };
+Battle area0Battle6 = { 129, 25, MUSIC(2, 0) };
+Battle area0Battle7 = { 129, 25, MUSIC(2, 0) };
+BattleList area0Battles = {
     5,
-    { &D_800A57A4, &D_800A57B0, &D_800A57BC, &D_800A57C8,
-      &D_800A57D4, &D_800A57E0, &D_800A57EC, &D_800A57F8 },
+    { &area0Battle0, &area0Battle1, &area0Battle2, &area0Battle3,
+      &area0Battle4, &area0Battle5, &area0Battle6, &area0Battle7 },
 };
-Battle D_800A5828 = { 0, 0, 0x60040000 };
-Battle D_800A5834 = { 0, 0, 0x60040000 };
-Battle D_800A5840 = { 0, 0, 0x60040000 };
-Battle D_800A584C = { 0, 0, 0x60040000 };
-Battle D_800A5858 = { 0, 0, 0x60040000 };
-Battle D_800A5864 = { 0, 0, 0x60040000 };
-Battle D_800A5870 = { 0, 0, 0x60040000 };
-Battle D_800A587C = { 0, 0, 0x60040000 };
-BattleList D_800A5888 = {
+Battle area1Battle0 = { 0, 0, MUSIC(1, 0) };
+Battle area1Battle1 = { 0, 0, MUSIC(1, 0) };
+Battle area1Battle2 = { 0, 0, MUSIC(1, 0) };
+Battle area1Battle3 = { 0, 0, MUSIC(1, 0) };
+Battle area1Battle4 = { 0, 0, MUSIC(1, 0) };
+Battle area1Battle5 = { 0, 0, MUSIC(1, 0) };
+Battle area1Battle6 = { 0, 0, MUSIC(1, 0) };
+Battle area1Battle7 = { 0, 0, MUSIC(1, 0) };
+BattleList area1Battles = {
     0,
-    { &D_800A5828, &D_800A5834, &D_800A5840, &D_800A584C,
-      &D_800A5858, &D_800A5864, &D_800A5870, &D_800A587C },
+    { &area1Battle0, &area1Battle1, &area1Battle2, &area1Battle3,
+      &area1Battle4, &area1Battle5, &area1Battle6, &area1Battle7 },
 };
-Battle D_800A58AC = { 0, 0, 0x60040000 };
-Battle D_800A58B8 = { 0, 0, 0x60040000 };
-Battle D_800A58C4 = { 0, 0, 0x60040000 };
-Battle D_800A58D0 = { 0, 0, 0x60040000 };
-Battle D_800A58DC = { 0, 0, 0x60040000 };
-Battle D_800A58E8 = { 0, 0, 0x60040000 };
-Battle D_800A58F4 = { 0, 0, 0x60040000 };
-Battle D_800A5900 = { 0, 0, 0x60040000 };
-BattleList D_800A590C = {
+Battle area2Battle0 = { 0, 0, MUSIC(1, 0) };
+Battle area2Battle1 = { 0, 0, MUSIC(1, 0) };
+Battle area2Battle2 = { 0, 0, MUSIC(1, 0) };
+Battle area2Battle3 = { 0, 0, MUSIC(1, 0) };
+Battle area2Battle4 = { 0, 0, MUSIC(1, 0) };
+Battle area2Battle5 = { 0, 0, MUSIC(1, 0) };
+Battle area2Battle6 = { 0, 0, MUSIC(1, 0) };
+Battle area2Battle7 = { 0, 0, MUSIC(1, 0) };
+BattleList area2Battles = {
     0,
-    { &D_800A58AC, &D_800A58B8, &D_800A58C4, &D_800A58D0,
-      &D_800A58DC, &D_800A58E8, &D_800A58F4, &D_800A5900 },
+    { &area2Battle0, &area2Battle1, &area2Battle2, &area2Battle3,
+      &area2Battle4, &area2Battle5, &area2Battle6, &area2Battle7 },
 };
-Battle D_800A5930 = { 27, 25, 0x608C0000 };
-Battle D_800A593C = { 0, 0, 0x60040000 };
-Battle D_800A5948 = { 0, 0, 0x60040000 };
-Battle D_800A5954 = { 0, 0, 0x60040000 };
-Battle D_800A5960 = { 0, 0, 0x60040000 };
-Battle D_800A596C = { 0, 0, 0x60040000 };
-Battle D_800A5978 = { 0, 0, 0x60040000 };
-Battle D_800A5984 = { 0, 0, 0x60040000 };
-BattleList D_800A5990 = {
+Battle area3Battle0 = { 27, 25, MUSIC(0x23, 0) };
+Battle area3Battle1 = { 0, 0, MUSIC(1, 0) };
+Battle area3Battle2 = { 0, 0, MUSIC(1, 0) };
+Battle area3Battle3 = { 0, 0, MUSIC(1, 0) };
+Battle area3Battle4 = { 0, 0, MUSIC(1, 0) };
+Battle area3Battle5 = { 0, 0, MUSIC(1, 0) };
+Battle area3Battle6 = { 0, 0, MUSIC(1, 0) };
+Battle area3Battle7 = { 0, 0, MUSIC(1, 0) };
+BattleList area3Battles = {
     0,
-    { &D_800A5930, &D_800A593C, &D_800A5948, &D_800A5954,
-      &D_800A5960, &D_800A596C, &D_800A5978, &D_800A5984 },
+    { &area3Battle0, &area3Battle1, &area3Battle2, &area3Battle3,
+      &area3Battle4, &area3Battle5, &area3Battle6, &area3Battle7 },
 };
 FieldBattles stageBattles[] = {
-    { 120, 0, 0, { &D_800A5804, &D_800A5888, &D_800A590C, &D_800A5990 } },
+    { 120, 0, 0, { &area0Battles, &area1Battles, &area2Battles, &area3Battles } },
 };
 ActorImage stageImages[] = {
     { 0x200, 0x100, 0x21C, 0x1A6, 0x70, 0xA6, 0x230, 0x1FE },
@@ -311,101 +228,101 @@ ActorImage stageImages[] = {
     { 0x140, 0x100, 0x16E, 0x1A8, 0xB8, 0xA8, 0x140, 0x1F5 },
     { 0x140, 0x100, 0x140, 0x1B0, 0, 0xB0, 0x160, 0x1F5 },
 };
-u16 D_800A5A80[] = { 0x701D, 1, 0xFFFF };
-u16 D_800A5A88[] = { 0x6025, 1, 0xFFFF };
-u16 D_800A5A90[] = { 0x6026, 1, 0xFFFF };
-u16 D_800A5A98[] = { 0x701D, 1, 0xFFFF };
-u16 D_800A5AA0[] = { 0x6025, 1, 0xFFFF };
-u16 D_800A5AA8[] = { 0x6026, 1, 0xFFFF };
-u16 D_800A5AB0[] = { 0x701D, 1, 0xFFFF };
-u16 D_800A5AB8[] = { 0x6025, 1, 0xFFFF };
-u16 D_800A5AC0[] = { 0x6026, 1, 0xFFFF };
-u16 D_800A5AC8[] = { 0x602B, 1, 0xFFFF };
-u16 D_800A5AD0[] = { 0x701D, 1, 0xFFFF };
-u16 D_800A5AD8[] = { 0x6025, 1, 0xFFFF };
-u16 D_800A5AE0[] = { 0x6026, 1, 0xFFFF };
-u16 D_800A5AE8[] = { 0x602B, 1, 0xFFFF };
-FieldTalk D_800A5AF0[] = {
-    { D_800A5A80, NULL, 0x207 },
-    { D_800A5A88, NULL, 0x208 },
-    { D_800A5A90, NULL, 0x209 },
+u16 actor0Talk0Conditions[] = { SPECIAL(0x1D), 1, CODES_END };
+u16 actor0Talk1Conditions[] = { PROGRESS(0x25), 1, CODES_END };
+u16 actor0Talk2Conditions[] = { PROGRESS(0x26), 1, CODES_END };
+u16 actor2Talk0Conditions[] = { SPECIAL(0x1D), 1, CODES_END };
+u16 actor2Talk1Conditions[] = { PROGRESS(0x25), 1, CODES_END };
+u16 actor2Talk2Conditions[] = { PROGRESS(0x26), 1, CODES_END };
+u16 actor8Talk0Conditions[] = { SPECIAL(0x1D), 1, CODES_END };
+u16 actor8Talk1Conditions[] = { PROGRESS(0x25), 1, CODES_END };
+u16 actor8Talk2Conditions[] = { PROGRESS(0x26), 1, CODES_END };
+u16 actor8Talk3Conditions[] = { PROGRESS(0x2B), 1, CODES_END };
+u16 actor9Talk0Conditions[] = { SPECIAL(0x1D), 1, CODES_END };
+u16 actor9Talk1Conditions[] = { PROGRESS(0x25), 1, CODES_END };
+u16 actor9Talk2Conditions[] = { PROGRESS(0x26), 1, CODES_END };
+u16 actor9Talk3Conditions[] = { PROGRESS(0x2B), 1, CODES_END };
+FieldTalk actor0Talks[] = {
+    { actor0Talk0Conditions, NULL, 0x207 },
+    { actor0Talk1Conditions, NULL, 0x208 },
+    { actor0Talk2Conditions, NULL, 0x209 },
     { NULL, NULL, 0 },
 };
-FieldTalk D_800A5B20[] = {
+FieldTalk actor1Talks[] = {
     { NULL, NULL, 0x20B },
     { NULL, NULL, 0 },
 };
-FieldTalk D_800A5B38[] = {
-    { D_800A5A98, NULL, 0x20C },
-    { D_800A5AA0, NULL, 0x20D },
-    { D_800A5AA8, NULL, 0x20E },
+FieldTalk actor2Talks[] = {
+    { actor2Talk0Conditions, NULL, 0x20C },
+    { actor2Talk1Conditions, NULL, 0x20D },
+    { actor2Talk2Conditions, NULL, 0x20E },
     { NULL, NULL, 0 },
 };
-FieldTalk D_800A5B68[] = {
+FieldTalk actor3Talks[] = {
     { NULL, NULL, 0x210 },
     { NULL, NULL, 0 },
 };
-FieldTalk D_800A5B80[] = {
+FieldTalk actor4Talks[] = {
     { NULL, NULL, 0x20F },
     { NULL, NULL, 0 },
 };
-FieldTalk D_800A5B98[] = {
+FieldTalk actor5Talks[] = {
     { NULL, NULL, 0x205 },
     { NULL, NULL, 0 },
 };
-FieldTalk D_800A5BB0[] = {
+FieldTalk actor6Talks[] = {
     { NULL, NULL, 0x205 },
     { NULL, NULL, 0 },
 };
-FieldTalk D_800A5BC8[] = {
+FieldTalk actor7Talks[] = {
     { NULL, NULL, 0x20A },
     { NULL, NULL, 0 },
 };
-FieldTalk D_800A5BE0[] = {
-    { D_800A5AB0, NULL, 0x202 },
-    { D_800A5AB8, NULL, 0x203 },
-    { D_800A5AC0, NULL, 0x204 },
-    { D_800A5AC8, NULL, 0x206 },
+FieldTalk actor8Talks[] = {
+    { actor8Talk0Conditions, NULL, 0x202 },
+    { actor8Talk1Conditions, NULL, 0x203 },
+    { actor8Talk2Conditions, NULL, 0x204 },
+    { actor8Talk3Conditions, NULL, 0x206 },
     { NULL, NULL, 0 },
 };
-FieldTalk D_800A5C1C[] = {
-    { D_800A5AD0, NULL, 0x202 },
-    { D_800A5AD8, NULL, 0x203 },
-    { D_800A5AE0, NULL, 0x204 },
-    { D_800A5AE8, NULL, 0x206 },
+FieldTalk actor9Talks[] = {
+    { actor9Talk0Conditions, NULL, 0x202 },
+    { actor9Talk1Conditions, NULL, 0x203 },
+    { actor9Talk2Conditions, NULL, 0x204 },
+    { actor9Talk3Conditions, NULL, 0x206 },
     { NULL, NULL, 0 },
 };
-u16 D_800A5C58[] = { 0x7008, 1, 0x701A, 0, 0xFFFF };
-u16 D_800A5C64[] = { 0x602B, 1, 0xFFFF };
-u16 D_800A5C6C[] = { 0x701E, 1, 0xFFFF };
-u16 D_800A5C74[] = { 0x602B, 1, 0xFFFF };
-u16 D_800A5C7C[] = { 0x701A, 1, 0xFFFF };
-u16 D_800A5C84[] = { 0x4083, 0, 0x701A, 1, 0xFFFF };
-u16 D_800A5C90[] = { 0x701A, 1, 0x4083, 1, 0xFFFF };
-u16 D_800A5C9C[] = { 0x701A, 1, 0xFFFF };
-u16 D_800A5CA4[] = { 0x701A, 0, 0x4083, 1, 0x7008, 1, 0xFFFF };
-u16 D_800A5CB4[] = { 0x7008, 1, 0x4083, 0, 0x701A, 0, 0xFFFF };
-FieldActorEntry D_800A5CC4 = { D_800A5C58, D_800A5AF0, 0x2D, 4, 944, 233, 1 };
-FieldActorEntry D_800A5CD8 = { D_800A5C64, D_800A5B20, 0x2D, 4, 944, 233, 1 };
-FieldActorEntry D_800A5CEC = { D_800A5C6C, D_800A5B38, 0x42, 5, 1041, 105, 3 };
-FieldActorEntry D_800A5D00 = { D_800A5C74, D_800A5B68, 0x42, 5, 1041, 105, 3 };
-FieldActorEntry D_800A5D14 = { D_800A5C7C, D_800A5B80, 0x42, 5, 1041, 105, 3 };
-FieldActorEntry D_800A5D28 = { D_800A5C84, D_800A5B98, 0x9D, 6, 288, 593, 7 };
-FieldActorEntry D_800A5D3C = { D_800A5C90, D_800A5BB0, 0x9D, 6, 336, 569, 1 };
-FieldActorEntry D_800A5D50 = { D_800A5C9C, D_800A5BC8, 0x9E, 7, 944, 233, 1 };
-FieldActorEntry D_800A5D64 = { D_800A5CA4, D_800A5BE0, 0xCB, 8, 336, 569, 1 };
-FieldActorEntry D_800A5D78 = { D_800A5CB4, D_800A5C1C, 0xCB, 8, 288, 593, 7 };
+u16 actor0Conditions[] = { SPECIAL(8), 1, SPECIAL(0x1A), 0, CODES_END };
+u16 actor1Conditions[] = { PROGRESS(0x2B), 1, CODES_END };
+u16 actor2Conditions[] = { SPECIAL(0x1E), 1, CODES_END };
+u16 actor3Conditions[] = { PROGRESS(0x2B), 1, CODES_END };
+u16 actor4Conditions[] = { SPECIAL(0x1A), 1, CODES_END };
+u16 actor5Conditions[] = { FLAG(0x40, 0x83), 0, SPECIAL(0x1A), 1, CODES_END };
+u16 actor6Conditions[] = { SPECIAL(0x1A), 1, FLAG(0x40, 0x83), 1, CODES_END };
+u16 actor7Conditions[] = { SPECIAL(0x1A), 1, CODES_END };
+u16 actor8Conditions[] = { SPECIAL(0x1A), 0, FLAG(0x40, 0x83), 1, SPECIAL(8), 1, CODES_END };
+u16 actor9Conditions[] = { SPECIAL(8), 1, FLAG(0x40, 0x83), 0, SPECIAL(0x1A), 0, CODES_END };
+FieldActorEntry actor0 = { actor0Conditions, actor0Talks, 0x2D, 4, 944, 233, 1 };
+FieldActorEntry actor1 = { actor1Conditions, actor1Talks, 0x2D, 4, 944, 233, 1 };
+FieldActorEntry actor2 = { actor2Conditions, actor2Talks, 0x42, 5, 1041, 105, 3 };
+FieldActorEntry actor3 = { actor3Conditions, actor3Talks, 0x42, 5, 1041, 105, 3 };
+FieldActorEntry actor4 = { actor4Conditions, actor4Talks, 0x42, 5, 1041, 105, 3 };
+FieldActorEntry actor5 = { actor5Conditions, actor5Talks, 0x9D, 6, 288, 593, 7 };
+FieldActorEntry actor6 = { actor6Conditions, actor6Talks, 0x9D, 6, 336, 569, 1 };
+FieldActorEntry actor7 = { actor7Conditions, actor7Talks, 0x9E, 7, 944, 233, 1 };
+FieldActorEntry actor8 = { actor8Conditions, actor8Talks, 0xCB, 8, 336, 569, 1 };
+FieldActorEntry actor9 = { actor9Conditions, actor9Talks, 0xCB, 8, 288, 593, 7 };
 FieldActorEntry *stageActors[] = {
-    &D_800A5CC4,
-    &D_800A5CD8,
-    &D_800A5CEC,
-    &D_800A5D00,
-    &D_800A5D14,
-    &D_800A5D28,
-    &D_800A5D3C,
-    &D_800A5D50,
-    &D_800A5D64,
-    &D_800A5D78,
+    &actor0,
+    &actor1,
+    &actor2,
+    &actor3,
+    &actor4,
+    &actor5,
+    &actor6,
+    &actor7,
+    &actor8,
+    &actor9,
     NULL,
 };
 StageTile stageObjects[] = {
@@ -460,26 +377,26 @@ StageTile stageObjects[] = {
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 StageSlot stageSlots[] = {
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 1, 0x2D0, 0x78, 0x144, 7, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 1, 0x2D3, 0x40C, 0x6E, 1, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 3, 5, 0x400, 0x80, 0, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 2, 5, 0x3F0, 0xD8, 0, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 4, 6, 0, 0, 0, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 4, 9, 0, 0, 0, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 4, 0xB, 0, 0, 0, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 4, 7, 0, 0, 0, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 0xD, 0x2D2, 0x140, 0x260, 3, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 0xD, 0x2D2, 0x3C0, 0x50, 7, 0, 0, 0 },
-    { { { 0x4082, 0 }, { 0x701A, 0 } }, 8, 0x50D, 0, 0, 0, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 0xB, 0, 0, 0, 0, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 0xC, 0, 0, 0, 0, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 1, 0x2D0, 0x78, 0x144, 7, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 1, 0x2D3, 0x40C, 0x6E, 1, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 3, 5, 0x400, 0x80, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 2, 5, 0x3F0, 0xD8, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 4, 6, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 4, 9, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 4, 0xB, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 4, 7, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 0xD, 0x2D2, 0x140, 0x260, 3, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 0xD, 0x2D2, 0x3C0, 0x50, 7, 0, 0, 0 },
+    { { { FLAG(0x40, 0x82), 0 }, { SPECIAL(0x1A), 0 } }, 8, 0x50D, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 0xB, 0, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 0xC, 0, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 void (*stageFuncs[])(void) = {
     setupStage,
 };
 FieldEvent stageEvents[] = {
-    { 1293, D_800A5568, EVENT_TEXT(9), NULL, func_800A53BC },
-    { 1294, D_800A5604, EVENT_TEXT(0x14), NULL, func_800A5408 },
+    { 1293, script1293, EVENT_TEXT(9), NULL, func_800A53BC },
+    { 1294, script1294, EVENT_TEXT(0x14), NULL, func_800A5408 },
     { -1, NULL, 0, NULL, NULL },
 };

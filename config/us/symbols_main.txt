@@ -6,9 +6,13 @@
 OVERLAY_VRAM = 0x80082448; // defined:True
 STAGE_VRAM = 0x800A4CA4; // defined:True
 
+// where the heap begins, after the overlays, which the linker gives the
+// executable (tools/link_heap.py): HEAP_START points at it
+HEAP_BASE = 0x800AA800; // defined:True
+
 // the mode overlays' symbols the executable uses, which it links against
 // (the Makefile's CHILDREN_main): their entry points (MODE_ENTRY_POINTS) and
-// FIELDSTG's functions and data game3.c uses
+// FIELDSTG's functions and data game/events.c uses
 FIELDSTG_start = 0x80086CF4; // defined:True
 STDWTITL_start = 0x800827A0; // defined:True
 STDGNAME_start = 0x8008281C; // defined:True
@@ -28,7 +32,7 @@ STGDGLAB_createScene = 0x800827D8; // defined:True
 CNTY_SEL_start = 0x80082624; // defined:True
 SOUNDTST_start = 0x80083BA8; // defined:True
 STAGSLCT_start = 0x80084564; // defined:True
-func_8008AEB4 = 0x8008AEB4; // defined:True
-func_8008B2C4 = 0x8008B2C4; // defined:True
-func_8008B320 = 0x8008B320; // defined:True
+FIELDSTG_leaveField = 0x8008AEB4; // defined:True
+FIELDSTG_startListedEvent = 0x8008B2C4; // defined:True
+FIELDSTG_openInn = 0x8008B320; // defined:True
 FIELDSTG_battleFuncs = 0x8009A6EC; // defined:True

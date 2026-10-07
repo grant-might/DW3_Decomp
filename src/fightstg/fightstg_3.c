@@ -46,7 +46,7 @@ void FIGHTSTG_updateEntrance(Entrance *task, WhiteFlash **children) {
                 if (is1D2) {
                     FILE_CACHE.request(FILE_ENTRANCE_1D2);
                 } else {
-                    SOUND.fadeOut(0x60900000);
+                    SOUND.fadeOut(MUSIC(0x24, 0));
                     SOUND.loadBank(0x26);
                 }
                 task->nextStep(task);
@@ -87,7 +87,7 @@ void FIGHTSTG_updateEntrance(Entrance *task, WhiteFlash **children) {
             }
             break;
         case 2:
-            SOUND.playSound(0xA0045EC9);
+            SOUND.playSound(SOUND_PLAYER11);
             *children = FIGHTSTG_startWhiteFlash(60);
             task->nextSubstate(task);
         case 3:
@@ -109,8 +109,8 @@ void FIGHTSTG_updateEntrance(Entrance *task, WhiteFlash **children) {
                 stage->setStage(stage, 0x16, 1, 1);
             }
             if (is1D3) {
-                BATTLE_SETUP.music = 0x60980000;
-                SOUND.playSound(0x60980000);
+                BATTLE_SETUP.music = MUSIC(0x26, 0);
+                SOUND.playSound(MUSIC(0x26, 0));
             }
             break;
         case 4:
@@ -179,7 +179,7 @@ void FIGHTSTG_updateRoot(Task *task, Task **children) {
         task->nextState(task);
         break;
     case TASK_RUN:
-        FIGHTSTG_battle.unkE4();
+        FIGHTSTG_battle.countFrames();
         break;
     case 2:
     case TASK_KILL:
@@ -598,7 +598,7 @@ void FIGHTSTG_updateHitEffect(HitEffect *task, HitEffectChildren *children) {
         case 0:
             camera->set(camera, camera->getEnemyView(camera));
             children->effect = FIGHTSTG_startSpriteEffect(0x33, (SVECTOR *)&D_800824C8);
-            SOUND.playSound(0x800429BF);
+            SOUND.playSound(SOUND_COMCD103);
             task->nextSubstate(task);
         case 1:
             task->counter += GFX.funcs.getFrameTime();
@@ -1001,7 +1001,7 @@ s32 FIGHTSTG_testEnemyCondition(u8 condition, s16 arg) {
         }
         break;
     case 14:
-        if (fighter->unkE != 0) {
+        if (fighter->charge != 0) {
             result = 1;
         }
         break;
@@ -1021,7 +1021,7 @@ s32 FIGHTSTG_testEnemyCondition(u8 condition, s16 arg) {
         }
         break;
     case 18:
-        if (fighter->unk4 % arg == 0) {
+        if (fighter->turns % arg == 0) {
             result = 1;
         }
         break;

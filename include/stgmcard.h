@@ -1,9 +1,14 @@
 #ifndef STGMCARD_H
 #define STGMCARD_H
 
-/* STGMCARD.PRO: mode 0xC00, the memory card screen. */
+/* STGMCARD.PRO: mode 0xC00, the memory card screen. Its modules are in
+   src/stgmcard/, and the functions below are by module, in the order they
+   link. */
 
 #include "game.h"
+
+/* The name of this overlay's copy of a function of src/menu_common/ */
+#define OVL_NAME(name) STGMCARD_##name
 
 /* The sprite archive of the screen */
 #if VERSION_US
@@ -21,25 +26,26 @@ typedef struct MemCardScene {
     /* 0x54 */ s32 unk54;
 } MemCardScene;
 
-/* A mode (or stage) the screen can be opened from, and the value the screen
-   takes from it (STGMCARD_prevModes, which ends with a zero mode) */
+/* A mode (or stage) the screen can be opened from, and the area a save made
+   from it shows (STGMCARD_prevModes, which ends with a zero mode) */
 typedef struct MemCardModeEntry {
-    /* 0x0 */ u8 value;
+    /* 0x0 */ u8 area; /* a string of TEXT_AREA_NAMES */
     /* 0x1 */ u8 unk1;
     /* 0x2 */ s16 mode;
 } MemCardModeEntry;
 
-/* The main task of the screen (func_80087174) */
+/* The main task of the screen (STGMCARD_createScreen) */
 typedef struct MemCardScreen {
     TASK_HEADER(MemCardScreen);
-    /* 0x50 */ s32 saving; /* the game mode's argument is not negative */
+    /* 0x50 */ s32 loading; /* opened from the title screen: the game mode's
+                               argument is not negative (saving: negative) */
     /* 0x54 */ s32 layer;
-    /* 0x58 */ s32 unk58;
-    /* 0x5C */ s32 unk5C;
+    /* 0x58 */ s32 bgScroll; /* the background's offset, 0 to 95 */
+    /* 0x5C */ s32 bgScrolled; /* it moves every other frame */
     /* 0x60 */ s32 unk60;
     /* 0x64 */ s32 unk64;
-    /* 0x68 */ s32 unk68;
-    /* 0x6C */ s32 unk6C;
+    /* 0x68 */ s32 area; /* a string of TEXT_AREA_NAMES, from the previous mode */
+    /* 0x6C */ s32 place; /* a string of TEXT_SHOP_NAMES (STGMCARD_places) */
 } MemCardScreen;
 
 struct MemCardMenu;
@@ -55,7 +61,7 @@ typedef struct MemCardScreenTasks {
 
 /* The children of the save list */
 typedef struct MemCardSavesWindows {
-    /* 0x00 */ TextWindow *unk0;
+    /* 0x00 */ TextWindow *title; /* save or load */
     /* 0x04 */ TextWindow *windows[5];
     /* 0x18 */ Cursor *cursor;
     /* 0x1C */ struct MemCardPanel *panel;
@@ -75,8 +81,8 @@ typedef struct PlayTime {
 /* A save of the memory card, as the list shows it */
 typedef struct MemCardSave {
     /* 0x00 */ u8 name[0x18]; /* empty for a free slot */
-    /* 0x18 */ s32 unk18;
-    /* 0x1C */ s32 unk1C;
+    /* 0x18 */ s32 area; /* MemCardScreen's */
+    /* 0x1C */ s32 place;
     /* 0x20 */ s32 money;
     /* 0x24 */ PlayTime time;
     /* 0x30 */ s32 partners[3]; /* 3 and up: a partner, whose animation the
@@ -98,14 +104,12 @@ typedef struct MemCardFile {
 
 #define MEMCARD_FILE_MAGIC 0x33574D44
 
-/* The saved part of the game state, GAME's first bytes: a save's data
-   section. Its bytes 0 and 2 hold the checksum of the rest, from byte 4, and
+/* A save's data section is GAME's first GAME_SAVE_SIZE bytes. Its bytes 0
+   and 2 hold the checksum of the rest, from byte 4, and
    MEMCARD_SAVE_VERSION. */
 #if VERSION_US
-#define GAME_SAVE_SIZE 0x26BC
 #define MEMCARD_SAVE_VERSION 3
 #elif VERSION_EU
-#define GAME_SAVE_SIZE 0x26C4
 #define MEMCARD_SAVE_VERSION 4
 #endif
 
@@ -122,7 +126,7 @@ typedef struct GameSave {
     /* 0x0000 */ s32 data[GAME_SAVE_SIZE / 4];
 } GameSave;
 
-/* MEMCARD followed by MEMCARD_FUNCS, as func_800844DC reaches the functions:
+/* MEMCARD followed by MEMCARD_FUNCS, as STGMCARD_runSaves reaches the functions:
    through MEMCARD's address */
 typedef struct MemCardSystem {
     /* 0x000 */ MemCard card;
@@ -140,35 +144,36 @@ typedef struct MemCardWindowSpec {
     /* 0x10 */ s32 isNumber; /* shows 0, right-aligned, for an empty slot */
 } MemCardWindowSpec;
 
-/* The saves of a memory card (func_80086BA0) */
+/* The saves of a memory card (STGMCARD_updateSaves) */
 typedef struct MemCardSaves {
     TASK_HEADER(MemCardSaves);
     /* 0x0050 */ MemCardScreen *screen;
     /* 0x0054 */ s32 layer;
-    /* 0x0058 */ s32 unk58[3];
+    /* 0x0058 */ s32 origin[3]; /* x and y of the list's windows */
     /* 0x0064 */ s32 port;
-    /* 0x0068 */ s32 count;
+    /* 0x0068 */ s32 result; /* of the last card operation, then the error
+                                (STGMCARD_errorTexts) */
     /* 0x006C */ MemCardFile file; /* the card's */
     /* 0x0140 */ u8 unk140[GAME_SAVE_SIZE];
     /* 0x27FC */ s32 choice; /* of a yes/no question, 0 for yes; 0x2804 in the
                                 European version, as all below */
     /* 0x2800 */ MenuLerp slide[2]; /* the list's x and y offsets */
-    /* 0x2838 */ s32 unk2838;
+    /* 0x2838 */ s32 prompting; /* a message waits for the cross button */
     /* 0x283C */ s32 blinkTime;
     /* 0x2840 */ s32 blinkFrame;
-    /* 0x2844 */ s32 unk2844;
-    /* 0x2848 */ s32 unk2848;
+    /* 0x2844 */ s32 choosing; /* the cursor's two choices are shown */
+    /* 0x2848 */ s32 backToPick; /* the message returns to the slot picker */
     /* 0x284C */ void (*refresh)(struct MemCardSaves *saves);
     /* 0x2850 */ void (*hide)(struct MemCardSaves *saves);
 } MemCardSaves;
 
-/* The window with the selected save's details (func_80082E28) */
+/* The window with the selected save's details (STGMCARD_updateInfo) */
 typedef struct MemCardInfo {
     TASK_HEADER(MemCardInfo);
     /* 0x50 */ MemCardSaves *saves;
     /* 0x54 */ s32 layer;
     /* 0x58 */ s32 depth;
-    /* 0x5C */ s32 unk5C;
+    /* 0x5C */ s32 drawing; /* the partners and frame are drawn */
     /* 0x60 */ s32 shown;
     /* 0x64 */ s32 time;
     /* 0x68 */ s32 frames[3]; /* of the three partners' animations */
@@ -178,26 +183,28 @@ typedef struct MemCardInfo {
     /* 0x8C */ void (*refresh)(struct MemCardInfo *info);
 } MemCardInfo;
 
-/* func_80083B10's task */
+/* The slot picker (STGMCARD_updateMenu): the header with the port, the
+   three slots and their cursor, each sliding in and out with a lerp */
 typedef struct MemCardMenu {
     TASK_HEADER(MemCardMenu);
     /* 0x50 */ MemCardSaves *saves;
     /* 0x54 */ s32 layer;
     /* 0x58 */ s32 depth;
-    /* 0x5C */ MenuLerp lerps[4];
-    /* 0xCC */ s32 unkCC;
+    /* 0x5C */ MenuLerp lerps[4]; /* slots x, header y, cursor x, cursor move */
+    /* 0xCC */ s32 slid; /* the last slide done: 1 header in, 2 slots in,
+                           3 slots out */
     /* 0xD0 */ s32 blinkTime;
     /* 0xD4 */ s32 blinkFrame;
     /* 0xD8 */ s32 blinkDown; /* the frame counts down */
     /* 0xDC */ void (*reset)(struct MemCardMenu *menu);
-    /* 0xE0 */ void (*unkE0)(struct MemCardMenu *menu);
-    /* 0xE4 */ void (*unkE4)(struct MemCardMenu *menu, s32 arg);
-    /* 0xE8 */ void (*unkE8)(struct MemCardMenu *menu);
-    /* 0xEC */ void (*unkEC)(struct MemCardMenu *menu);
-    /* 0xF0 */ void (*unkF0)(struct MemCardMenu *menu);
+    /* 0xE0 */ void (*slideInHeader)(struct MemCardMenu *menu);
+    /* 0xE4 */ void (*startPick)(struct MemCardMenu *menu, s32 slot);
+    /* 0xE8 */ void (*slideOutHeader)(struct MemCardMenu *menu);
+    /* 0xEC */ void (*slideInSlots)(struct MemCardMenu *menu);
+    /* 0xF0 */ void (*slideOutSlots)(struct MemCardMenu *menu);
 } MemCardMenu;
 
-/* A gradient panel that opens by scaling (func_800833A0) */
+/* A gradient panel that opens by scaling (STGMCARD_updatePanel) */
 typedef struct MemCardPanel {
     TASK_HEADER(MemCardPanel);
     /* 0x50 */ s32 layer;
@@ -210,7 +217,7 @@ typedef struct MemCardPanel {
     /* 0x6C */ CVECTOR top;
     /* 0x70 */ CVECTOR bottom;
     /* 0x74 */ s32 duration;
-    /* 0x78 */ s32 rate; /* 0x1000 / duration */
+    /* 0x78 */ s32 rate; /* ONE / duration */
     /* 0x7C */ s32 unk7C;
     /* 0x80 */ s32 unk80;
     /* 0x84 */ s32 pivotX;
@@ -233,9 +240,9 @@ typedef struct SaveIcon {
 
 /* The overlay's buffers and helpers (STGMCARD_funcs) */
 typedef struct MemCardScreenFuncs {
-    /* 0x00 */ s32 unk0;
+    /* 0x00 */ s32 lastSlot; /* the card's last saved one */
     /* 0x04 */ s32 slot; /* the selected one */
-    /* 0x08 */ s32 unk8;
+    /* 0x08 */ s32 prevSlot; /* where the cursor moves from */
     /* 0x0C */ MemCardFile *infoBuf;
     /* 0x10 */ GameState *dataBuf; /* the saved part of the game state */
     /* 0x14 */ s32 infoSize;
@@ -248,5 +255,73 @@ typedef struct MemCardScreenFuncs {
     /* 0x30 */ void (*startLerp)(MenuLerp *lerp, s32 from, s32 to, s32 frames);
     /* 0x34 */ s32 (*updateLerp)(MenuLerp *lerp);
 } MemCardScreenFuncs;
+
+/* stgmcard.c */
+void STGMCARD_updateScene(MemCardScene *task, Task **children);
+Task *STGMCARD_start(void);
+void STGMCARD_startFader(ScreenFade *task, s32 fadeIn, s32 duration);
+void STGMCARD_drawFader(ScreenFade *task);
+void STGMCARD_updateFader(ScreenFade *task);
+ScreenFade *STGMCARD_createFader(void);
+
+/* info.c */
+void STGMCARD_showInfo(MemCardInfo *info);
+void STGMCARD_hideInfo(MemCardInfo *info);
+void STGMCARD_refreshInfo(MemCardInfo *info);
+void STGMCARD_updateInfo(MemCardInfo *info);
+MemCardInfo *STGMCARD_createInfo(MemCardSaves *saves);
+
+/* panel.c */
+void STGMCARD_resetPanel(MemCardPanel *panel);
+void STGMCARD_startPanel(MemCardPanel *panel, s32 substate, s32 duration);
+void STGMCARD_setPanelTopColor(MemCardPanel *panel, u8 r, u8 g, u8 b);
+void STGMCARD_setPanelBottomColor(MemCardPanel *panel, u8 r, u8 g, u8 b);
+void STGMCARD_setPanelPos(MemCardPanel *panel, s32 x, s32 y);
+void STGMCARD_updatePanel(MemCardPanel *panel);
+MemCardPanel *STGMCARD_createPanel(s32 x, s32 y, s32 w, s32 h);
+
+/* menu.c */
+void STGMCARD_slideInHeader(MemCardMenu *menu);
+void STGMCARD_startSlotPick(MemCardMenu *menu, s32 arg);
+void STGMCARD_slideOutHeader(MemCardMenu *menu);
+void STGMCARD_moveSlotCursor(MemCardMenu *menu);
+void STGMCARD_slideInSlots(MemCardMenu *menu);
+void STGMCARD_slideOutSlots(MemCardMenu *menu);
+void STGMCARD_resetMenu(MemCardMenu *menu);
+void STGMCARD_updateMenu(MemCardMenu *menu, TextWindow **windows);
+MemCardMenu *STGMCARD_createMenu(MemCardSaves *saves);
+
+/* saves.c */
+void STGMCARD_showPort(MemCardSaves *saves, MemCardSavesWindows *win, s32 show);
+void STGMCARD_showError(MemCardSaves *saves, MemCardSavesWindows *win);
+void STGMCARD_closeMenuForError(MemCardSaves *saves, MemCardSavesWindows *win);
+void STGMCARD_refreshSaves(MemCardSaves *saves);
+void STGMCARD_hideSaves(MemCardSaves *saves);
+void STGMCARD_runSaves(MemCardSaves *saves, MemCardSavesWindows *win);
+void STGMCARD_drawSaves(MemCardSaves *saves);
+void STGMCARD_updateSaves(MemCardSaves *saves, MemCardSavesWindows *win);
+MemCardSaves *STGMCARD_createSaves(MemCardScreen *screen);
+
+/* screen.c */
+void STGMCARD_updateScreen(MemCardScreen *screen, MemCardScreenTasks *tasks);
+Task *STGMCARD_createScreen(void);
+void STGMCARD_loadFiles(void);
+s32 STGMCARD_filesLoading(void);
+void STGMCARD_freeBuffers(void);
+void STGMCARD_startFade(PanelAnim *fade, s32 fadeIn);
+s32 STGMCARD_updateFade(PanelAnim *fade);
+void STGMCARD_startLerp(MenuLerp *lerp, s32 from, s32 to, s32 frames);
+s32 STGMCARD_updateLerp(MenuLerp *lerp);
+
+/* STGMCARD's data (data/stgmcard.c) */
+extern MemCardScreenFuncs STGMCARD_funcs;
+extern SaveIcon STGMCARD_saveIcon;
+extern MemCardWindowSpec STGMCARD_detailWindows[];
+extern s32 STGMCARD_partnerAnims[][7];
+extern s32 STGMCARD_partnerIcons[];
+extern s32 STGMCARD_slotIconX[];
+extern s32 STGMCARD_errorTexts[]; /* the texts of the errors, by result */
+extern s32 STGMCARD_places[];
+extern MemCardModeEntry STGMCARD_prevModes[];
 
 #endif /* STGMCARD_H */

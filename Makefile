@@ -68,28 +68,29 @@ CPPFLAGS = $(INC) -undef -nostdinc -Wundef \
 	    -D_PSYQ -D__EXTENSIONS__ -D_MIPSEL -D_LANGUAGE_C -DLANGUAGE_C \
 	    -DVERSION_$(VERSION_UPPER) -DASM_DIR='"$(ASM_DIR)"'
 # -membedded-data: the game's code puts a small const in .rodata, not .sdata,
-# and reads it with lui/lw even at -G8 (OVERLAY_ADDRESS in system.c); it
+# and reads it with lui/lw even at -G8 (OVERLAY_ADDRESS in system/main.c); it
 # changes nothing else
 CC1FLAGS = -quiet -O2 -G$(SDATA_LIMIT) -mips1 -mcpu=3000 -mgas -msoft-float \
 	    -fgnu-linker -fsigned-char -fno-builtin -fdollars-in-identifiers -Wall -Wno-unused -membedded-data
 MASPSXFLAGS = --aspsx-version=2.86 -G$(SDATA_LIMIT) --use-comm-section --use-comm-for-lcomm
 
-# Most of the game is built with -G0; graphics.c reads its own small variables
-# through $gp. GFX_STARTED is its one .sdata variable; the .sbss pointers are
+# Most of the game is built with -G0; the executable's modules that came from
+# a -G8 object of the original read their own small variables through $gp.
+# GFX_STARTED (gfx/display.c) is the one .sdata variable; the .sbss ones are
 # declared static, so maspsx emits them as common symbols that resolve to the
 # definitions in data/game_bss.c, 8 bytes apart as the linker laid them. With
-# -G8 GCC leaves the address of a small extern (LANGUAGE in inn.c,
-# memcard.c and game3.c, in the European version) to the assembler, which loads it
-# again for each read.
+# -G8 GCC leaves the address of a small extern (LANGUAGE in menu/inn.c,
+# memcard/memcard.c and game/events.c, in the European version) to the
+# assembler, which loads it again for each read.
 SDATA_LIMIT := 0
-$(BUILDDIR)/src/main/inn.c.o: SDATA_LIMIT := 8
-$(BUILDDIR)/src/main/memcard.c.o: SDATA_LIMIT := 8
-$(BUILDDIR)/src/main/game3.c.o: SDATA_LIMIT := 8
-$(BUILDDIR)/src/main/system.c.o: SDATA_LIMIT := 8
-$(BUILDDIR)/src/main/graphics.c.o: SDATA_LIMIT := 8
-$(BUILDDIR)/src/main/sound.c.o: SDATA_LIMIT := 8
-$(BUILDDIR)/src/main/overlay.c.o: SDATA_LIMIT := 8
-$(BUILDDIR)/src/main/game3_2.c.o: SDATA_LIMIT := 8
+G8_SRC := $(addprefix src/main/, menu/inn.c gfx/screen_fade.c menu/field_menu.c \
+	game/digimon.c game/items.c file/cd_reader.c file/file_cache.c \
+	file/file_table.c task/task.c system/main.c memcard/memcard.c \
+	game/events.c game/state.c game/party.c game/play_time.c game/stats.c \
+	game/partner.c system/heap.c task/registry.c gfx/display.c gfx/layer.c \
+	gfx/card_drawer.c gfx/sprite_drawer.c text/text_tools.c gfx/tim_loader.c \
+	sound/sound.c system/overlay.c)
+$(G8_SRC:%.c=$(BUILDDIR)/%.c.o): SDATA_LIMIT := 8
 # the assembly sees every version as 0 or 1 too: .if VERSION_EU
 ASFLAGS := -EL -march=r3000 -mtune=r3000 -no-pad-sections -O1 -G0 $(INC) \
 	   $(foreach v,$(VERSIONS),--defsym VERSION_$(shell echo $(v) | tr a-z A-Z)=$(if $(filter $(v),$(VERSION)),1,0))
@@ -103,9 +104,11 @@ MEMORY_MAP := $(foreach a,EXE_VRAM OVERLAY_VRAM STAGE_VRAM,--defsym $(a)=$($(a))
 # The executable links with its children's symbols too (CHILDREN_template)
 MAIN_AUTO_SYMS := $(GENDIR)/undefined_syms_auto_main.txt $(GENDIR)/undefined_funcs_auto_main.txt
 MAIN_IMPORTS := $(LINKDIR)/main_imports.ld
+# and with where the heap begins, after the overlays (tools/link_heap.py)
+HEAP_SYMS := $(LINKDIR)/heap.ld
 LDFLAGS := -nostdlib --no-check-sections --emit-relocs -Map $(MAP) \
 	   $(MEMORY_MAP) -T $(GENDIR)/main.ld \
-	   $(addprefix -T ,$(UNDEFINED_SYMS) $(MAIN_AUTO_SYMS) $(MAIN_IMPORTS))
+	   $(addprefix -T ,$(UNDEFINED_SYMS) $(MAIN_AUTO_SYMS) $(MAIN_IMPORTS) $(HEAP_SYMS))
 
 # The stage overlays the version has, from $(CONFIG_DIR)/stages.txt
 STAGES := $(shell awk '!/^\#/ && NF { print tolower($$1) }' $(CONFIG_DIR)/stages.txt)
@@ -154,7 +157,7 @@ OVL_PARENT_wfightts := fightstg
 # and FIGHTSTG calls their functions (CHILDREN_template)
 CHILDREN_fightstg := wfightmn wfightts
 # The executable calls the mode overlays' entry points (MODE_ENTRY_POINTS),
-# and game3.c FIELDSTG's functions
+# and game/events.c FIELDSTG's functions
 CHILDREN_main := $(filter-out wfightmn wfightts,$(OVERLAYS))
 
 # The stage overlays (AAA/PRO/WSTAG###.PRO), listed in
@@ -234,10 +237,17 @@ $$(GENDIR)/$(1).ld: $$(or $$(OVL_YAML_$(1)),$$(CONFIG_DIR)/$(1).yaml) $$(CONFIG_
 # own hand-written ones ($(CONFIG_DIR)/undefined_syms_<name>.txt)
 $(1)_SYMS := $$(MAIN_SYMS) $$(if $$(OVL_PARENT_$(1)),$$(LINKDIR)/$$(OVL_PARENT_$(1))_syms.ld) \
 	$$(wildcard $$(CONFIG_DIR)/undefined_syms_$(1).txt)
-$(1)_AUTO_SYMS := $$(GENDIR)/undefined_syms_auto_$(1).txt $$(GENDIR)/undefined_funcs_auto_$(1).txt
+# and of splat's symbol files, the names that $(1)_SYMS doesn't have
+# (tools/link_imports.py): those of $(1)_SYMS move with a padding build,
+# splat's keep the unpadded addresses
+$(1)_SPLAT_SYMS := $$(GENDIR)/undefined_syms_auto_$(1).txt $$(GENDIR)/undefined_funcs_auto_$(1).txt
+$(1)_AUTO_SYMS := $$(LINKDIR)/auto/$(1).ld
+$$($(1)_AUTO_SYMS): $$($(1)_OBJ) $$(GENDIR)/$(1).ld $$($(1)_SYMS) tools/link_imports.py
+	@mkdir -p $$(dir $$@)
+	$$(PYTHON) tools/link_imports.py $$@ $$($(1)_OBJ) --from $$($(1)_SPLAT_SYMS) --linked $$($(1)_SYMS)
 # and its children's (CHILDREN_template)
 $(1)_IMPORTS := $$(if $$(CHILDREN_$(1)),$$(LINKDIR)/$(1)_imports.ld)
-$$(LINKDIR)/$(1).elf: $$($(1)_OBJ) $$(GENDIR)/$(1).ld $$($(1)_SYMS) $$($(1)_IMPORTS)
+$$(LINKDIR)/$(1).elf: $$($(1)_OBJ) $$(GENDIR)/$(1).ld $$($(1)_SYMS) $$($(1)_AUTO_SYMS) $$($(1)_IMPORTS)
 	@mkdir -p $$(dir $$@)
 	$$(LD) -nostdlib --no-check-sections --emit-relocs -Map $$(LINKDIR)/$(1).map \
 		$$(MEMORY_MAP) -T $$(GENDIR)/$(1).ld $$(addprefix -T ,$$($(1)_SYMS) $$($(1)_AUTO_SYMS) $$($(1)_IMPORTS)) -o $$@
@@ -274,7 +284,11 @@ $(EXE): $(ELF)
 	$(OBJCOPY) -O binary $< $@
 	@truncate -s %2048 $@
 
-$(ELF): $(OBJ) $(GENDIR)/main.ld $(UNDEFINED_SYMS) $(MAIN_IMPORTS)
+# The heap begins after the overlays (HEAP_SYMS)
+$(HEAP_SYMS): $(OVL_ELF) tools/link_heap.py
+	$(PYTHON) tools/link_heap.py $@ $(OVL_ELF)
+
+$(ELF): $(OBJ) $(GENDIR)/main.ld $(UNDEFINED_SYMS) $(MAIN_IMPORTS) $(HEAP_SYMS)
 	@mkdir -p $(dir $@)
 	$(LD) $(LDFLAGS) -o $@
 	$(PYTHON) tools/inputcheck.py $(MAP) $(OBJ) --blobs $(BIN_OBJ)
@@ -306,6 +320,19 @@ PADS := 0x4 0x10004
 links: $(ELF) $(OVL_ELF)
 padcheck: links
 	$(foreach p,$(PADS),$(MAKE) PAD=$(p) links && $(PYTHON) tools/padcheck.py -v $(VERSION) $(p) &&) true
+
+# A boot test of the build, or of a padding build (make PAD=0x10004 smoke),
+# for your machine only (tools/smoke.py): it writes the binaries into a copy
+# of the original disc image DISC under $(LINKDIR)/smoke/ and boots it in
+# DuckStation under xvfb-run, with a PlayStation BIOS from the directory BIOS.
+# Set DISC, BIOS and, if DuckStation isn't duckstation-qt, DUCKSTATION on the
+# command line or in local.mk.
+DUCKSTATION ?= duckstation-qt
+smoke: $(EXE) $(OVL_BIN)
+	$(if $(DISC),,$(error make smoke needs DISC=<the original disc image, .bin>))
+	$(if $(BIOS),,$(error make smoke needs BIOS=<a directory with a PlayStation BIOS>))
+	@command -v xvfb-run > /dev/null || { echo "make smoke runs DuckStation under xvfb-run: install xvfb (apt install xvfb)" >&2; exit 1; }
+	$(PYTHON) tools/smoke.py --disc "$(DISC)" --bios "$(BIOS)" --pad $(PAD) --emulator "$(DUCKSTATION)"
 
 # The executable's .bss in C: maspsx turns its commons into definitions in
 # order in .bss when they aren't kept as .comm
@@ -355,4 +382,4 @@ reset: clean
 
 -include $(C_OBJ:.o=.d) $(C_OVL_OBJ:.o=.d)
 
-.PHONY: all generate regenerate compare expected objdiff report clean reset shiftcheck shiftreport links padcheck lint
+.PHONY: all generate regenerate compare expected objdiff report clean reset shiftcheck shiftreport links padcheck lint smoke

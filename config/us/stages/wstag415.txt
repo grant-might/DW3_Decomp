@@ -8,9 +8,50 @@ startStage = 0x800A5E84; // type:func
 setupStage = 0x800A5F2C; // type:func
 stageFuncs = 0x800A6694; // size:0x4
 
-// named by their use (D_800990B4, the field state, in setupStage)
+// named by their use (FIELDSTG_state, the field state, in setupStage)
 stageObjects = 0x800A665C;
 stageImages = 0x800A65D0;
 stageActors = 0x800A6654;
 stageEvents = 0x800A6698;
 stageBattles = 0x800A65B4;
+
+// named by their place in the stage's tables (tools/name_stage_data.py)
+script150 = 0x800A5FE0;
+script151 = 0x800A615C;
+area0Battle0 = 0x800A63A4;
+area0Battle1 = 0x800A63B0;
+area0Battle2 = 0x800A63BC;
+area0Battle3 = 0x800A63C8;
+area0Battle4 = 0x800A63D4;
+area0Battle5 = 0x800A63E0;
+area0Battle6 = 0x800A63EC;
+area0Battle7 = 0x800A63F8;
+area0Battles = 0x800A6404;
+area1Battle0 = 0x800A6428;
+area1Battle1 = 0x800A6434;
+area1Battle2 = 0x800A6440;
+area1Battle3 = 0x800A644C;
+area1Battle4 = 0x800A6458;
+area1Battle5 = 0x800A6464;
+area1Battle6 = 0x800A6470;
+area1Battle7 = 0x800A647C;
+area1Battles = 0x800A6488;
+area2Battle0 = 0x800A64AC;
+area2Battle1 = 0x800A64B8;
+area2Battle2 = 0x800A64C4;
+area2Battle3 = 0x800A64D0;
+area2Battle4 = 0x800A64DC;
+area2Battle5 = 0x800A64E8;
+area2Battle6 = 0x800A64F4;
+area2Battle7 = 0x800A6500;
+area2Battles = 0x800A650C;
+area3Battle0 = 0x800A6530;
+area3Battle1 = 0x800A653C;
+area3Battle2 = 0x800A6548;
+area3Battle3 = 0x800A6554;
+area3Battle4 = 0x800A6560;
+area3Battle5 = 0x800A656C;
+area3Battle6 = 0x800A6578;
+area3Battle7 = 0x800A6584;
+area3Battles = 0x800A6590;
+actor0 = 0x800A6640;

@@ -33,5 +33,7 @@ GP_VALUE := 0x8005C2F8
 
 # The C files this version builds: the Makefile compiles these and nothing
 # else under src/, and gives each binary the ones under src/<name>/ (the
-# stages theirs under src/stages/). Every C file is the USA version's.
-C_SRC := $(shell find src -name '*.c' 2> /dev/null)
+# stages theirs under src/stages/). Every C file is the USA version's. A
+# .inc.c file isn't built on its own: it is code that several binaries
+# share, which their C files include (src/stages/common/, src/menu_common/).
+C_SRC := $(shell find src -name '*.c' ! -name '*.inc.c' 2> /dev/null)

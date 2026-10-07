@@ -50,16 +50,28 @@ segments:
     subalign: 4
     subsegments:
       # us's modules, each with its rodata, data and bss (tools/split_version.py)
-      - [0x0, .rodata, stdwtitl]
-      - [0x4C, .rodata, stdwtitl_2]
+      # each module's rodata: the ones with jump tables or strings
+      - [0x0, .rodata, splash]
+      - [0x38, .rodata, menu]
+      - [0x4C, .rodata, title]
       - [0x70, rodata, libpress]
+      # the modules (src/stdwtitl/), in the order they link
       - [0xC0, c, stdwtitl]
-      - [0x3024, c, stdwtitl_2]
+      - [0x3A4, c, logo]
+      - [0x788, c, movie]
+      - [0x12D0, c, glint]
+      - [0x188C, c, splash]
+      - [0x1BB8, c, title_loader]
+      - [0x1D28, c, slides]
+      - [0x2640, c, menu]
+      - [0x3024, c, edge_fade]
+      - [0x33AC, c, background]
+      - [0x3B84, c, title]
       - [0x449C, asm, libpress]
       - [0x4B2C, asm, libpress_vlc2]
       - [0x4EAC, asm, libpress_build]
-      - [0x4F90, .data, stdwtitl]
-      - [0x510C, .data, stdwtitl_2]
+      - [0x4F90, .data, data/stdwtitl]
+      - [0x510C, .data, data/title]
       - [0x55D4, data, libpress]
       - [0x6564, .data, data/movie]
   - [0x65C0]

@@ -33,6 +33,8 @@ import sys
 from collections import Counter
 from pathlib import Path
 
+from version import stage_entries
+
 ROOT = Path(__file__).resolve().parent.parent
 CONFIG = ROOT / "config"
 LINE = re.compile(r"^\s*([A-Za-z_][\w.]*)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\s*;\s*(?://(.*))?$")
@@ -55,12 +57,7 @@ def binaries(vdir):
     """The binaries a version builds: main, the overlays that have a splat
     config, and the stage overlays in stages.txt."""
     names = {p.stem for p in vdir.glob("*.yaml")}
-    stages = vdir / "stages.txt"
-    if stages.exists():
-        for line in stages.read_text().splitlines():
-            words = line.split("#")[0].split()
-            if words:
-                names.add(words[0].lower())
+    names.update(words[0].lower() for words in stage_entries(vdir.name))
     return names
 
 

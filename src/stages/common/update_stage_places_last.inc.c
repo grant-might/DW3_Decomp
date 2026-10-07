@@ -7,7 +7,7 @@ void updateStage(StageTask *task) {
     case TASK_INIT:
     default:
         task->nextState(task);
-        copyPlacePoints(D_800990B4.slots, placePoints, GAME.unk44, GAME.unk46);
+        copyPlacePoints(FIELDSTG_state.slots, placePoints, GAME.place, GAME.placeArg);
         break;
     case TASK_RUN:
     case TASK_DONE:

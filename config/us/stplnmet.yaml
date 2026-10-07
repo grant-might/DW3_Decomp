@@ -49,7 +49,16 @@ segments:
     align: 4
     subalign: 4
     subsegments:
-      - [0x0, .rodata, stplnmet]
+      # each module's rodata: the ones with jump tables or strings
+      - [0x0, .rodata, name_entry]
+      # the modules (src/stplnmet/), in the order they link
       - [0x2A8, c, stplnmet]
-      - [0x5664, .data, stplnmet]
+      - [0x494, c, backdrop]
+      - [0xAC4, c, welcome]
+      - [0x10B0, c, name_entry]
+      - [0x2FEC, c, confirm]
+      - [0x40A8, c, choice]
+      - [0x4BCC, c, screen]
+      # STPLNMET's data, all of it in one file
+      - [0x5664, .data, data/stplnmet]
   - [0x6C3C]

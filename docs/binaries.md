@@ -43,23 +43,23 @@ prefix (`CNTY_SEL_`, `STDWTITL_`...):
 reachable through the ISO 9660 path table, which is why
 `tools/extract_disc.py` is needed: dumpsxiso doesn't see them.
 
-The executable's game code is split at its original object boundaries and
-named by subsystem:
+The executable's game code is in modules (`src/main/<module>/`, see
+CONTRIBUTING.md), cut from its original objects in their link order:
 
-| File | Contents | Address (us) |
+| Original object | Files | Address (us) |
 |---|---|---|
-| `asm/<version>/main/crt0.s` | PsyQ startup (`2MBYTE.OBJ`), splat's disassembly | `0x80010EBC`-`0x80010F80` |
-| `src/main/inn.c` | the inn and the full-screen fade | `0x80010F80`-`0x800120B8` |
-| `src/main/system.c` | field menu, CD reader, file cache, task creation and `main` | `0x800120B8`-`0x80014884` |
-| `src/main/memcard.c` | memory card saves | `0x80014884`-`0x800154F8` |
-| `src/main/game3.c` | game state: flags, event conditions, modes, party and stats | `0x800154F8`-`0x800172E8` |
-| `src/main/game3_2.c` | partner data, heap and task registry | `0x800172E8`-`0x80017FAC` |
-| `src/main/pad.c` | controllers and random numbers | `0x80017FAC`-`0x80018FEC` |
-| `src/main/text_window.c` | text windows, font, cursor and message boxes | `0x80018FEC`-`0x8001D070` |
-| `src/main/graphics.c` | display, drawing layers, sprite/TIM/card drawers | `0x8001D070`-`0x8001FC68` |
-| `src/main/sound.c` | sound banks | `0x8001FC68`-`0x80020764` |
-| `src/main/overlay.c` | the mode overlays' loader and the task that runs a mode | `0x80020764`-`0x80020998` |
-| `asm/<version>/main/psyq/` | the PsyQ libraries, splat's disassembly, one file per library object | `0x80020998`-`0x8003E9D8` |
+| `crt0` | `asm/<version>/main/crt0.s`: PsyQ startup (`2MBYTE.OBJ`), splat's disassembly | `0x80010EBC`-`0x80010F80` |
+| `inn` | `menu/inn.c`, `gfx/screen_fade.c` | `0x80010F80`-`0x800120B8` |
+| `system` | `menu/field_menu.c`, `game/digimon.c`, `game/items.c`, `file/cd_reader.c`, `file/file_cache.c`, `file/file_table.c`, `task/task.c`, `system/main.c` | `0x800120B8`-`0x80014818` |
+| `memcard` | `memcard/memcard.c` (and `system`'s last function, `initMemCard`) | `0x80014818`-`0x800154F8` |
+| `game3` | `game/events.c`, `game/state.c`, `game/party.c`, `game/play_time.c`, `game/stats.c` | `0x800154F8`-`0x800172E8` |
+| `game3_2` | `game/partner.c`, `system/heap.c`, `task/registry.c` | `0x800172E8`-`0x80017FAC` |
+| `pad` | `pad/pad.c`, `pad/demo.c`, `pad/port.c`, `system/random.c` | `0x80017FAC`-`0x80018FEC` |
+| `text_window` | `text/text_window.c`, `text/cursor.c`, `file/decompressor.c`, `text/message_box.c`, `text/talk_box.c`, `text/font.c` | `0x80018FEC`-`0x8001D070` |
+| `graphics` | `gfx/display.c`, `gfx/layer.c`, `gfx/card_drawer.c`, `gfx/sprite_drawer.c`, `text/text_tools.c`, `gfx/tim_loader.c` | `0x8001D070`-`0x8001FC68` |
+| `sound` | `sound/sound.c` | `0x8001FC68`-`0x80020764` |
+| `overlay` | `system/overlay.c` | `0x80020764`-`0x80020998` |
+| `psyq` | `asm/<version>/main/psyq/`: the PsyQ libraries, splat's disassembly, one file per library object | `0x80020998`-`0x8003E9D8` |
 
 Memory maps (psylink puts `.rodata` in front of `.text`):
 
@@ -115,8 +115,8 @@ One source tree builds every version, one at a time, picked with `VERSION`
 - `us` builds every C file under `src/`, and `eu` builds them all too
   (`C_SRC`), with `#if VERSION_EU` blocks where its code or data differ.
   Its executable and overlays are split into the USA version's files, so
-  its asm lands at the same paths (`asm/eu/main/system.s` for
-  `asm/us/main/system.s`). Its stages that the
+  its asm lands at the same paths (`asm/eu/main/game/events.s` for
+  `asm/us/main/game/events.s`). Its stages that the
   USA version has build from their C files (`config/eu/stages/<stage>.txt`
   gives their functions the USA names), and so do its own, whose functions
   are C where they are the code of a USA stage's C. The European release

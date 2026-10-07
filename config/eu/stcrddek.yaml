@@ -50,7 +50,17 @@ segments:
     subalign: 4
     subsegments:
       # us's modules, each with its rodata, data and bss (tools/split_version.py)
-      - [0x0, .rodata, stcrddek]
+      # each module's rodata: the ones with jump tables or strings
+      - [0x0, .rodata, editor]
+      - [0x100, .rodata, name_entry]
+      - [0x3A8, .rodata, screen]
+      # the modules (src/stcrddek/), in the order they link
       - [0x540, c, stcrddek]
-      - [0x77D4, .data, stcrddek]
+      - [0x928, c, deck_cards]
+      - [0xCCC, c, editor]
+      - [0x3B38, c, name_entry]
+      - [0x5BC4, c, scroll_bar]
+      - [0x5E84, c, screen]
+      # STCRDDEK's data, all of it in one file
+      - [0x77D4, .data, data/stcrddek]
   - [0x8BA4]

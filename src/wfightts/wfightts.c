@@ -6,8 +6,8 @@ void WFIGHTTS_initLayers(void) {
 
     GFX.funcs.reset();
     GFX.funcs.allocPrimBuffers(0x19000);
-    GFX.funcs.setDisplayMode(0x140, 0xF0, 0, 0);
-    layer = GFX.funcs.createLayer(&WFIGHTTS_screen, 1, 0x1000);
+    GFX.funcs.setDisplayMode(SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0);
+    layer = GFX.funcs.createLayer(&WFIGHTTS_screen, 1, SCREEN_LAYER);
     layer->setOffset(layer, 0xA0, 0x78);
     layer = GFX.funcs.createLayer(&WFIGHTTS_screen, 1, 0x1001);
     layer->setOffset(layer, 0xA0, 0x78);
@@ -320,7 +320,7 @@ void WFIGHTTS_battleTest(BattleTest *task, BattleTestChildren *children) {
             break;
         }
         if (list) {
-            FIGHTSTG_battle.unkF4(0x1005, 1, WFIGHTTS_backPoints, WFIGHTTS_backColors);
+            FIGHTSTG_battle.drawBlendedQuad(0x1005, 1, WFIGHTTS_backPoints, WFIGHTTS_backColors);
         }
         if (PAD.getPressed(0) & (1 << PAD_SELECT)) {
             if (++WFIGHTTS_speedMode == 4) {
@@ -341,9 +341,9 @@ void WFIGHTTS_battleTest(BattleTest *task, BattleTestChildren *children) {
                 WFIGHTTS_displayY = 0;
                 WFIGHTTS_displayX = 0;
             }
-            GFX.funcs.setDisplayArea(WFIGHTTS_displayX, WFIGHTTS_displayY, 0x140, 0xF0);
+            GFX.funcs.setDisplayArea(WFIGHTTS_displayX, WFIGHTTS_displayY, SCREEN_WIDTH, SCREEN_HEIGHT);
         } else {
-            GFX.funcs.setDisplayMode(0x140, 0xF0, 0, 0);
+            GFX.funcs.setDisplayMode(SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0);
         }
         break;
     case 2:
@@ -1241,7 +1241,7 @@ const char WFIGHTTS_strings[0x9C0] =
 #define WFIGHTTS_STR(offset) ((char *)WFIGHTTS_strings + (offset))
 
 /* The screen, for the layers */
-RECT WFIGHTTS_screen = { 0, 0, 0x140, 0xF0 };
+RECT WFIGHTTS_screen = { 0, 0, SCREEN_WIDTH, SCREEN_HEIGHT };
 /* The partner and the enemy the battle test starts with, by the mode's
    argument */
 s16 WFIGHTTS_fighters[][2] = {

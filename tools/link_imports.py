@@ -14,6 +14,13 @@ defines, so that a child's symbol never replaces one the binary has. A name
 that two children define with different addresses is an error: the binary
 would point into whichever one the link took.
 
+An overlay takes the rest of what it uses from splat's symbol files
+(undefined_{syms,funcs}_auto_<name>.txt) the same way: --from them, --linked
+with the executable's and the parent's symbols, so that OUT keeps only the
+names those don't define. splat's files have the addresses of the unpadded
+build, which must never replace the executable's or the parent's in a
+padding build, whatever the order of the linker scripts.
+
 The children link against the binary's own symbols, so those come from a
 link without the children's: a binary's addresses don't depend on the values
 of what it imports, as MIPS links don't relax. --placeholders writes that

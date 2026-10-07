@@ -46,19 +46,21 @@ original's counts, and nothing else does:
 A function whose size in the target differs from its C's stops the script
 (function_sizes): splat cut it short, and the report would count it wrong.
 
-A source file X_2.c is the second half of an original object split in
-config/us/main.yaml (X.c and X_2.c come from one file before the split). Its
-unit is reported together with X's under X's name, from the two objects
-linked with `ld -r`, so progress keeps being tracked per unit as before.
+A source file X_2.c of an overlay is the second half of an original object
+split in its splat config (X.c and X_2.c come from one file before the
+split). Its unit is reported together with X's under X's name, from the two
+objects linked with `ld -r`, so progress keeps being tracked per unit as
+before. The executable's modules (src/main/<module>/X.c) are units of their
+own, main/<module>/X.
 An overlay split into several objects, X.c, X_2.c, X_3.c..., is not a pair
 of halves: each of its files is a unit of its own (CARDGAME, FIGHTSTG).
 A stage's head, src/stages/X_head.c (the color linked before WSTAG924's
-jump tables, tools/stage_yaml.py), is reported with the stage too, its
-rodata first: its target is splat's rodata of it
+jump tables, tools/stage_yaml.py), is reported with the stage, its rodata
+first, and gets no unit of its own: its target is splat's rodata of it
 (asm/<version>/stages/data/X_head.rodata.s).
 
 The PsyQ SDK linked into the executable and STDWTITL (libpress) is Sony's
-code, not the game's: like other PSX decomps (jype0/dw_decomp), it stays
+code, not the game's: like other PSX decomps, it stays
 splat's asm and gets no unit.
 
 The executable's game data is one unit, main/game_data: splat's data files
@@ -593,8 +595,7 @@ def asm_units(names: list) -> list:
     code and data of the executable, an overlay or a stage linked together,
     so that the progress counts the whole of a version even before it is
     split into the USA modules (and a stage only it has)."""
-    stages = [line.split()[0] for line in open(version.CONFIG_DIR / "stages.txt")
-              if line.strip() and not line.startswith("#")]
+    stages = [words[0] for words in version.stage_entries()]
     binaries = {d.name: [f"{d.name}/{d.name}.s"] + [f"{d.name}/data/{f.name}"
                 for f in sorted((d / "data").glob("*.s"))]
                 for d in sorted(ASM.iterdir()) if d.is_dir() and d.name != "stages"}
@@ -623,8 +624,9 @@ def main() -> None:
              for src in sorted((ROOT / "src").rglob("*.c"))]
     overlay_data = [n for n in names if n.split("/")[1:2] == ["data"] and not n.startswith("main/")]
     names = [n for n in names if not n.startswith("main/data/") and n not in overlay_data]
-    # the stages with no code, which splat writes only the data of
-    data_stages = [n for n in names if n.startswith("stages/")
+    # the stages with no code, which splat writes only the data of; a
+    # stage's head has only data too, but it is reported with its stage
+    data_stages = [n for n in names if n.startswith("stages/") and not n.endswith("_head")
                    and not (ASM / f"{n}.s").exists() and data_segments(n)]
     # a stage's head: its target, and its object if this version builds it
     heads = {n[:-len("_head")]: (f"expected/{V}/asm/stages/data/{n[len('stages/'):]}.rodata.s.o",

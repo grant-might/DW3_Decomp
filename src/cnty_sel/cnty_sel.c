@@ -1,6 +1,6 @@
 #include "cnty_sel.h"
 
-RECT CNTY_SEL_screenRect = {0, 0, 320, 240};
+RECT CNTY_SEL_screenRect = {0, 0, SCREEN_WIDTH, SCREEN_HEIGHT};
 RECT CNTY_SEL_vramRect = {0, 0, 1024, 512};
 /* A little larger than the screen */
 RECT CNTY_SEL_fadeRect = {0, -15, 320, 260};
@@ -29,6 +29,9 @@ LeftPanelTween CNTY_SEL_leftPanelTweens[] = {
 u8 CNTY_SEL_languages[] = {2, 3, 5, 4, 6, 1, 0};
 #endif
 
+/* The mode's root task: once the sound bank is loaded, sets up the display and the layer,
+   uploads the images, creates the screen's controller and starts the music; stops the
+   music when killed */
 void CNTY_SEL_tickScreen(Task *task, MenuTask **menu) {
     TimLoader loader;
     Layer *layer;
@@ -42,7 +45,7 @@ void CNTY_SEL_tickScreen(Task *task, MenuTask **menu) {
                and a 320x240 display */
             GFX.funcs.reset();
             GFX.funcs.allocPrimBuffers(0xA000);
-            GFX.funcs.setDisplayMode(320, 240, 0, 0);
+            GFX.funcs.setDisplayMode(SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0);
             /* Upload the images to VRAM from (640, 0), their CLUTs from (0, 496) */
             initTimLoader(&loader);
             loader.setImagePos(0x280, 0);
@@ -65,6 +68,8 @@ void CNTY_SEL_tickScreen(Task *task, MenuTask **menu) {
     }
 }
 
+/* The mode's entry point (MODE_ENTRY_POINTS): clears VRAM, starts the root task and
+   loads the screen's sound bank */
 Task *CNTY_SEL_start(void) {
     Task *task;
 
@@ -74,6 +79,7 @@ Task *CNTY_SEL_start(void) {
     return task;
 }
 
+/* Draws the background, moved diagonally by half its scroll */
 void CNTY_SEL_drawBackground(BackgroundTask *task) {
     SpriteDrawer sprite;
     s32 offset;
@@ -86,6 +92,7 @@ void CNTY_SEL_drawBackground(BackgroundTask *task) {
     sprite.draw(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_BACKGROUND, offset, offset);
 }
 
+/* How dark the fade-out is on its frame `time`: 0 to 255 over 30 frames */
 s32 CNTY_SEL_getFadeLevel(s32 time) {
     if (time >= 30) {
         return 255;
@@ -93,6 +100,7 @@ s32 CNTY_SEL_getFadeLevel(s32 time) {
     return time * 255 / 30;
 }
 
+/* Darkens the whole screen by level (0 to 255, 255 is black) */
 void CNTY_SEL_drawFade(s32 level) {
     Layer *layer = GFX.funcs.getLayer(CNTY_SEL_LAYER);
     u_long *ot = (u_long *)layer->getOtEntry(layer, 0);
@@ -118,6 +126,8 @@ void CNTY_SEL_drawFade(s32 level) {
     GFX.funcs.setPrim(mode + 1);
 }
 
+/* The background's task: scrolls and draws it; when done, keeps it scrolling while the
+   screen fades to black over 30 frames, then ends */
 void CNTY_SEL_tickBackground(BackgroundTask *task) {
     switch (task->state) {
     case TASK_INIT:
@@ -146,6 +156,7 @@ void CNTY_SEL_tickBackground(BackgroundTask *task) {
     }
 }
 
+/* Creates the scrolling background (task) */
 BackgroundTask *CNTY_SEL_startBackgroundTask(void) {
     return createTask(CNTY_SEL_tickBackground, sizeof(BackgroundTask), 0);
 }
@@ -174,6 +185,7 @@ s16 CNTY_SEL_stepAnimation(AnimState *anim, AnimFrame *frames, s32 depth) {
     return frame->frame;
 }
 
+/* Draws the highlighted option, in the colors of the CLUT row of its current frame */
 void CNTY_SEL_drawCursor(CursorTask *task) {
     SpriteDrawer sprite;
 
@@ -184,10 +196,13 @@ void CNTY_SEL_drawCursor(CursorTask *task) {
     sprite.draw(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_OPTIONS + task->selection, 0, 0);
 }
 
+/* Moves the highlight to option `selection` (CursorTask.setSelection) */
 void CNTY_SEL_setCursorSelection(CursorTask *task, s16 selection) {
     task->selection = selection;
 }
 
+/* The highlighted option's task: blinks it through 8 CLUT rows, 4 frames each; when
+   done (Start pressed), flashes it with CNTY_SEL_cursorFlash, then ends */
 void CNTY_SEL_tickCursor(CursorTask *task) {
     s16 frame;
 
@@ -221,6 +236,7 @@ void CNTY_SEL_tickCursor(CursorTask *task) {
     }
 }
 
+/* Creates the highlighted option (task), once the panels are open */
 CursorTask *CNTY_SEL_startCursorTask(void) {
     CursorTask *task = createTask(CNTY_SEL_tickCursor, sizeof(CursorTask), 0);
 
@@ -228,6 +244,8 @@ CursorTask *CNTY_SEL_startCursorTask(void) {
     return task;
 }
 
+/* The top panel's height scale on the current frame of its opening (phase 0) or
+   closing (1) */
 s32 CNTY_SEL_getTopPanelScale(PanelTask *task, s32 phase) {
     s32 time = task->time;
     s32 duration = CNTY_SEL_topPanelTweens[phase].duration;
@@ -239,6 +257,7 @@ s32 CNTY_SEL_getTopPanelScale(PanelTask *task, s32 phase) {
            (CNTY_SEL_topPanelTweens[phase].to - CNTY_SEL_topPanelTweens[phase].from) * time / duration;
 }
 
+/* Draws the top panel, its height scaled from its top edge */
 void CNTY_SEL_drawTopPanel(PanelTask *task) {
     SpriteDrawer sprite;
 
@@ -246,10 +265,12 @@ void CNTY_SEL_drawTopPanel(PanelTask *task) {
     sprite.setLayerId(CNTY_SEL_LAYER, 1);
     sprite.setTexture(0x280, 0);
     sprite.setPivot(148, 0);
-    sprite.setScale(task->scaleX, task->scaleY, 0x1000);
+    sprite.setScale(task->scaleX, task->scaleY, ONE);
     sprite.draw(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_TOP_PANEL, 148, 0);
 }
 
+/* The top panel's task: draws it; each TASK_DONE from the controller opens it, the
+   next one closes it */
 void CNTY_SEL_tickTopPanel(PanelTask *task) {
     s16 phase;
 
@@ -257,7 +278,7 @@ void CNTY_SEL_tickTopPanel(PanelTask *task) {
     case TASK_INIT:
     default:
         task->nextState(task);
-        task->scaleX = 0x1000;
+        task->scaleX = ONE;
         task->scaleY = 0;
         task->phase = 0;
         break;
@@ -289,10 +310,13 @@ void CNTY_SEL_tickTopPanel(PanelTask *task) {
     }
 }
 
+/* Creates the top panel (task), closed */
 PanelTask *CNTY_SEL_startTopPanelTask(void) {
     return createTask(CNTY_SEL_tickTopPanel, sizeof(PanelTask), 0);
 }
 
+/* The right panel's width scale on the current frame of its opening (phase 0) or
+   closing (1) */
 s32 CNTY_SEL_getRightPanelScale(PanelTask *task, s32 phase) {
     s32 time = task->time;
     s32 duration = CNTY_SEL_rightPanelTweens[phase].duration;
@@ -304,6 +328,7 @@ s32 CNTY_SEL_getRightPanelScale(PanelTask *task, s32 phase) {
            (CNTY_SEL_rightPanelTweens[phase].to - CNTY_SEL_rightPanelTweens[phase].from) * time / duration;
 }
 
+/* Draws the right panel, its width scaled from the screen's right edge */
 void CNTY_SEL_drawRightPanel(PanelTask *task) {
     SpriteDrawer sprite;
 
@@ -311,10 +336,12 @@ void CNTY_SEL_drawRightPanel(PanelTask *task) {
     sprite.setLayerId(CNTY_SEL_LAYER, 1);
     sprite.setTexture(0x280, 0);
     sprite.setPivot(320, 20);
-    sprite.setScale(task->scaleX, task->scaleY, 0x1000);
+    sprite.setScale(task->scaleX, task->scaleY, ONE);
     sprite.draw(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_RIGHT_PANEL, 320, 20);
 }
 
+/* The right panel's task: draws it; each TASK_DONE from the controller opens it, the
+   next one closes it */
 void CNTY_SEL_tickRightPanel(PanelTask *task) {
     s16 phase;
 
@@ -322,7 +349,7 @@ void CNTY_SEL_tickRightPanel(PanelTask *task) {
     case TASK_INIT:
     default:
         task->nextState(task);
-        task->scaleY = 0x1000;
+        task->scaleY = ONE;
         task->scaleX = 0;
         task->phase = 0;
         break;
@@ -354,10 +381,13 @@ void CNTY_SEL_tickRightPanel(PanelTask *task) {
     }
 }
 
+/* Creates the right panel (task), closed */
 PanelTask *CNTY_SEL_startRightPanelTask(void) {
     return createTask(CNTY_SEL_tickRightPanel, sizeof(PanelTask), 0);
 }
 
+/* The left panel's width scale on the current frame of its opening (phase 0) or
+   closing (1) */
 s32 CNTY_SEL_getLeftPanelScale(PanelTask *task, s32 phase) {
     s32 time = task->time;
     s32 duration = CNTY_SEL_leftPanelTweens[phase].duration;
@@ -369,6 +399,8 @@ s32 CNTY_SEL_getLeftPanelScale(PanelTask *task, s32 phase) {
            (CNTY_SEL_leftPanelTweens[phase].to - CNTY_SEL_leftPanelTweens[phase].from) * time / duration;
 }
 
+/* Draws the left panel, with its own CLUT, its width scaled from the screen's left
+   edge */
 void CNTY_SEL_drawLeftPanel(PanelTask *task) {
     SpriteDrawer sprite;
 
@@ -377,10 +409,12 @@ void CNTY_SEL_drawLeftPanel(PanelTask *task) {
     sprite.setTexture(0x280, 0);
     sprite.setAltClut(0, 0x1F0);
     sprite.setPivot(0, 158);
-    sprite.setScale(task->scaleX, task->scaleY, 0x1000);
+    sprite.setScale(task->scaleX, task->scaleY, ONE);
     sprite.draw(FILE_CACHE.getEntry(CNTY_SEL_SPRITES), SPRITE_LEFT_PANEL, 0, 158);
 }
 
+/* The left panel's task: draws it; each TASK_DONE from the controller opens it, the
+   next one closes it */
 void CNTY_SEL_tickLeftPanel(PanelTask *task) {
     s16 phase;
 
@@ -388,7 +422,7 @@ void CNTY_SEL_tickLeftPanel(PanelTask *task) {
     case TASK_INIT:
     default:
         task->nextState(task);
-        task->scaleY = 0x1000;
+        task->scaleY = ONE;
         task->scaleX = 0;
         task->phase = 0;
         break;
@@ -420,10 +454,14 @@ void CNTY_SEL_tickLeftPanel(PanelTask *task) {
     }
 }
 
+/* Creates the left panel (task), closed */
 PanelTask *CNTY_SEL_startLeftPanelTask(void) {
     return createTask(CNTY_SEL_tickLeftPanel, sizeof(PanelTask), 0);
 }
 
+/* The screen's controller: opens the panels one after the other and lets the player
+   pick an option with Up and Down until Start, which in the European version sets
+   LANGUAGE; then flashes it, closes the panels, fades out and moves on to the next mode */
 void CNTY_SEL_tickMenu(MenuTask *task, MenuChildren *children) {
     switch (task->state) {
     case TASK_INIT:
@@ -551,12 +589,11 @@ void CNTY_SEL_tickMenu(MenuTask *task, MenuChildren *children) {
             break;
         case MENU_EXIT:
 #if VERSION_US
-            /* switch to game mode 0xE01 */
-            GAME.funcs.requestMode(0xE01, 0);
+            GAME.funcs.requestMode(MODE_OPENING, 0);
 #elif VERSION_EU
-            /* switch to game mode 0xE01, or 0xE02 for a language but 0 */
+            /* the opening movie, or mode 0xE02 for a language but 0 */
             if (LANGUAGE == 0) {
-                GAME.funcs.requestMode(0xE01, 0);
+                GAME.funcs.requestMode(MODE_OPENING, 0);
             } else {
                 GAME.funcs.requestMode(0xE02, 0);
             }
@@ -571,6 +608,7 @@ void CNTY_SEL_tickMenu(MenuTask *task, MenuChildren *children) {
     }
 }
 
+/* Creates the screen's controller (task), which starts the background and panels */
 MenuTask *CNTY_SEL_startMenuTask(void) {
     return createTask(CNTY_SEL_tickMenu, sizeof(MenuTask), sizeof(MenuChildren));
 }

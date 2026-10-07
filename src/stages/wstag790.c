@@ -1,7 +1,5 @@
 #include "common.h"
 #include "stage.h"
-void func_800A4FFC();
-void *func_800A4FCC(s32 arg);
 
 /*
  * Once the substate is set to 1, moves the records of animations 2, 3, 4 and
@@ -25,7 +23,7 @@ void func_800A4CB8(StageTileGroup *task) {
         case 1:
             switch (task->step) {
             case 0:
-                SOUND.playSound(0x8100383C);
+                SOUND.playSound(SOUND_CCOMBINE);
                 task->nextStep(task);
             case 1:
                 if (task->counter & 1) {
@@ -50,7 +48,7 @@ void func_800A4CB8(StageTileGroup *task) {
             case 3:
                 if (task->counter == 0) {
                     task->tiles[3]->visible = 1;
-                    SOUND.playSound(0x1000002);
+                    SOUND.playSound(SOUND_SIGNALON);
                     task->tickCounter(task);
                 }
                 if (task->tiles[3]->clutRow == 0xF) {
@@ -110,7 +108,7 @@ void func_800A4FFC(StageFrameTask *task) {
             case 0:
                 task->frame = (task->counter >> 2) + 5;
                 if (++task->counter >= 0x14) {
-                    SOUND.playSound(0x8100303C);
+                    SOUND.playSound(SOUND_DOORCLSE);
                     task->nextStep(task);
                 } else {
                     tile = FIELDSTG_findObject(1);
@@ -174,31 +172,23 @@ void updateStage(StageTask *task, void **children) {
 #define STAGE_ARCHIVE 0x331
 #endif
 void setupStage(void) {
-    D_800990B4.textFile = STAGE_TEXT;
-    D_800990B4.mapFile = STAGE_FILE - 1;
-    D_800990B4.sheetEntry = STAGE_FILE << 16 | 1;
-    D_800990B4.objects = stageObjects;
-    D_800990B4.imageFile = STAGE_ARCHIVE;
-    D_800990B4.start = (Vec2){0x15900, 0x11700};
-    D_800990B4.images.actors = stageImages;
-    D_800990B4.soundBank = 0x40;
-    D_800990B4.actors = stageActors;
-    D_800990B4.startDir = 0;
-    D_800990B4.music = 0x61000001;
-    D_800990B4.events = stageEvents;
-    D_8009A70C.setFile(0, STAGE_FILE << 16);
-    D_8009A70C.unk50(0);
+    FIELDSTG_state.textFile = STAGE_TEXT;
+    FIELDSTG_state.mapFile = STAGE_FILE - 1;
+    FIELDSTG_state.sheetEntry = STAGE_FILE << 16 | 1;
+    FIELDSTG_state.objects = stageObjects;
+    FIELDSTG_state.imageFile = STAGE_ARCHIVE;
+    FIELDSTG_state.start = (Vec2){0x15900, 0x11700};
+    FIELDSTG_state.images.actors = stageImages;
+    FIELDSTG_state.soundBank = 0x40;
+    FIELDSTG_state.actors = stageActors;
+    FIELDSTG_state.startDir = 0;
+    FIELDSTG_state.music = MUSIC(0x40, 1);
+    FIELDSTG_state.events = stageEvents;
+    FIELDSTG_map.setFile(0, STAGE_FILE << 16);
+    FIELDSTG_map.setFirstMap(0);
 }
 
-extern u16 D_800A5670[];
-extern u16 D_800A5678[];
-extern FieldActorEntry D_800A5680;
-extern FieldActorEntry D_800A5694;
-extern FieldActorEntry D_800A56A8;
-extern FieldActorEntry D_800A56BC;
-extern s16 D_800A5310[];
-
-s16 D_800A5310[] = {
+s16 script4[] = {
     0x601, 1, 0x157, 0x121,
     0x100, 1, 0, 0,
     0x101, 1, 1, 1,
@@ -319,17 +309,17 @@ ActorImage stageImages[] = {
     { 0x180, 0x100, 0x1B4, 0x1A3, 0x1D0, 0xA3, 0x170, 0x1F9 },
     { 0x180, 0x100, 0x1A6, 0x130, 0x198, 0x30, 0x170, 0x1F8 },
 };
-u16 D_800A5670[] = { 0x6001, 1, 0xFFFF };
-u16 D_800A5678[] = { 0x6001, 1, 0xFFFF };
-FieldActorEntry D_800A5680 = { NULL, NULL, 1, 4, 0, 0, 0 };
-FieldActorEntry D_800A5694 = { D_800A5670, NULL, 0xB, 5, 0, 0, 0 };
-FieldActorEntry D_800A56A8 = { NULL, NULL, 0xC, 6, 0, 0, 0 };
-FieldActorEntry D_800A56BC = { D_800A5678, NULL, 0xD, 7, 0, 0, 0 };
+u16 actor1Conditions[] = { PROGRESS(1), 1, CODES_END };
+u16 actor3Conditions[] = { PROGRESS(1), 1, CODES_END };
+FieldActorEntry actor0 = { NULL, NULL, 1, 4, 0, 0, 0 };
+FieldActorEntry actor1 = { actor1Conditions, NULL, 0xB, 5, 0, 0, 0 };
+FieldActorEntry actor2 = { NULL, NULL, 0xC, 6, 0, 0, 0 };
+FieldActorEntry actor3 = { actor3Conditions, NULL, 0xD, 7, 0, 0, 0 };
 FieldActorEntry *stageActors[] = {
-    &D_800A5680,
-    &D_800A5694,
-    &D_800A56A8,
-    &D_800A56BC,
+    &actor0,
+    &actor1,
+    &actor2,
+    &actor3,
     NULL,
 };
 StageTile stageObjects[] = {
@@ -357,6 +347,6 @@ void (*stageFuncs[])(void) = {
     setupStage,
 };
 FieldEvent stageEvents[] = {
-    { 4, D_800A5310, EVENT_TEXT(3), NULL, NULL },
+    { 4, script4, EVENT_TEXT(3), NULL, NULL },
     { -1, NULL, 0, NULL, NULL },
 };

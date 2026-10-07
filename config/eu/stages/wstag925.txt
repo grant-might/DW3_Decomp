@@ -8,10 +8,17 @@ setupStage = 0x800A5F0C; // type:func
 stepAnimationOnce = 0x800A6000; // type:func
 stageFuncs = 0x800A65B8; // size:0x4
 
-// named by their use (D_800990B4, the field state, in setupStage)
+// named by their use (FIELDSTG_state, the field state, in setupStage)
 stageObjects = 0x800A64B0;
 stageSlots = 0x800A6588;
 stageImages = 0x800A63DC;
 stageActors = 0x800A64A4;
 stageEvents = 0x800A65BC;
 D_800A67C4 = 0x800A67C4; // defined:True
+
+// named by their place in the stage's tables (tools/name_stage_data.py)
+actor1Talks = 0x800A645C;
+actor0Conditions = 0x800A6474;
+actor0 = 0x800A647C;
+actor1 = 0x800A6490;
+script1600 = 0x800A65E4;

@@ -43,4 +43,11 @@ typedef struct StageSelectWindows {
     /* 0x98 */ TextWindow *unk98; /* BATTLE_SETUP.unk8 */
 } StageSelectWindows;
 
+Task *STAGSLCT_createStageSelect(void);
+void STAGSLCT_updateStageSelect(Task *task, StageSelectWindows *win);
+
+#if VERSION_EU
+extern const char STAGSLCT_STR_CURSOR[]; /* "＞" with its padding */
+#endif
+
 #endif /* STAGSLCT_H */

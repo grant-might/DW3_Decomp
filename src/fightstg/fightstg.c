@@ -1055,7 +1055,7 @@ Mesh *FIGHTSTG_createMesh(s32 archive, Vec2 texPos) {
 s32 D_800A342C = 0;
 s32 FIGHTSTG_partnerIdleMotion = 0; /* the partner's idle motion while stage 0x1D is up */
 s32 D_800A3434 = 0;
-CameraView FIGHTSTG_fighterView = { 0 }; /* the view func_80091788 makes */
+CameraView FIGHTSTG_fighterView = { 0 }; /* the view FIGHTSTG_getFighterView makes */
 s32 D_800A346C = 0;
 RECT FIGHTSTG_fighterCameraRect = { 0 }; /* FIGHTSTG_updatePartnerView's layer */
 DR_MOVE FIGHTSTG_cursorBarMoves[4] = { { 0 } }; /* FIGHTSTG_drawCursorBar draws its bar with them */

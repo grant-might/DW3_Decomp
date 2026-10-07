@@ -7,6 +7,9 @@
 
 #include "game.h"
 
+/* The name of this overlay's copy of a function of src/menu_common/ */
+#define OVL_NAME(name) STCRDABM_##name
+
 #define CARD_COUNT 315
 #define ALBUM_PAGE_CARDS 12
 
@@ -22,17 +25,6 @@
 #endif
 #define STCRDABM_SPRITES (STCRDABM_FILE_SPRITES << 16) /* sprite bank */
 #define STCRDABM_IMAGES (STCRDABM_FILE_IMAGES << 16)   /* TIM archive */
-
-/* Fades the screen to or from black with a subtractive rectangle */
-typedef struct CardAlbumFader {
-    TASK_HEADER(CardAlbumFader);
-    /* 0x50 */ s32 layer;
-    /* 0x54 */ s32 depth;
-    /* 0x58 */ s32 fadeIn;
-    /* 0x5C */ s32 level; /* 0..0xFF00 */
-    /* 0x60 */ s32 levelStep;
-    /* 0x64 */ void (*start)(struct CardAlbumFader *fader, s32 fadeIn, s32 frames);
-} CardAlbumFader;
 
 /* Draws the cards of a page and animates the page turns */
 typedef struct CardAlbumGrid {
@@ -91,27 +83,29 @@ typedef struct CardAlbumWindows {
     /* 0x3C */ TextWindow *stat2Label;
     /* 0x40 */ TextWindow *stat2;      /* card data [2] */
     /* 0x44 */ CardAlbumGrid *grid;
-    /* 0x48 */ CardAlbumFader *fader;
+    /* 0x48 */ ScreenFade *fader;
 } CardAlbumWindows;
-
-/* Moves a value towards a target in fixed point */
-typedef struct CardAlbumLerp {
-    /* 0x00 */ s32 duration;
-    /* 0x04 */ s32 unk4;
-    /* 0x08 */ s32 value;
-    /* 0x0C */ s32 fixed; /* value << 8 */
-    /* 0x10 */ s32 target;
-    /* 0x14 */ s32 step;
-    /* 0x18 */ s32 active;
-} CardAlbumLerp;
 
 typedef struct CardAlbumFuncs {
     /* 0x00 */ void (*loadFiles)(void);
     /* 0x04 */ s32 (*filesLoading)(void);
     /* 0x08 */ void (*startFade)(PanelAnim *fade, s32 fadeIn);
     /* 0x0C */ s32 (*updateFade)(PanelAnim *fade);
-    /* 0x10 */ void (*startLerp)(CardAlbumLerp *lerp, s32 from, s32 to, s32 frames);
-    /* 0x14 */ s32 (*updateLerp)(CardAlbumLerp *lerp);
+    /* 0x10 */ void (*startLerp)(MenuLerp *lerp, s32 from, s32 to, s32 frames);
+    /* 0x14 */ s32 (*updateLerp)(MenuLerp *lerp);
 } CardAlbumFuncs;
+
+void STCRDABM_loadFiles(void);
+s32 STCRDABM_filesLoading(void);
+void STCRDABM_startFade(PanelAnim *fade, s32 fadeIn);
+s32 STCRDABM_updateFade(PanelAnim *fade);
+void STCRDABM_startLerp(MenuLerp *lerp, s32 from, s32 to, s32 frames);
+s32 STCRDABM_updateLerp(MenuLerp *lerp);
+void STCRDABM_drawFader(ScreenFade *fader);
+void STCRDABM_drawCards(CardAlbumGrid *grid, s32 previous);
+s32 STCRDABM_pageHasCards(CardAlbumGrid *grid);
+void STCRDABM_showCardInfo(CardAlbum *album, CardAlbumWindows *win, s32 show);
+void STCRDABM_drawAlbum(CardAlbum *album);
+Task *STCRDABM_createAlbum(void);
 
 #endif /* STCRDABM_H */

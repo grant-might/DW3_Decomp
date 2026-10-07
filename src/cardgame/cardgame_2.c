@@ -3,9 +3,9 @@
 
 #include "cardgame.h"
 
-/* Sorts the opponent's cards by unk30A[].unk0, then swaps card unk440 to unk41C */
+/* Sorts the opponent's cards by opponentDraws[].order, then swaps card effectStep.choice to reserveStart */
 void CARDGAME_sortOpponentCards(CardBattle *battle) {
-    CardBattle30A tmp;
+    CardDraw tmp;
     s16 *cards = battle->sides[1].pile.deck;
     s16 card;
     s32 i;
@@ -14,28 +14,28 @@ void CARDGAME_sortOpponentCards(CardBattle *battle) {
 
     for (i = battle->sides[1].pile.deckTop; i < 39; i++) {
         for (j = i + 1; j < 40; j++) {
-            if (battle->unk30A[i].unk0 > battle->unk30A[j].unk0) {
+            if (battle->opponentDraws[i].order > battle->opponentDraws[j].order) {
                 card = cards[i];
                 cards[i] = cards[j];
                 cards[j] = card;
-                tmp = battle->unk30A[i];
-                battle->unk30A[i] = battle->unk30A[j];
-                battle->unk30A[j] = tmp;
+                tmp = battle->opponentDraws[i];
+                battle->opponentDraws[i] = battle->opponentDraws[j];
+                battle->opponentDraws[j] = tmp;
             }
         }
     }
-    target = battle->unk41C;
-    tmp = battle->unk30A[battle->unk440];
-    battle->unk30A[battle->unk440] = battle->unk30A[target];
-    battle->unk30A[target] = tmp;
-    card = cards[battle->unk440];
-    cards[battle->unk440] = cards[target];
+    target = battle->reserveStart;
+    tmp = battle->opponentDraws[battle->effectStep.choice];
+    battle->opponentDraws[battle->effectStep.choice] = battle->opponentDraws[target];
+    battle->opponentDraws[target] = tmp;
+    card = cards[battle->effectStep.choice];
+    cards[battle->effectStep.choice] = cards[target];
     cards[target] = card;
-    battle->unk440 = target;
+    battle->effectStep.choice = target;
 }
 
-/* Whether card index can be played in this phase by its kind: phase 7 any
-   kind but 0, phase 5 kind 2 */
+/* Whether card index can be played in this phase by its kind: any kind but 0
+   in CARD_PHASE_PLAYS_AFTER, kind 2 in CARD_PHASE_PLAYS_BEFORE */
 s32 CARDGAME_canPlayCardKind(CardBattle *battle, s32 index) {
     CardDrawer drawer;
     s32 result = 0;
@@ -45,20 +45,20 @@ s32 CARDGAME_canPlayCardKind(CardBattle *battle, s32 index) {
     drawer.setCard(battle->cards[index] + 1);
     kind = drawer.getKind();
     if (kind != 0) {
-        if (battle->unk2F8 == 7 || (battle->unk2F8 == 5 && kind == 2)) {
+        if (battle->phase == CARD_PHASE_PLAYS_AFTER || (battle->phase == CARD_PHASE_PLAYS_BEFORE && kind == 2)) {
             result = 1;
         }
     }
     return result;
 }
 
-/* Whether a card can be played: in phase 6 a kind 0x10 card needs as many
+/* Whether a card can be played: in CARD_PHASE_PUT_OUT a kind 0x10 card needs as many
    points of its colour (points), otherwise CARDGAME_canPlayCardKind */
 s32 CARDGAME_canPlayCard(CardBattle *battle, u8 *arg1, s32 card) {
     CardDrawer drawer;
     s32 result = 0;
 
-    if (battle->unk2F8 == 6) {
+    if (battle->phase == CARD_PHASE_PUT_OUT) {
         initCardDrawer(&drawer);
         drawer.setCard(battle->cards[card] + 1);
         if (drawer.card->kind == 0x10) {
@@ -89,7 +89,7 @@ s32 CARDGAME_openStepWindows(CardBattle *battle, CardScreen *screen, s32 layout,
             if (text != 0) {
                 screen->openWindow(screen, 0, 0, text, 0, 0x42);
             }
-            if (battle->unk420 == 0x9A) {
+            if (battle->effectStep.id == 0x9A) {
                 screen->openWindow(screen, 5, 4, 0x24, 0, 0x14);
             }
             break;
@@ -115,14 +115,14 @@ void CARDGAME_startQuestion(CardBattle *battle, CardScreen *screen, s32 value) {
     s32 found;
 #endif
 
-    battle->unk440 = 0;
-    battle->stepState = 0;
+    battle->effectStep.choice = 0;
+    battle->effectStep.state = 0;
     if (screen->panels[0].state == 0) {
-        battle->unk498.unk5 = 1;
-        battle->unk498.unk1 = 1;
+        battle->anim.dimAll = CARD_ANIM_UNDIM_ALL;
+        battle->anim.next = CARD_ANIM_SHOW_SLOTS;
         screen->openPanels(screen);
     }
-    battle->unk424 = 0;
+    battle->effectStep.time = 0;
     screen->message.message = value;
 #if VERSION_US
     screen->message.choice = 0;
@@ -138,12 +138,12 @@ void CARDGAME_startQuestion(CardBattle *battle, CardScreen *screen, s32 value) {
     }
     if (found) {
         screen->message.choice = 0;
-        battle->unk440 = 0;
-        battle->unk438 = 2;
+        battle->effectStep.choice = 0;
+        battle->effectStep.vars[4] = 2;
     } else {
         screen->message.choice = 1;
-        battle->unk440 = 1;
-        battle->unk438 = 3;
+        battle->effectStep.choice = 1;
+        battle->effectStep.vars[4] = 3;
     }
 #endif
 }
@@ -152,21 +152,21 @@ void CARDGAME_startQuestion(CardBattle *battle, CardScreen *screen, s32 value) {
 s32 CARDGAME_stepYesNo(CardBattle *battle, CardScreen *screen) {
     s32 result = 0;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 0:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 36 && battle->unk498.unk0 == 0) {
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 36 && battle->anim.current == CARD_ANIM_NONE) {
 #if VERSION_US
-            battle->stepState = 1;
-            battle->unk424 = 0;
+            battle->effectStep.state = 1;
+            battle->effectStep.time = 0;
             screen->openMessage(screen, screen->message.message, 1, screen->message.choice, screen->message.place);
 #elif VERSION_EU
-            battle->unk424 = 0;
-            if (battle->record.entryCount != 0 && battle->unk438 == 3) {
-                battle->stepState = 8;
+            battle->effectStep.time = 0;
+            if (battle->record.playCount != 0 && battle->effectStep.vars[4] == 3) {
+                battle->effectStep.state = 8;
             } else {
-                battle->stepState = 1;
-                screen->openMessage(screen, screen->message.message, battle->unk438, screen->message.choice, screen->message.place);
+                battle->effectStep.state = 1;
+                screen->openMessage(screen, screen->message.message, battle->effectStep.vars[4], screen->message.choice, screen->message.place);
             }
 #endif
         }
@@ -174,27 +174,27 @@ s32 CARDGAME_stepYesNo(CardBattle *battle, CardScreen *screen) {
     case 2:
         if (PAD_PRESSED(PAD_CROSS)) {
             screen->confirmMessage(screen);
-            battle->stepState = 7;
+            battle->effectStep.state = 7;
         } else if (PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->unk440 = 1;
+            battle->effectStep.choice = 1;
             screen->setMessageChoice(screen, 1);
             screen->confirmMessage(screen);
-            battle->stepState = 7;
+            battle->effectStep.state = 7;
 #if VERSION_US
         } else if (PAD_PRESSED(PAD_UP) || PAD_PRESSED(PAD_DOWN)) {
 #elif VERSION_EU
-        } else if ((PAD_PRESSED(PAD_UP) || PAD_PRESSED(PAD_DOWN)) && battle->unk438 == 2) {
+        } else if ((PAD_PRESSED(PAD_UP) || PAD_PRESSED(PAD_DOWN)) && battle->effectStep.vars[4] == 2) {
 #endif
             SOUND.playSound(SOUND_CURSOR);
-            battle->unk440 ^= 1;
-            screen->setMessageChoice(screen, battle->unk440);
+            battle->effectStep.choice ^= 1;
+            screen->setMessageChoice(screen, battle->effectStep.choice);
         } else if ((!PAD_HELD(PAD_R1) && PAD_PRESSED(PAD_L1)) || (!PAD_HELD(PAD_L1) && PAD_PRESSED(PAD_R1))) {
             screen->closeMessage(screen);
-            battle->stepState = 6;
+            battle->effectStep.state = 6;
         } else if (PAD_PRESSED(PAD_CIRCLE)) {
             screen->closeMessage(screen);
-            battle->unk424 = 0;
-            battle->stepState = 3;
+            battle->effectStep.time = 0;
+            battle->effectStep.state = 3;
         }
         break;
     case 6:
@@ -203,78 +203,78 @@ s32 CARDGAME_stepYesNo(CardBattle *battle, CardScreen *screen) {
 #if VERSION_US
             screen->openMessage(screen, screen->message.message, 1, screen->message.choice, screen->message.place);
 #elif VERSION_EU
-            screen->openMessage(screen, screen->message.message, battle->unk438, screen->message.choice, screen->message.place);
+            screen->openMessage(screen, screen->message.message, battle->effectStep.vars[4], screen->message.choice, screen->message.place);
 #endif
-            battle->stepState = 1;
+            battle->effectStep.state = 1;
         }
         break;
     case 7:
         if (screen->message.state == 0) {
-            if (battle->unk440 == 0) {
-                battle->stepState = 9;
-                battle->unk498.unk1 = 2;
+            if (battle->effectStep.choice == 0) {
+                battle->effectStep.state = 9;
+                battle->anim.next = CARD_ANIM_HIDE_SLOTS;
                 screen->closePanels(screen);
             } else {
-                battle->stepState = 8;
+                battle->effectStep.state = 8;
             }
         }
         break;
     case 3:
-        switch (battle->unk424) {
+        switch (battle->effectStep.time) {
         case 0:
             if (screen->message.state == 0) {
-                battle->unk498.unk1 = 2;
+                battle->anim.next = CARD_ANIM_HIDE_SLOTS;
                 screen->closePanels(screen);
-                battle->unk424 = 1;
+                battle->effectStep.time = 1;
             }
             break;
         case 1:
-            if (screen->panels[0].state == 0 && battle->unk498.unk0 == 0) {
-                battle->unk2F4 = 3;
-                battle->record.unk0[8] = 0;
-                battle->stepState = 4;
+            if (screen->panels[0].state == 0 && battle->anim.current == CARD_ANIM_NONE) {
+                battle->run = CARD_RUN_MENU;
+                battle->record.menuState = 0;
+                battle->effectStep.state = 4;
             }
             break;
         }
         break;
     case 4:
-        battle->unk498.unk5 = 1;
-        battle->unk498.unk1 = 1;
+        battle->anim.dimAll = CARD_ANIM_UNDIM_ALL;
+        battle->anim.next = CARD_ANIM_SHOW_SLOTS;
         screen->openPanels(screen);
-        battle->stepState = 5;
-        battle->unk424 = 0;
+        battle->effectStep.state = 5;
+        battle->effectStep.time = 0;
         break;
     case 5:
-        switch (battle->unk424) {
+        switch (battle->effectStep.time) {
         case 0:
-            if (battle->unk498.unk0 == 0 && screen->panels[0].state == 2) {
+            if (battle->anim.current == CARD_ANIM_NONE && screen->panels[0].state == 2) {
 #if VERSION_US
                 screen->openMessage(screen, screen->message.message, 1, screen->message.choice, screen->message.place);
 #elif VERSION_EU
-                screen->openMessage(screen, screen->message.message, battle->unk438, screen->message.choice, screen->message.place);
+                screen->openMessage(screen, screen->message.message, battle->effectStep.vars[4], screen->message.choice, screen->message.place);
 #endif
-                battle->unk424 = 1;
+                battle->effectStep.time = 1;
             }
             break;
         case 1:
             if (screen->message.state == 2) {
-                battle->stepState = 2;
+                battle->effectStep.state = 2;
             }
             break;
         }
         break;
     case 1:
         if (screen->message.state == 2) {
-            battle->stepState = 2;
+            battle->effectStep.state = 2;
         }
         break;
     case 9:
-        if (screen->panels[0].state != 0 || battle->unk498.unk0 != 0) {
+        if (screen->panels[0].state != 0 || battle->anim.current != CARD_ANIM_NONE) {
             break;
         }
     case 8:
         result = 2;
-        if (battle->unk440 == 0) {
+        if (battle->effectStep.choice == 0) {
             result = 1;
         }
         break;
@@ -285,13 +285,13 @@ s32 CARDGAME_stepYesNo(CardBattle *battle, CardScreen *screen) {
 /* Empties the card information windows 1-4 */
 void CARDGAME_clearCardInfo(CardBattle *battle, CardScreen *screen) {
     screen->windows[1].unkE = 0;
-    screen->windows[1].unk10 = 0;
-    screen->windows[2].unk10 = 0;
-    screen->windows[3].unk10 = 0;
-    screen->windows[4].unk10 = 0;
+    screen->windows[1].value = 0;
+    screen->windows[2].value = 0;
+    screen->windows[3].value = 0;
+    screen->windows[4].value = 0;
 }
 
-/* Fills the information windows with the card of sprite offset + unk43C (the
+/* Fills the information windows with the card of sprite offset + effectStep.cursor (the
    highlighted one): its colour, name, picture or values, and kind */
 void CARDGAME_showCardInfo(CardBattle *battle, CardScreen *screen, s32 offset) {
     CardDrawer drawer;
@@ -301,55 +301,55 @@ void CARDGAME_showCardInfo(CardBattle *battle, CardScreen *screen, s32 offset) {
     s32 id;
 
     CARDGAME_clearCardInfo(battle, screen);
-    if (screen->sprites[offset + battle->unk43C].isKind16 != 0) {
-        screen->windows[1].unk10 |= screen->sprites[offset + battle->unk43C].unk41;
-        screen->windows[1].unk10 |= screen->sprites[offset + battle->unk43C].color << 4;
+    if (screen->sprites[offset + battle->effectStep.cursor].isKind16 != 0) {
+        screen->windows[1].value |= screen->sprites[offset + battle->effectStep.cursor].points;
+        screen->windows[1].value |= screen->sprites[offset + battle->effectStep.cursor].color << 4;
         screen->windows[1].unkE = 1;
     }
     found = 0;
-    if (screen->sprites[offset + battle->unk43C].visible != 3) {
-        card = battle->cards[screen->sprites[offset + battle->unk43C].index] + 1;
-        screen->windows[2].unk10 = card;
+    if (screen->sprites[offset + battle->effectStep.cursor].visible != 3) {
+        card = battle->cards[screen->sprites[offset + battle->effectStep.cursor].index] + 1;
+        screen->windows[2].value = card;
         for (i = 0; i < 5; i++) {
-            if (CARDGAME_countingCards[i] == battle->cards[screen->sprites[offset + battle->unk43C].index]) {
+            if (CARDGAME_countingCards[i] == battle->cards[screen->sprites[offset + battle->effectStep.cursor].index]) {
                 found = 1;
             }
         }
-        if (screen->sprites[offset + battle->unk43C].isKind16 != 0 && found == 0) {
-            screen->windows[4].unk10 = 500;
-            screen->windows[4].unk14[2] = 1;
-            screen->windows[4].unk14[0] = screen->sprites[offset + battle->unk43C].unk43;
-            screen->windows[4].unk14[1] = screen->sprites[offset + battle->unk43C].unk44;
+        if (screen->sprites[offset + battle->effectStep.cursor].isKind16 != 0 && found == 0) {
+            screen->windows[4].value = 500;
+            screen->windows[4].numbers[2] = 1;
+            screen->windows[4].numbers[0] = screen->sprites[offset + battle->effectStep.cursor].ap;
+            screen->windows[4].numbers[1] = screen->sprites[offset + battle->effectStep.cursor].hp;
         } else {
-            screen->windows[4].unk14[2] = 0;
-            screen->windows[4].unk10 = card;
+            screen->windows[4].numbers[2] = 0;
+            screen->windows[4].value = card;
         }
-        id = battle->cards[screen->sprites[offset + battle->unk43C].index];
+        id = battle->cards[screen->sprites[offset + battle->effectStep.cursor].index];
         initCardDrawer(&drawer);
         drawer.setCard(id + 1);
         switch (drawer.card->unk6) {
         case 0:
-            screen->windows[3].unk10 = 0;
+            screen->windows[3].value = 0;
             break;
         case 1:
-            screen->windows[3].unk10 = 0x25;
+            screen->windows[3].value = 0x25;
             break;
         case 2:
-            screen->windows[3].unk10 = 0x26;
+            screen->windows[3].value = 0x26;
             break;
         case 3:
-            screen->windows[3].unk10 = 0x27;
+            screen->windows[3].value = 0x27;
             break;
         case 4:
-            screen->windows[3].unk10 = 0x28;
+            screen->windows[3].value = 0x28;
             break;
         case 5:
-            screen->windows[3].unk10 = 0x29;
+            screen->windows[3].value = 0x29;
             break;
         }
     } else {
-        screen->windows[4].unk14[2] = 0;
-        screen->windows[4].unk10 = 500;
+        screen->windows[4].numbers[2] = 0;
+        screen->windows[4].value = 500;
     }
 }
 
@@ -369,94 +369,94 @@ void CARDGAME_showTableCardInfo(CardBattle *battle, CardScreen *screen, s32 kind
     CARDGAME_showCardInfo(battle, screen, offset);
 }
 
-/* Starts a pick from pile's hand: flags (unk446) the cards that can be
+/* Starts a pick from pile's hand: flags (effectStep.eligible) the cards that can be
    played, and opens the player's panel */
 void CARDGAME_startHandPick(CardBattle *battle, CardScreen *screen, CardPile *pile) {
     s32 i;
 
     if (pile->handCount != 0) {
         for (i = 0; i < 40; i++) {
-            battle->unk446[i] = 0;
-            battle->unk46F[i] = 0;
+            battle->effectStep.eligible[i] = 0;
+            battle->effectStep.marked[i] = 0;
             if (i < pile->handCount) {
                 if (CARDGAME_canPlayCard(battle, pile->points, pile->hand[i])) {
-                    battle->unk446[i] = 1;
-                    battle->unk498.unk6[i] = 0;
+                    battle->effectStep.eligible[i] = 1;
+                    battle->anim.dimmed[i] = 0;
                 } else {
-                    battle->unk498.unk6[i] = 1;
+                    battle->anim.dimmed[i] = 1;
                 }
             }
         }
     } else {
-        battle->unk498.unk6[0] = 0;
+        battle->anim.dimmed[0] = 0;
     }
     screen->resetPanels(screen);
     if (pile->side == 0) {
-        battle->unk498.unk1 = 5;
+        battle->anim.next = CARD_ANIM_SHOW_HAND;
         screen->openPanel(screen, pile->side);
     } else {
-        battle->unk498.unk1 = 11;
+        battle->anim.next = CARD_ANIM_SHOW_OPPONENT_HAND;
     }
-    battle->unk423 = 1;
+    battle->effectStep.nextState = 1;
     CARDGAME_clearCardInfo(battle, screen);
-    battle->unk43C = 0;
-    battle->unk440 = -1;
+    battle->effectStep.cursor = 0;
+    battle->effectStep.choice = -1;
 }
 
-/* Starts a pick of the cards (all when all > 0) in mode arg3 (unk498.unk1) */
+/* Starts a pick of the cards (all when all > 0) in mode arg3 (anim.next) */
 void CARDGAME_startPick(CardBattle *battle, CardScreen *screen, s32 all, s32 arg3) {
     s32 i;
 
     if (all > 0) {
         for (i = 0; i < 40; i++) {
-            battle->unk498.unk6[i] = 0;
+            battle->anim.dimmed[i] = 0;
         }
     } else {
-        battle->unk498.unk6[0] = 0;
+        battle->anim.dimmed[0] = 0;
     }
     CARDGAME_clearCardInfo(battle, screen);
-    battle->unk423 = 1;
-    battle->unk498.unk1 = arg3;
-    battle->unk43C = 0;
-    battle->unk440 = -1;
+    battle->effectStep.nextState = 1;
+    battle->anim.next = arg3;
+    battle->effectStep.cursor = 0;
+    battle->effectStep.choice = -1;
 }
 
 /* Moves the selection by STEP among COUNT cards: the selected card is raised */
 void CARDGAME_moveSelection(CardBattle *battle, CardScreen *screen, s32 count, s32 step) {
     SOUND.playSound(SOUND_MENU_MOVE);
-    screen->startSlide(screen, battle->unk43C, 5, screen->getHandOffset(count, battle->unk43C) + 0x1800, 0x6100);
-    screen->sprites[battle->unk43C].unk48 &= ~1;
-    screen->sprites[battle->unk43C].moving = 0;
-    battle->unk43C += step;
-    screen->startSlide(screen, battle->unk43C, 1, screen->getHandOffset(count, battle->unk43C) + 0x1800, 0x5C00);
-    screen->sprites[battle->unk43C].unk48 |= 1;
-    screen->sprites[battle->unk43C].moving = 1;
+    screen->startSlide(screen, battle->effectStep.cursor, 5, screen->getHandOffset(count, battle->effectStep.cursor) + 0x1800, 0x6100);
+    screen->sprites[battle->effectStep.cursor].highlight &= ~1;
+    screen->sprites[battle->effectStep.cursor].moving = 0;
+    battle->effectStep.cursor += step;
+    screen->startSlide(screen, battle->effectStep.cursor, 1, screen->getHandOffset(count, battle->effectStep.cursor) + 0x1800, 0x5C00);
+    screen->sprites[battle->effectStep.cursor].highlight |= 1;
+    screen->sprites[battle->effectStep.cursor].moving = 1;
 }
 
-/* Moves the selection by STEP among the cards of PILE (unk64): the selected card is raised */
+/* Moves the selection by STEP among the cards of PILE's hand: the selected card is raised */
 void CARDGAME_movePileSelection(CardBattle *battle, CardScreen *screen, CardPile *pile, s32 step) {
     SOUND.playSound(SOUND_MENU_MOVE);
-    screen->startSlide(screen, battle->unk43C, 5, screen->getHandOffset(pile->handCount, battle->unk43C) + 0x1800, 0x6100);
-    screen->sprites[battle->unk43C].unk48 &= ~1;
-    screen->sprites[battle->unk43C].moving = 0;
-    battle->unk43C += step;
-    screen->startSlide(screen, battle->unk43C, 1, screen->getHandOffset(pile->handCount, battle->unk43C) + 0x1800, 0x5C00);
-    screen->sprites[battle->unk43C].unk48 |= 1;
-    screen->sprites[battle->unk43C].moving = 1;
+    screen->startSlide(screen, battle->effectStep.cursor, 5, screen->getHandOffset(pile->handCount, battle->effectStep.cursor) + 0x1800, 0x6100);
+    screen->sprites[battle->effectStep.cursor].highlight &= ~1;
+    screen->sprites[battle->effectStep.cursor].moving = 0;
+    battle->effectStep.cursor += step;
+    screen->startSlide(screen, battle->effectStep.cursor, 1, screen->getHandOffset(pile->handCount, battle->effectStep.cursor) + 0x1800, 0x5C00);
+    screen->sprites[battle->effectStep.cursor].highlight |= 1;
+    screen->sprites[battle->effectStep.cursor].moving = 1;
 }
 
-/* Flags (unk446) the cards of pile's hand that can be played and aren't
-   picked (unk46F), and dims the others */
+/* Flags (effectStep.eligible) the cards of pile's hand that can be played and aren't
+   picked (effectStep.marked), and dims the others */
 void CARDGAME_flagPlayableCards(CardBattle *battle, CardScreen *screen, CardPile *pile) {
     s32 i;
 
     for (i = 0; i < pile->handCount; i++) {
-        if (CARDGAME_canPlayCard(battle, pile->points, pile->hand[i]) && battle->unk46F[i] == 0) {
-            battle->unk446[i] = 1;
+        if (CARDGAME_canPlayCard(battle, pile->points, pile->hand[i]) && battle->effectStep.marked[i] == 0) {
+            battle->effectStep.eligible[i] = 1;
             screen->sprites[i].dimmed = 0;
         } else {
-            battle->unk446[i] = 0;
-            if (battle->unk46F[i] == 0) {
+            battle->effectStep.eligible[i] = 0;
+            if (battle->effectStep.marked[i] == 0) {
                 screen->sprites[i].dimmed = 1;
             } else {
                 screen->sprites[i].dimmed = 0;
@@ -465,15 +465,15 @@ void CARDGAME_flagPlayableCards(CardBattle *battle, CardScreen *screen, CardPile
     }
 }
 
-/* Whether the pick is over: six cards picked (unk444), or none left that can
+/* Whether the pick is over: six cards picked (effectStep.count), or none left that can
    be played */
 s32 CARDGAME_isHandPickDone(CardBattle *battle, CardScreen *screen, CardPile *pile) {
     s32 ok = 1;
     s32 i;
 
-    if (battle->unk444 < 6) {
+    if (battle->effectStep.count < 6) {
         for (i = 0; i < pile->handCount; i++) {
-            if (battle->unk446[i] != 0) {
+            if (battle->effectStep.eligible[i] != 0) {
                 ok = 0;
                 break;
             }
@@ -499,105 +499,105 @@ void CARDGAME_addCardPoints(CardBattle *battle, CardScreen *screen, CardPile *pi
     }
 }
 
-/* Picks or puts back the selected card of PILE (unk64): 1 picked, 2 put back, 0 neither */
+/* Picks or puts back the selected card of PILE's hand: 1 picked, 2 put back, 0 neither */
 s32 CARDGAME_togglePick(CardBattle *battle, CardScreen *screen, CardPile *pile) {
     s32 result = 0;
 
-    if (battle->unk446[battle->unk43C] != 0) {
-        if (battle->unk444 < 6) {
-            CARDGAME_addCardPoints(battle, screen, pile, 0, pile->hand[battle->unk43C]);
-            battle->unk46F[battle->unk43C] = 1;
-            screen->startBlink(screen, battle->unk43C);
-            screen->sprites[battle->unk43C].unk48 |= 2;
+    if (battle->effectStep.eligible[battle->effectStep.cursor] != 0) {
+        if (battle->effectStep.count < 6) {
+            CARDGAME_addCardPoints(battle, screen, pile, 0, pile->hand[battle->effectStep.cursor]);
+            battle->effectStep.marked[battle->effectStep.cursor] = 1;
+            screen->startBlink(screen, battle->effectStep.cursor);
+            screen->sprites[battle->effectStep.cursor].highlight |= 2;
             result = 1;
-            battle->unk444++;
+            battle->effectStep.count++;
         }
-    } else if (battle->unk46F[battle->unk43C] != 0) {
-        CARDGAME_addCardPoints(battle, screen, pile, 1, pile->hand[battle->unk43C]);
-        battle->unk46F[battle->unk43C] = 0;
-        screen->sprites[battle->unk43C].unk48 &= ~2;
+    } else if (battle->effectStep.marked[battle->effectStep.cursor] != 0) {
+        CARDGAME_addCardPoints(battle, screen, pile, 1, pile->hand[battle->effectStep.cursor]);
+        battle->effectStep.marked[battle->effectStep.cursor] = 0;
+        screen->sprites[battle->effectStep.cursor].highlight &= ~2;
         result = 2;
-        battle->unk444--;
+        battle->effectStep.count--;
     }
     return result;
 }
 
-/* Reads the pad while a card of PILE (unk64) is being chosen: Left/Right move, Cross picks, Triangle cancels */
+/* Reads the pad while a card of PILE's hand is being chosen: Left/Right move, Cross picks, Triangle cancels */
 void CARDGAME_readChooseInput(CardBattle *battle, CardScreen *screen, CardPile *pile) {
-    screen->sprites[battle->unk43C].unk48 |= 1;
-    screen->sprites[battle->unk43C].moving = 1;
+    screen->sprites[battle->effectStep.cursor].highlight |= 1;
+    screen->sprites[battle->effectStep.cursor].moving = 1;
     if (PAD_PRESSED(PAD_TRIANGLE)) {
         SOUND.playSound(SOUND_MENU_CANCEL);
-        battle->unk440 = -1;
-        battle->unk423 = 14;
+        battle->effectStep.choice = -1;
+        battle->effectStep.nextState = 14;
     }
     if (PAD_PRESSED(PAD_CIRCLE)) {
-        battle->unk423 = 11;
+        battle->effectStep.nextState = 11;
     }
     if (pile->handCount != 0) {
         if ((PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) |
             (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT)))) {
-            if (battle->unk43C > 0) {
+            if (battle->effectStep.cursor > 0) {
                 CARDGAME_movePileSelection(battle, screen, pile, -1);
             }
         } else if ((PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) |
                    (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) {
-            if (battle->unk43C < pile->handCount - 1) {
+            if (battle->effectStep.cursor < pile->handCount - 1) {
                 CARDGAME_movePileSelection(battle, screen, pile, 1);
             }
-        } else if (PAD_PRESSED(PAD_CROSS) && battle->unk446[battle->unk43C] != 0) {
-            battle->unk423 = 5;
-            battle->unk440 = battle->unk43C;
-            battle->unk46F[battle->unk440] = 1;
+        } else if (PAD_PRESSED(PAD_CROSS) && battle->effectStep.eligible[battle->effectStep.cursor] != 0) {
+            battle->effectStep.nextState = 5;
+            battle->effectStep.choice = battle->effectStep.cursor;
+            battle->effectStep.marked[battle->effectStep.choice] = 1;
         }
     }
 }
 
-/* Reads the pad while cards of PILE (unk64) are being picked: Left/Right move, Cross picks or puts back, Square and Circle end */
+/* Reads the pad while cards of PILE's hand are being picked: Left/Right move, Cross picks or puts back, Square and Circle end */
 void CARDGAME_readPickInput(CardBattle *battle, CardScreen *screen, CardPile *pile) {
-    screen->sprites[battle->unk43C].unk48 |= 1;
-    screen->sprites[battle->unk43C].moving = 1;
+    screen->sprites[battle->effectStep.cursor].highlight |= 1;
+    screen->sprites[battle->effectStep.cursor].moving = 1;
     if (PAD_PRESSED(PAD_SQUARE)) {
-        battle->unk423 = 6;
+        battle->effectStep.nextState = 6;
     }
     if (PAD_PRESSED(PAD_CIRCLE)) {
-        battle->unk423 = 11;
+        battle->effectStep.nextState = 11;
     }
     if (pile->handCount != 0) {
         if ((PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) |
             (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT)))) {
-            if (battle->unk43C > 0) {
+            if (battle->effectStep.cursor > 0) {
                 CARDGAME_movePileSelection(battle, screen, pile, -1);
             }
         } else if ((PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) |
                    (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) {
-            if (battle->unk43C < pile->handCount - 1) {
+            if (battle->effectStep.cursor < pile->handCount - 1) {
                 CARDGAME_movePileSelection(battle, screen, pile, 1);
             }
         } else if (PAD_PRESSED(PAD_CROSS) && CARDGAME_togglePick(battle, screen, pile)) {
-            battle->unk423 = 4;
+            battle->effectStep.nextState = 4;
         }
     }
 }
 
 /* Reads the pad while one of COUNT cards is being chosen: Left/Right move, Triangle cancels */
 void CARDGAME_readCountInput(CardBattle *battle, CardScreen *screen, s32 count) {
-    screen->sprites[battle->unk43C].unk48 |= 1;
-    screen->sprites[battle->unk43C].moving = 1;
+    screen->sprites[battle->effectStep.cursor].highlight |= 1;
+    screen->sprites[battle->effectStep.cursor].moving = 1;
     if (PAD_PRESSED(PAD_TRIANGLE)) {
         SOUND.playSound(SOUND_MENU_CANCEL);
-        battle->unk440 = -1;
-        battle->unk423 = 10;
+        battle->effectStep.choice = -1;
+        battle->effectStep.nextState = 10;
     }
     if (count != 0) {
         if (((PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) |
              (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT)))) &&
-            battle->unk43C > 0) {
+            battle->effectStep.cursor > 0) {
             CARDGAME_moveSelection(battle, screen, count, -1);
         }
         if (((PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) |
              (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) &&
-            battle->unk43C < count - 1) {
+            battle->effectStep.cursor < count - 1) {
             CARDGAME_moveSelection(battle, screen, count, 1);
         }
     }
@@ -608,27 +608,27 @@ void CARDGAME_readCountInput(CardBattle *battle, CardScreen *screen, s32 count) 
 s32 CARDGAME_stepPulseCard(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
 
-    switch (battle->unk424) {
+    switch (battle->effectStep.time) {
     case 0:
     default:
-        screen->scaleSprite(screen, battle->unk43C, 5, 0x1400, 0x1400);
-        battle->unk428 = 0;
-        battle->unk424++;
+        screen->scaleSprite(screen, battle->effectStep.cursor, 5, 0x1400, 0x1400);
+        battle->effectStep.vars[0] = 0;
+        battle->effectStep.time++;
         break;
     case 1:
-        battle->unk428 += GFX.funcs.getFrameTime();
-        if (battle->unk428 >= 5) {
-            battle->unk424++;
+        battle->effectStep.vars[0] += GFX.funcs.getFrameTime();
+        if (battle->effectStep.vars[0] >= 5) {
+            battle->effectStep.time++;
         }
         break;
     case 2:
-        screen->scaleSprite(screen, battle->unk43C, 5, 0x1000, 0x1000);
-        battle->unk428 = 0;
-        battle->unk424++;
+        screen->scaleSprite(screen, battle->effectStep.cursor, 5, 0x1000, 0x1000);
+        battle->effectStep.vars[0] = 0;
+        battle->effectStep.time++;
         break;
     case 3:
-        battle->unk428 += GFX.funcs.getFrameTime();
-        if (battle->unk428 >= 5) {
+        battle->effectStep.vars[0] += GFX.funcs.getFrameTime();
+        if (battle->effectStep.vars[0] >= 5) {
             done = 1;
         }
         break;
@@ -636,7 +636,7 @@ s32 CARDGAME_stepPulseCard(CardBattle *battle, CardScreen *screen) {
     return done;
 }
 
-/* Choosing cards of PILE (unk64) to play: unk423 queues the next step. -1 while it runs, then 0 or 1 */
+/* Choosing cards of PILE's hand to play: effectStep.nextState queues the next step. -1 while it runs, then 0 or 1 */
 s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *pile) {
     s32 result = -1;
     /* the match depends on a loop variable of its own for most loops:
@@ -648,11 +648,11 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
     s32 n;
     s32 count;
 
-    if (battle->unk423 != 0) {
-        switch (battle->unk423) {
+    if (battle->effectStep.nextState != 0) {
+        switch (battle->effectStep.nextState) {
         case 1:
         case 2:
-            switch (battle->unk420) {
+            switch (battle->effectStep.id) {
             case 0x99:
                 if (pile->side != 0) {
                     CARDGAME_promptText = 0x1C;
@@ -671,29 +671,29 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
                 CARDGAME_promptText = 0x19;
                 break;
             }
-            battle->unk42C = 0;
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            battle->unk440 = 0;
-            battle->unk444 = 0;
+            battle->effectStep.vars[1] = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.choice = 0;
+            battle->effectStep.count = 0;
             break;
         case 5:
             SOUND.playSound(SOUND_MENU_CONFIRM);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             break;
         case 4:
             SOUND.playSound(SOUND_MENU_CONFIRM);
             break;
         case 14:
             if (pile->side == 0) {
-                battle->unk498.unk1 = 6;
+                battle->anim.next = CARD_ANIM_HIDE_HAND;
                 screen->closePanel(screen, 0);
             } else {
-                battle->unk498.unk1 = 12;
+                battle->anim.next = CARD_ANIM_HIDE_OPPONENT_HAND;
             }
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 0);
             screen->closeWindow(screen, 1);
@@ -701,9 +701,9 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
             screen->closeWindow(screen, 3);
             break;
         case 10:
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            battle->unk498.unk1 = battle->unk498.unk3;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            battle->anim.next = battle->anim.hide;
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 0);
             screen->closeWindow(screen, 1);
@@ -711,37 +711,37 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
             screen->closeWindow(screen, 3);
             break;
         case 6:
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            CARDGAME_promptText = screen->windows[0].unk10;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            CARDGAME_promptText = screen->windows[0].value;
             for (i = 0; i < pile->handCount; i++) {
-                if (battle->unk46F[i] != 0) {
+                if (battle->effectStep.marked[i] != 0) {
                     screen->sprites[i].dimmed = 0;
-                    screen->sprites[i].unk48 |= 4;
+                    screen->sprites[i].highlight |= 4;
                 } else {
                     screen->sprites[i].dimmed = 1;
                 }
             }
             break;
         case 7:
-            battle->unk440 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.choice = 0;
+            battle->effectStep.time = 0;
             break;
         case 3:
         case 8:
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             break;
         case 11:
-            battle->unk498.unk1 = battle->unk498.unk3;
-            CARDGAME_promptText = screen->windows[0].unk10;
-            battle->unk424 = battle->unk498.unk3;
+            battle->anim.next = battle->anim.hide;
+            CARDGAME_promptText = screen->windows[0].value;
+            battle->effectStep.time = battle->anim.hide;
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 0);
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
-            if (battle->unk420 == 0x9A) {
+            if (battle->effectStep.id == 0x9A) {
                 screen->closeWindow(screen, 5);
             }
             if (pile->side == 0) {
@@ -750,17 +750,17 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
             break;
         case 13:
             CARDGAME_promptText = 0x19;
-            battle->unk428 = 0;
-            battle->unk498.unk1 = battle->unk424 - 1;
-            switch (battle->unk420) {
+            battle->effectStep.vars[0] = 0;
+            battle->anim.next = battle->effectStep.time - 1;
+            switch (battle->effectStep.id) {
             case 0x99:
             case 0x9A:
             case 0x9D:
                 for (j = 0; j < pile->handCount; j++) {
                     if (CARDGAME_canPlayCard(battle, pile->points, pile->hand[j])) {
-                        battle->unk498.unk6[j] = 0;
+                        battle->anim.dimmed[j] = 0;
                     } else {
-                        battle->unk498.unk6[j] = 1;
+                        battle->anim.dimmed[j] = 1;
                     }
                 }
                 break;
@@ -770,7 +770,7 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
             screen->openWindow(screen, 4, 2, 0, 0x86, 0x31);
             screen->openWindow(screen, 3, 1, 0, 0x82, 0x90);
             screen->openWindow(screen, 1, 3, 0, 0xFD, 0x90);
-            if (battle->unk420 == 0x9A) {
+            if (battle->effectStep.id == 0x9A) {
                 screen->openWindow(screen, 5, 4, 0x24, 0, 0x14);
             }
             if (pile->side == 0) {
@@ -778,49 +778,49 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
             }
             break;
         case 9:
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             for (j = 0; j < pile->handCount; j++) {
                 if (CARDGAME_canPlayCard(battle, pile->points, pile->hand[j])) {
                     screen->sprites[j].dimmed = 0;
                 } else {
                     screen->sprites[j].dimmed = 1;
                 }
-                if (battle->unk46F[j] != 0) {
+                if (battle->effectStep.marked[j] != 0) {
                     screen->sprites[j].dimmed = 0;
-                    screen->sprites[j].unk48 &= ~4;
+                    screen->sprites[j].highlight &= ~4;
                 }
             }
             break;
         }
-        battle->stepState = battle->unk423;
-        battle->unk423 = 0;
+        battle->effectStep.state = battle->effectStep.nextState;
+        battle->effectStep.nextState = 0;
     }
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        battle->unk42C = CARDGAME_openStepWindows(battle, screen, 2, CARDGAME_promptText, battle->unk424, battle->unk42C);
+        battle->effectStep.vars[1] = CARDGAME_openStepWindows(battle, screen, 2, CARDGAME_promptText, battle->effectStep.time, battle->effectStep.vars[1]);
         CARDGAME_showCardInfo(battle, screen, 0);
-        if (battle->unk498.unk3C * 4 + 14 < battle->unk424) {
-            battle->unk423 = 3;
+        if (battle->anim.count * 4 + 14 < battle->effectStep.time) {
+            battle->effectStep.nextState = 3;
             screen->startSlide(screen, 0, 5, 0x1800, 0x5C00);
-            screen->sprites[battle->unk43C].unk48 |= 1;
-            screen->sprites[battle->unk43C].moving = 1;
+            screen->sprites[battle->effectStep.cursor].highlight |= 1;
+            screen->sprites[battle->effectStep.cursor].moving = 1;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
+        battle->effectStep.time += GFX.funcs.getFrameTime();
         break;
     case 2:
         screen->scaleSprite(screen, 0, 5, 0x1000, 0x1000);
-        if (battle->unk424 > 10) {
-            battle->unk423 = 3;
+        if (battle->effectStep.time > 10) {
+            battle->effectStep.nextState = 3;
             screen->startSlide(screen, 0, 5, 0x1800, 0x5C00);
-            screen->sprites[battle->unk43C].unk48 |= 1;
-            screen->sprites[battle->unk43C].moving = 1;
+            screen->sprites[battle->effectStep.cursor].highlight |= 1;
+            screen->sprites[battle->effectStep.cursor].moving = 1;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
+        battle->effectStep.time += GFX.funcs.getFrameTime();
         break;
     case 3:
-        switch (battle->unk420) {
+        switch (battle->effectStep.id) {
         case 0x99:
             CARDGAME_readChooseInput(battle, screen, pile);
             break;
@@ -830,92 +830,92 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
             break;
         case 0x9B:
         case 0x9C:
-            CARDGAME_readCountInput(battle, screen, battle->unk498.unk3C);
+            CARDGAME_readCountInput(battle, screen, battle->anim.count);
             break;
         }
         CARDGAME_showCardInfo(battle, screen, 0);
         break;
     case 4:
-        if (screen->sprites[battle->unk43C].state == 1) {
+        if (screen->sprites[battle->effectStep.cursor].state == 1) {
             CARDGAME_flagPlayableCards(battle, screen, pile);
             if (CARDGAME_isHandPickDone(battle, screen, pile)) {
-                battle->unk423 = 6;
+                battle->effectStep.nextState = 6;
             } else {
-                battle->unk423 = 3;
+                battle->effectStep.nextState = 3;
             }
         }
         CARDGAME_showCardInfo(battle, screen, 0);
         break;
     case 5:
         if (CARDGAME_stepPulseCard(battle, screen)) {
-            battle->unk423 = 14;
+            battle->effectStep.nextState = 14;
         }
         CARDGAME_showCardInfo(battle, screen, 0);
         break;
     case 14:
-        if (pile->handCount * 4 + 5 < battle->unk424) {
-            battle->unk423 = 0;
-            battle->unk421 = 0;
-            battle->unk420 = 0;
-            battle->unk421 = 0;
-            result = battle->unk440 != -1;
+        if (pile->handCount * 4 + 5 < battle->effectStep.time) {
+            battle->effectStep.nextState = 0;
+            battle->effectStep.next = 0;
+            battle->effectStep.id = 0;
+            battle->effectStep.next = 0;
+            result = battle->effectStep.choice != -1;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
+        battle->effectStep.time += GFX.funcs.getFrameTime();
         break;
     case 10:
-        if (battle->unk498.unk3C * 4 + 14 < battle->unk424) {
+        if (battle->anim.count * 4 + 14 < battle->effectStep.time) {
             result = 0;
-            battle->unk423 = 0;
-            battle->unk421 = 0;
-            battle->unk420 = 0;
-            battle->unk421 = 0;
+            battle->effectStep.nextState = 0;
+            battle->effectStep.next = 0;
+            battle->effectStep.id = 0;
+            battle->effectStep.next = 0;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
+        battle->effectStep.time += GFX.funcs.getFrameTime();
         break;
     case 6:
-        switch (battle->unk424) {
+        switch (battle->effectStep.time) {
         case 0:
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 0);
             screen->closeWindow(screen, 5);
-            screen->startMove(screen, battle->unk43C, 5, screen->getHandOffset(pile->handCount, battle->unk43C) + 0x1800, 0x6100);
-            screen->sprites[battle->unk43C].unk48 &= ~1;
-            screen->sprites[battle->unk43C].moving = 0;
+            screen->startMove(screen, battle->effectStep.cursor, 5, screen->getHandOffset(pile->handCount, battle->effectStep.cursor) + 0x1800, 0x6100);
+            screen->sprites[battle->effectStep.cursor].highlight &= ~1;
+            screen->sprites[battle->effectStep.cursor].moving = 0;
             break;
         case 6:
             screen->openMessage(screen, 15, 1, 0, 2);
             break;
         }
-        if (++battle->unk424 > 18) {
-            battle->unk423 = 7;
+        if (++battle->effectStep.time > 18) {
+            battle->effectStep.nextState = 7;
         }
         break;
     case 7:
         if (PAD_PRESSED(PAD_CROSS)) {
             screen->confirmMessage(screen);
-            if (battle->unk440 == 0) {
-                battle->unk423 = 8;
+            if (battle->effectStep.choice == 0) {
+                battle->effectStep.nextState = 8;
             } else {
-                battle->unk423 = 9;
+                battle->effectStep.nextState = 9;
             }
         } else if (PAD_PRESSED(PAD_UP) || PAD_PRESSED(PAD_DOWN)) {
-            battle->unk440 ^= 1;
+            battle->effectStep.choice ^= 1;
             SOUND.playSound(SOUND_CURSOR);
-            screen->setMessageChoice(screen, battle->unk440);
+            screen->setMessageChoice(screen, battle->effectStep.choice);
         } else if (PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
-            battle->unk440 = 1;
+            battle->effectStep.choice = 1;
             screen->setMessageChoice(screen, 1);
             screen->confirmMessage(screen);
-            battle->unk423 = 9;
+            battle->effectStep.nextState = 9;
         }
         break;
     case 8:
-        switch (battle->unk424) {
+        switch (battle->effectStep.time) {
         case 20:
             count = 0;
             for (k = 0; k < pile->handCount; k++) {
-                if (battle->unk46F[k] != 0) {
+                if (battle->effectStep.marked[k] != 0) {
                     screen->scaleSprite(screen, k, 6, 0x1400, 0x1400);
                     count++;
                 }
@@ -926,29 +926,29 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
             break;
         case 25:
             for (m = 0; m < pile->handCount; m++) {
-                if (battle->unk46F[m] != 0) {
+                if (battle->effectStep.marked[m] != 0) {
                     screen->scaleSprite(screen, m, 6, 0x1000, 0x1000);
                 }
             }
             break;
         case 35:
             if (pile->side == 0) {
-                battle->unk498.unk1 = 6;
+                battle->anim.next = CARD_ANIM_HIDE_HAND;
                 screen->closePanel(screen, 0);
             } else {
-                battle->unk498.unk1 = 12;
+                battle->anim.next = CARD_ANIM_HIDE_OPPONENT_HAND;
             }
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
             break;
         }
-        if (++battle->unk424 > 45 && battle->unk498.unk0 == 0) {
+        if (++battle->effectStep.time > 45 && battle->anim.current == CARD_ANIM_NONE) {
             result = 1;
         }
         break;
     case 9:
-        switch (battle->unk424) {
+        switch (battle->effectStep.time) {
         case 6:
             break;
         case 18:
@@ -958,34 +958,34 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
             CARDGAME_showCardInfo(battle, screen, 0);
             break;
         }
-        if (++battle->unk424 > 30) {
-            battle->unk423 = 3;
-            screen->startMove(screen, battle->unk43C, 5, screen->getHandOffset(pile->handCount, battle->unk43C) + 0x1800, 0x5C00);
-            screen->sprites[battle->unk43C].unk48 |= 1;
-            screen->sprites[battle->unk43C].moving = 1;
+        if (++battle->effectStep.time > 30) {
+            battle->effectStep.nextState = 3;
+            screen->startMove(screen, battle->effectStep.cursor, 5, screen->getHandOffset(pile->handCount, battle->effectStep.cursor) + 0x1800, 0x5C00);
+            screen->sprites[battle->effectStep.cursor].highlight |= 1;
+            screen->sprites[battle->effectStep.cursor].moving = 1;
         }
         break;
     case 11:
-        if (screen->panels[0].state == 0 && battle->unk498.unk0 == 0) {
-            battle->unk423 = 12;
-            battle->record.unk0[8] = 0;
-            battle->unk2F4 = 3;
+        if (screen->panels[0].state == 0 && battle->anim.current == CARD_ANIM_NONE) {
+            battle->effectStep.nextState = 12;
+            battle->record.menuState = 0;
+            battle->run = CARD_RUN_MENU;
         }
         break;
     case 12:
-        battle->unk423 = 13;
+        battle->effectStep.nextState = 13;
         break;
     case 13:
-        if (((pile->side == 0 && screen->panels[0].state == 2) || (pile->side != 0 && ++battle->unk428 > 10)) &&
-            battle->unk498.unk0 == 0) {
-            battle->unk423 = 3;
-            screen->startSlide(screen, battle->unk43C, 5, screen->getHandOffset(pile->handCount, battle->unk43C) + 0x1800, 0x5C00);
-            screen->sprites[battle->unk43C].unk48 |= 1;
-            screen->sprites[battle->unk43C].moving = 1;
+        if (((pile->side == 0 && screen->panels[0].state == 2) || (pile->side != 0 && ++battle->effectStep.vars[0] > 10)) &&
+            battle->anim.current == CARD_ANIM_NONE) {
+            battle->effectStep.nextState = 3;
+            screen->startSlide(screen, battle->effectStep.cursor, 5, screen->getHandOffset(pile->handCount, battle->effectStep.cursor) + 0x1800, 0x5C00);
+            screen->sprites[battle->effectStep.cursor].highlight |= 1;
+            screen->sprites[battle->effectStep.cursor].moving = 1;
             for (n = 0; n < pile->handCount; n++) {
-                if (battle->unk46F[n] == 1) {
+                if (battle->effectStep.marked[n] == 1) {
                     screen->sprites[n].dimmed = 0;
-                    screen->sprites[n].unk48 |= 2;
+                    screen->sprites[n].highlight |= 2;
                 }
             }
         }
@@ -998,119 +998,119 @@ s32 CARDGAME_stepChooseCards(CardBattle *battle, CardScreen *screen, CardPile *p
 /* Opens the panels for a step */
 void CARDGAME_startPanelsStep(CardBattle *battle, CardScreen *screen) {
     screen->resetPanels(screen);
-    battle->unk440 = 0;
-    battle->stepState = 1;
+    battle->effectStep.choice = 0;
+    battle->effectStep.state = 1;
     screen->openPanels(screen);
-    battle->unk498.unk5 = 1;
-    battle->unk498.unk4 = 1;
-    battle->unk498.unk1 = 1;
+    battle->anim.dimAll = CARD_ANIM_UNDIM_ALL;
+    battle->anim.faceDown = 1;
+    battle->anim.next = CARD_ANIM_SHOW_SLOTS;
 }
 
-/* Turns the opponent's slot cards over, then counts the panels' values 8 and 9 up to each side's pile unk0 and unk2; 1 when done */
+/* Turns the opponent's slot cards over, then counts the panels' ap and hp up to each side's pile apTotal and hpTotal; 1 when done */
 s32 CARDGAME_stepTally(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
     s32 counting = 0;
     s32 step;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (screen->panels[0].state == 2 && battle->unk498.unk0 == 0) {
+        if (screen->panels[0].state == 2 && battle->anim.current == CARD_ANIM_NONE) {
             if (battle->players[0].slotCount + battle->players[1].slotCount == 0) {
-                battle->stepState = 3;
-                battle->unk424 = 0;
-                battle->unk428 = 0;
-                battle->unk42C = 0;
-                battle->unk430 = 0;
-                battle->unk434 = 0;
+                battle->effectStep.state = 3;
+                battle->effectStep.time = 0;
+                battle->effectStep.vars[0] = 0;
+                battle->effectStep.vars[1] = 0;
+                battle->effectStep.vars[2] = 0;
+                battle->effectStep.vars[3] = 0;
             } else {
-                battle->stepState = 2;
-                battle->unk424 = 0;
-                battle->unk428 = 0;
-                battle->unk434 = 0;
+                battle->effectStep.state = 2;
+                battle->effectStep.time = 0;
+                battle->effectStep.vars[0] = 0;
+                battle->effectStep.vars[3] = 0;
                 if (battle->players[0].slotCount > battle->players[1].slotCount) {
-                    battle->unk42C = battle->players[0].slotCount;
+                    battle->effectStep.vars[1] = battle->players[0].slotCount;
                 } else {
-                    battle->unk42C = battle->players[1].slotCount;
+                    battle->effectStep.vars[1] = battle->players[1].slotCount;
                 }
-                battle->unk42C = battle->unk42C * 6 + 18;
+                battle->effectStep.vars[1] = battle->effectStep.vars[1] * 6 + 18;
             }
         }
         break;
     case 2:
-        if (battle->unk434 >= 6) {
-            if (battle->unk428 < battle->players[1].slotCount) {
-                screen->startFlip(screen, battle->unk428 + 6);
+        if (battle->effectStep.vars[3] >= 6) {
+            if (battle->effectStep.vars[0] < battle->players[1].slotCount) {
+                screen->startFlip(screen, battle->effectStep.vars[0] + 6);
             }
-            battle->unk428++;
-            battle->unk434 -= 6;
+            battle->effectStep.vars[0]++;
+            battle->effectStep.vars[3] -= 6;
         }
-        if (battle->unk424 > battle->unk42C) {
-            battle->stepState = 3;
-            battle->unk424 = 0;
-            battle->unk428 = 0;
-            battle->unk42C = 0;
-            battle->unk430 = 0;
-            battle->unk434 = 0;
+        if (battle->effectStep.time > battle->effectStep.vars[1]) {
+            battle->effectStep.state = 3;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.vars[1] = 0;
+            battle->effectStep.vars[2] = 0;
+            battle->effectStep.vars[3] = 0;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
-        battle->unk434 += GFX.funcs.getFrameTime();
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        battle->effectStep.vars[3] += GFX.funcs.getFrameTime();
         break;
     case 3:
-        step = battle->sides[0].pile.unk0 / 60;
-        battle->unk428 += step != 0 ? step : 1;
-        if (battle->unk428 > battle->sides[0].pile.unk0) {
-            battle->unk428 = battle->sides[0].pile.unk0;
+        step = battle->sides[0].pile.apTotal / 60;
+        battle->effectStep.vars[0] += step != 0 ? step : 1;
+        if (battle->effectStep.vars[0] > battle->sides[0].pile.apTotal) {
+            battle->effectStep.vars[0] = battle->sides[0].pile.apTotal;
         } else {
             counting = 1;
         }
-        step = battle->sides[0].pile.unk2 / 60;
-        battle->unk42C += step != 0 ? step : 1;
-        if (battle->unk42C > battle->sides[0].pile.unk2) {
-            battle->unk42C = battle->sides[0].pile.unk2;
+        step = battle->sides[0].pile.hpTotal / 60;
+        battle->effectStep.vars[1] += step != 0 ? step : 1;
+        if (battle->effectStep.vars[1] > battle->sides[0].pile.hpTotal) {
+            battle->effectStep.vars[1] = battle->sides[0].pile.hpTotal;
         } else {
             counting = 1;
         }
-        step = battle->sides[1].pile.unk0 / 60;
-        battle->unk430 += step != 0 ? step : 1;
-        if (battle->unk430 > battle->sides[1].pile.unk0) {
-            battle->unk430 = battle->sides[1].pile.unk0;
+        step = battle->sides[1].pile.apTotal / 60;
+        battle->effectStep.vars[2] += step != 0 ? step : 1;
+        if (battle->effectStep.vars[2] > battle->sides[1].pile.apTotal) {
+            battle->effectStep.vars[2] = battle->sides[1].pile.apTotal;
         } else {
             counting = 1;
         }
-        step = battle->sides[1].pile.unk2 / 60;
-        battle->unk434 += step != 0 ? step : 1;
-        if (battle->unk434 > battle->sides[1].pile.unk2) {
-            battle->unk434 = battle->sides[1].pile.unk2;
+        step = battle->sides[1].pile.hpTotal / 60;
+        battle->effectStep.vars[3] += step != 0 ? step : 1;
+        if (battle->effectStep.vars[3] > battle->sides[1].pile.hpTotal) {
+            battle->effectStep.vars[3] = battle->sides[1].pile.hpTotal;
         } else {
             counting = 1;
         }
-        if (battle->unk424++ > 60) {
-            battle->stepState = 4;
-            battle->unk424 = 0;
-            battle->unk428 = battle->sides[0].pile.unk0;
-            battle->unk42C = battle->sides[0].pile.unk2;
-            battle->unk430 = battle->sides[1].pile.unk0;
-            battle->unk434 = battle->sides[1].pile.unk2;
+        if (battle->effectStep.time++ > 60) {
+            battle->effectStep.state = 4;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[0] = battle->sides[0].pile.apTotal;
+            battle->effectStep.vars[1] = battle->sides[0].pile.hpTotal;
+            battle->effectStep.vars[2] = battle->sides[1].pile.apTotal;
+            battle->effectStep.vars[3] = battle->sides[1].pile.hpTotal;
         } else if (counting) {
             SOUND.playSound(SOUND_COUNT);
         }
-        screen->setPanelValue(screen, 0, 8, battle->unk428);
-        screen->setPanelValue(screen, 0, 9, battle->unk42C);
-        screen->setPanelValue(screen, 1, 8, battle->unk430);
-        screen->setPanelValue(screen, 1, 9, battle->unk434);
+        screen->setPanelValue(screen, 0, CARD_PANEL_AP, battle->effectStep.vars[0]);
+        screen->setPanelValue(screen, 0, CARD_PANEL_HP, battle->effectStep.vars[1]);
+        screen->setPanelValue(screen, 1, CARD_PANEL_AP, battle->effectStep.vars[2]);
+        screen->setPanelValue(screen, 1, CARD_PANEL_HP, battle->effectStep.vars[3]);
         break;
     case 4:
         if (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->unk424 = 90;
+            battle->effectStep.time = 90;
         }
-        if (++battle->unk424 > 90) {
+        if (++battle->effectStep.time > 90) {
             screen->closePanels(screen);
-            battle->stepState = 5;
-            battle->unk498.unk1 = 2;
+            battle->effectStep.state = 5;
+            battle->anim.next = CARD_ANIM_HIDE_SLOTS;
         }
         break;
     case 5:
-        if (screen->panels[0].state == 0 && battle->unk498.unk0 == 0) {
+        if (screen->panels[0].state == 0 && battle->anim.current == CARD_ANIM_NONE) {
             done = 1;
         }
         break;
@@ -1124,29 +1124,29 @@ void CARDGAME_startStepMessage(CardBattle *battle, CardScreen *screen, s32 index
 
     screen->openMessage(screen, entry[1], 0, 0, 1);
     screen->openWindow(screen, 5, 5, entry[0], 0, 0x42);
-    battle->stepState = 1;
+    battle->effectStep.state = 1;
 }
 
 /* Waits for window 5 to open, then for Cross or Triangle to close it; 1 once it has closed */
 s32 CARDGAME_stepMessage(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
         if (screen->windows[5].state == 2) {
-            battle->stepState = 2;
+            battle->effectStep.state = 2;
         }
         break;
     case 2:
         if (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->stepState = 3;
+            battle->effectStep.state = 3;
             screen->closeWindow(screen, 5);
             screen->closeMessage(screen);
         }
         break;
     case 3:
         if (screen->windows[5].state == 0) {
-            battle->stepState = 4;
+            battle->effectStep.state = 4;
         }
         break;
     case 4:
@@ -1159,24 +1159,24 @@ s32 CARDGAME_stepMessage(CardBattle *battle, CardScreen *screen) {
 /* Moves the selection to the other one of the two cards that CARDGAME_startFirstPick lays out */
 void CARDGAME_switchCoinCard(CardBattle *battle, CardScreen *screen) {
     SOUND.playSound(SOUND_MENU_MOVE);
-    screen->startSlide(screen, battle->unk43C, 5, CARDGAME_coinCardPositions[battle->unk43C][0], CARDGAME_coinCardPositions[battle->unk43C][1]);
-    screen->sprites[battle->unk43C].unk48 &= ~1;
-    screen->sprites[battle->unk43C].moving = 0;
-    battle->unk43C ^= 1;
-    screen->startSlide(screen, battle->unk43C, 1, CARDGAME_coinCardPositions[battle->unk43C][0], CARDGAME_coinCardPositions[battle->unk43C][1] - 0x500);
-    screen->sprites[battle->unk43C].unk48 |= 1;
-    screen->sprites[battle->unk43C].moving = 1;
+    screen->startSlide(screen, battle->effectStep.cursor, 5, CARDGAME_coinCardPositions[battle->effectStep.cursor][0], CARDGAME_coinCardPositions[battle->effectStep.cursor][1]);
+    screen->sprites[battle->effectStep.cursor].highlight &= ~1;
+    screen->sprites[battle->effectStep.cursor].moving = 0;
+    battle->effectStep.cursor ^= 1;
+    screen->startSlide(screen, battle->effectStep.cursor, 1, CARDGAME_coinCardPositions[battle->effectStep.cursor][0], CARDGAME_coinCardPositions[battle->effectStep.cursor][1] - 0x500);
+    screen->sprites[battle->effectStep.cursor].highlight |= 1;
+    screen->sprites[battle->effectStep.cursor].moving = 1;
 }
 
 /* Who goes first: cards 0x57 and 0x58 face down, in a random order */
 void CARDGAME_startFirstPick(CardBattle *battle, CardScreen *screen) {
     s32 first = RANDOM.next() & 1;
 
-    battle->unk434 = first;
-    battle->unk430 = 0;
-    battle->unk42C = 0;
-    battle->unk428 = 0;
-    battle->unk424 = 0;
+    battle->effectStep.vars[3] = first;
+    battle->effectStep.vars[2] = 0;
+    battle->effectStep.vars[1] = 0;
+    battle->effectStep.vars[0] = 0;
+    battle->effectStep.time = 0;
     screen->addSprite(screen, 0, 0x7400, 0x6100);
     screen->addSprite(screen, 1, 0xA400, 0x6100);
     if (first != 0) {
@@ -1190,24 +1190,24 @@ void CARDGAME_startFirstPick(CardBattle *battle, CardScreen *screen) {
     screen->sprites[1].visible = 2;
     screen->sprites[0].scaleX = 0;
     screen->sprites[0].dimmed = 0;
-    screen->sprites[0].unk48 = 0;
+    screen->sprites[0].highlight = 0;
     screen->sprites[1].scaleX = 0;
     screen->sprites[1].dimmed = 0;
-    screen->sprites[1].unk48 = 0;
-    battle->unk43C = 0;
-    battle->unk440 = 0;
-    battle->stepState = 1;
+    screen->sprites[1].highlight = 0;
+    battle->effectStep.cursor = 0;
+    battle->effectStep.choice = 0;
+    battle->effectStep.state = 1;
 }
 
 /* The draw for who goes first: the two face-down cards open, the player picks
    one with left/right and cross and both turn over; 1 once it is over, with
-   unk440 1 if the player won the draw */
+   effectStep.choice 1 if the player won the draw */
 s32 CARDGAME_drawFirstPlayer(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        switch (battle->unk424) {
+        switch (battle->effectStep.time) {
         case 0:
             screen->scaleSprite(screen, 0, 10, 0x1000, 0x1000);
             break;
@@ -1215,73 +1215,73 @@ s32 CARDGAME_drawFirstPlayer(CardBattle *battle, CardScreen *screen) {
             screen->scaleSprite(screen, 1, 10, 0x1000, 0x1000);
             break;
         }
-        battle->unk424++;
-        if (battle->unk424 >= 15) {
-            battle->stepState = 2;
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 15) {
+            battle->effectStep.state = 2;
             screen->startSlide(screen, 0, 5, 0x7400, 0x5C00);
             screen->sprites[0].moving = 1;
-            screen->sprites[0].unk48 |= 1;
+            screen->sprites[0].highlight |= 1;
         }
         break;
     case 2:
-        screen->sprites[battle->unk43C].unk48 |= 1;
-        screen->sprites[battle->unk43C].moving = 1;
+        screen->sprites[battle->effectStep.cursor].highlight |= 1;
+        screen->sprites[battle->effectStep.cursor].moving = 1;
         if ((PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) | (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) ||
             (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) | (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) {
             CARDGAME_switchCoinCard(battle, screen);
         } else if (PAD_PRESSED(PAD_CROSS)) {
-            battle->stepState = 3;
-            battle->unk440 = battle->unk43C;
-            battle->unk46F[battle->unk440] = 1;
-            battle->unk42C = 0;
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.state = 3;
+            battle->effectStep.choice = battle->effectStep.cursor;
+            battle->effectStep.marked[battle->effectStep.choice] = 1;
+            battle->effectStep.vars[1] = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             SOUND.playSound(SOUND_MENU_CONFIRM);
         }
         break;
     case 3:
         if (CARDGAME_stepPulseCard(battle, screen)) {
-            battle->stepState = 4;
-            battle->unk42C = 0;
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            screen->startFlip(screen, battle->unk43C);
+            battle->effectStep.state = 4;
+            battle->effectStep.vars[1] = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            screen->startFlip(screen, battle->effectStep.cursor);
         }
         break;
     case 4:
-        if (battle->unk424 == 20) {
-            screen->startFlip(screen, battle->unk43C ^ 1);
+        if (battle->effectStep.time == 20) {
+            screen->startFlip(screen, battle->effectStep.cursor ^ 1);
 #if VERSION_EU
-            screen->openWindow(screen, 5, 5, battle->unk434 == battle->unk440 ? 0x44 : 0x43, 0, 0x42);
+            screen->openWindow(screen, 5, 5, battle->effectStep.vars[3] == battle->effectStep.choice ? 0x44 : 0x43, 0, 0x42);
             SOUND.playSound(SOUND_MENU_OPEN);
 #endif
         }
         /* the result stays up for a while; cross or triangle skips it */
-        if (battle->unk424 >= 31 && (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE))) {
+        if (battle->effectStep.time >= 31 && (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE))) {
 #if VERSION_US
-            battle->unk424 = 60;
+            battle->effectStep.time = 60;
 #elif VERSION_EU
-            battle->unk424 = 90;
+            battle->effectStep.time = 90;
 #endif
         }
 #if VERSION_US
-        battle->unk424++;
-        if (battle->unk424 >= 61) {
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 61) {
 #elif VERSION_EU
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 91) {
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 91) {
 #endif
-            battle->stepState = 5;
-            battle->unk42C = 0;
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.state = 5;
+            battle->effectStep.vars[1] = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
 #if VERSION_EU
             screen->closeWindow(screen, 5);
 #endif
         }
         break;
     case 5:
-        switch (battle->unk424) {
+        switch (battle->effectStep.time) {
         case 0:
             screen->scaleSprite(screen, 0, 5, 0, 0x1000);
             break;
@@ -1289,16 +1289,16 @@ s32 CARDGAME_drawFirstPlayer(CardBattle *battle, CardScreen *screen) {
             screen->scaleSprite(screen, 1, 5, 0, 0x1000);
             break;
         }
-        battle->unk424++;
-        if (battle->unk424 >= 15) {
-            battle->stepState = 6;
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 15) {
+            battle->effectStep.state = 6;
         }
         break;
     case 6:
-        if (battle->unk434 == battle->unk440) {
-            battle->unk440 = 1;
+        if (battle->effectStep.vars[3] == battle->effectStep.choice) {
+            battle->effectStep.choice = 1;
         } else {
-            battle->unk440 = 0;
+            battle->effectStep.choice = 0;
         }
         done = 1;
         break;
@@ -1308,7 +1308,7 @@ s32 CARDGAME_drawFirstPlayer(CardBattle *battle, CardScreen *screen) {
 
 /* Starts CARDGAME_viewTable */
 void CARDGAME_startViewTable(CardBattle *battle, CardScreen *screen) {
-    battle->unk423 = 1;
+    battle->effectStep.nextState = 1;
 }
 
 /* The table's height: 8 per card of the longer row of slots (at least 3), and
@@ -1340,11 +1340,11 @@ void CARDGAME_moveTableHighlight(CardBattle *battle, CardScreen *screen, s32 kin
         offset = 12;
         break;
     }
-    screen->sprites[offset + battle->unk43C].unk48 &= ~1;
-    screen->sprites[offset + battle->unk43C].moving = 0;
-    battle->unk43C += delta;
-    screen->sprites[offset + battle->unk43C].unk48 |= 1;
-    screen->sprites[offset + battle->unk43C].moving = 1;
+    screen->sprites[offset + battle->effectStep.cursor].highlight &= ~1;
+    screen->sprites[offset + battle->effectStep.cursor].moving = 0;
+    battle->effectStep.cursor += delta;
+    screen->sprites[offset + battle->effectStep.cursor].highlight |= 1;
+    screen->sprites[offset + battle->effectStep.cursor].moving = 1;
 }
 
 /* Lets the player look over the cards out on the table: the two players' rows
@@ -1353,68 +1353,68 @@ void CARDGAME_moveTableHighlight(CardBattle *battle, CardScreen *screen, s32 kin
 s32 CARDGAME_viewTable(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
 
-    if (battle->unk423 != 0) {
-        switch (battle->unk423) {
+    if (battle->effectStep.nextState != 0) {
+        switch (battle->effectStep.nextState) {
         case 1:
             CARDGAME_savedPanelScales[0] = screen->panels[0].scale.state;
             CARDGAME_savedPanelScales[1] = screen->panels[1].scale.state;
             screen->panels[0].scale.state = 0;
             screen->panels[1].scale.state = 0;
-            battle->unk498.unk5 = 1;
-            battle->unk498.unk1 = 1;
-            battle->unk42C = CARDGAME_getTableHeight(battle, screen);
-            battle->unk43C = 0;
+            battle->anim.dimAll = CARD_ANIM_UNDIM_ALL;
+            battle->anim.next = CARD_ANIM_SHOW_SLOTS;
+            battle->effectStep.vars[1] = CARDGAME_getTableHeight(battle, screen);
+            battle->effectStep.cursor = 0;
             screen->resetPanels(screen);
             screen->openPanels(screen);
             CARDGAME_clearCardInfo(battle, screen);
             break;
         case 2:
             CARDGAME_clearCardInfo(battle, screen);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            battle->unk434 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[3] = 0;
             break;
         case 4:
             CARDGAME_clearCardInfo(battle, screen);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            battle->unk434 = 1;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[3] = 1;
             break;
         case 3:
             CARDGAME_clearCardInfo(battle, screen);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            battle->unk434 = 2;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[3] = 2;
             break;
         case 8:
-            screen->sprites[battle->unk43C].unk48 &= ~1;
-            screen->sprites[battle->unk43C].moving = 0;
+            screen->sprites[battle->effectStep.cursor].highlight &= ~1;
+            screen->sprites[battle->effectStep.cursor].moving = 0;
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             break;
         case 9:
-            screen->sprites[battle->unk43C + 12].unk48 &= ~1;
-            screen->sprites[battle->unk43C + 12].moving = 0;
+            screen->sprites[battle->effectStep.cursor + 12].highlight &= ~1;
+            screen->sprites[battle->effectStep.cursor + 12].moving = 0;
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             break;
         case 10:
-            screen->sprites[battle->unk43C + 6].unk48 &= ~1;
-            screen->sprites[battle->unk43C + 6].moving = 0;
+            screen->sprites[battle->effectStep.cursor + 6].highlight &= ~1;
+            screen->sprites[battle->effectStep.cursor + 6].moving = 0;
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             break;
         case 11:
             screen->closePanels(screen);
@@ -1422,7 +1422,7 @@ s32 CARDGAME_viewTable(CardBattle *battle, CardScreen *screen) {
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
-            battle->unk498.unk1 = 2;
+            battle->anim.next = CARD_ANIM_HIDE_SLOTS;
             break;
         case 12:
             screen->openMessage(screen, 0x17, 0, 0, 1);
@@ -1435,173 +1435,173 @@ s32 CARDGAME_viewTable(CardBattle *battle, CardScreen *screen) {
             /* nothing to set up: it ends */
             break;
         }
-        battle->stepState = battle->unk423;
-        battle->unk423 = 0;
+        battle->effectStep.state = battle->effectStep.nextState;
+        battle->effectStep.nextState = 0;
     }
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (screen->panels[0].state == 2 && battle->unk498.unk0 == 0) {
+        if (screen->panels[0].state == 2 && battle->anim.current == CARD_ANIM_NONE) {
             if (battle->players[0].slotCount != 0) {
-                battle->unk423 = 2;
-                battle->unk434 = 0;
+                battle->effectStep.nextState = 2;
+                battle->effectStep.vars[3] = 0;
             } else if (battle->players[1].slotCount != 0) {
-                battle->unk423 = 4;
-                battle->unk434 = 1;
-            } else if (battle->record.entryCount > 0) {
-                battle->unk423 = 3;
-                battle->unk434 = 2;
+                battle->effectStep.nextState = 4;
+                battle->effectStep.vars[3] = 1;
+            } else if (battle->record.playCount > 0) {
+                battle->effectStep.nextState = 3;
+                battle->effectStep.vars[3] = 2;
             } else {
-                battle->unk423 = 12;
-                battle->unk434 = 3;
+                battle->effectStep.nextState = 12;
+                battle->effectStep.vars[3] = 3;
             }
         }
         break;
     case 2:
     case 3:
     case 4:
-        battle->unk428 = CARDGAME_openStepWindows(battle, screen, battle->unk434, 0, battle->unk424, battle->unk428);
-        CARDGAME_showCardInfo(battle, screen, CARDGAME_rowSpriteOffsets[battle->unk434]);
-        battle->unk424++;
-        if (battle->unk424 >= 11) {
-            CARDGAME_moveTableHighlight(battle, screen, battle->unk434, 0);
-            battle->unk423 = CARDGAME_rowSteps[battle->unk434];
+        battle->effectStep.vars[0] = CARDGAME_openStepWindows(battle, screen, battle->effectStep.vars[3], 0, battle->effectStep.time, battle->effectStep.vars[0]);
+        CARDGAME_showCardInfo(battle, screen, CARDGAME_rowSpriteOffsets[battle->effectStep.vars[3]]);
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 11) {
+            CARDGAME_moveTableHighlight(battle, screen, battle->effectStep.vars[3], 0);
+            battle->effectStep.nextState = CARDGAME_rowSteps[battle->effectStep.vars[3]];
         }
         break;
     case 5:
-        if (PAD_PRESSED(PAD_UP) && (battle->record.entryCount > 0 || battle->players[1].slotCount != 0)) {
-            battle->unk423 = 8;
+        if (PAD_PRESSED(PAD_UP) && (battle->record.playCount > 0 || battle->players[1].slotCount != 0)) {
+            battle->effectStep.nextState = 8;
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) {
-            if (battle->unk43C < battle->players[0].slotCount - 1) {
+            if (battle->effectStep.cursor < battle->players[0].slotCount - 1) {
                 CARDGAME_moveTableHighlight(battle, screen, 0, 1);
             }
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT)))) {
-            if (battle->unk43C > 0) {
+            if (battle->effectStep.cursor > 0) {
                 CARDGAME_moveTableHighlight(battle, screen, 0, -1);
             }
         }
         CARDGAME_showTableCardInfo(battle, screen, 0);
         if (PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
-            battle->unk423 = 11;
+            battle->effectStep.nextState = 11;
         }
         break;
     case 6:
-        if (PAD_PRESSED(PAD_DOWN) && (battle->record.entryCount > 0 || battle->players[0].slotCount != 0)) {
-            battle->unk423 = 10;
+        if (PAD_PRESSED(PAD_DOWN) && (battle->record.playCount > 0 || battle->players[0].slotCount != 0)) {
+            battle->effectStep.nextState = 10;
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) {
-            if (battle->unk43C < battle->players[1].slotCount - 1) {
+            if (battle->effectStep.cursor < battle->players[1].slotCount - 1) {
                 CARDGAME_moveTableHighlight(battle, screen, 1, 1);
             }
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT)))) {
-            if (battle->unk43C > 0) {
+            if (battle->effectStep.cursor > 0) {
                 CARDGAME_moveTableHighlight(battle, screen, 1, -1);
             }
         }
         CARDGAME_showTableCardInfo(battle, screen, 1);
         if (PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
-            battle->unk423 = 11;
+            battle->effectStep.nextState = 11;
         }
         break;
     case 7:
         if (PAD_PRESSED(PAD_UP)) {
             if (battle->players[1].slotCount != 0) {
-                battle->unk42C = 1;
-                battle->unk423 = 9;
+                battle->effectStep.vars[1] = 1;
+                battle->effectStep.nextState = 9;
             }
         } else if (PAD_PRESSED(PAD_DOWN) && battle->players[0].slotCount != 0) {
-            battle->unk42C = 0;
-            battle->unk423 = 9;
+            battle->effectStep.vars[1] = 0;
+            battle->effectStep.nextState = 9;
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) {
-            if (battle->unk43C < battle->record.entryCount - 1) {
+            if (battle->effectStep.cursor < battle->record.playCount - 1) {
                 CARDGAME_moveTableHighlight(battle, screen, 2, 1);
             }
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT)))) {
-            if (battle->unk43C > 0) {
+            if (battle->effectStep.cursor > 0) {
                 CARDGAME_moveTableHighlight(battle, screen, 2, -1);
             }
         }
         if (PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
-            battle->unk423 = 11;
+            battle->effectStep.nextState = 11;
         }
         CARDGAME_showTableCardInfo(battle, screen, 2);
         break;
     case 8:
-        battle->unk424++;
-        if (battle->unk424 >= 11) {
-            if (battle->record.entryCount > 0) {
-                battle->unk423 = 3;
-                battle->unk43C /= 2;
-                if (battle->unk43C > battle->record.entryCount - 1) {
-                    battle->unk43C = battle->record.entryCount - 1;
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 11) {
+            if (battle->record.playCount > 0) {
+                battle->effectStep.nextState = 3;
+                battle->effectStep.cursor /= 2;
+                if (battle->effectStep.cursor > battle->record.playCount - 1) {
+                    battle->effectStep.cursor = battle->record.playCount - 1;
                 }
             } else if (battle->players[1].slotCount != 0) {
-                battle->unk423 = 4;
-                if (battle->unk43C > battle->players[1].slotCount - 1) {
-                    battle->unk43C = battle->players[1].slotCount - 1;
+                battle->effectStep.nextState = 4;
+                if (battle->effectStep.cursor > battle->players[1].slotCount - 1) {
+                    battle->effectStep.cursor = battle->players[1].slotCount - 1;
                 }
             }
         }
         break;
     case 9:
-        battle->unk424++;
-        if (battle->unk424 >= 11) {
-            battle->unk43C = battle->unk43C * 2 + 1;
-            if (battle->unk42C != 0) {
-                battle->unk423 = 4;
-                if (battle->unk43C > battle->players[1].slotCount - 1) {
-                    battle->unk43C = battle->players[1].slotCount - 1;
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 11) {
+            battle->effectStep.cursor = battle->effectStep.cursor * 2 + 1;
+            if (battle->effectStep.vars[1] != 0) {
+                battle->effectStep.nextState = 4;
+                if (battle->effectStep.cursor > battle->players[1].slotCount - 1) {
+                    battle->effectStep.cursor = battle->players[1].slotCount - 1;
                 }
             } else {
-                battle->unk423 = 2;
-                if (battle->unk43C > battle->players[0].slotCount - 1) {
-                    battle->unk43C = battle->players[0].slotCount - 1;
+                battle->effectStep.nextState = 2;
+                if (battle->effectStep.cursor > battle->players[0].slotCount - 1) {
+                    battle->effectStep.cursor = battle->players[0].slotCount - 1;
                 }
             }
         }
         break;
     case 10:
-        battle->unk424++;
-        if (battle->unk424 >= 11) {
-            if (battle->record.entryCount > 0) {
-                battle->unk423 = 3;
-                battle->unk43C /= 2;
-                if (battle->unk43C > battle->record.entryCount - 1) {
-                    battle->unk43C = battle->record.entryCount - 1;
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 11) {
+            if (battle->record.playCount > 0) {
+                battle->effectStep.nextState = 3;
+                battle->effectStep.cursor /= 2;
+                if (battle->effectStep.cursor > battle->record.playCount - 1) {
+                    battle->effectStep.cursor = battle->record.playCount - 1;
                 }
             } else if (battle->players[0].slotCount != 0) {
-                battle->unk423 = 2;
-                if (battle->unk43C > battle->players[0].slotCount - 1) {
-                    battle->unk43C = battle->players[0].slotCount - 1;
+                battle->effectStep.nextState = 2;
+                if (battle->effectStep.cursor > battle->players[0].slotCount - 1) {
+                    battle->effectStep.cursor = battle->players[0].slotCount - 1;
                 }
             }
         }
         break;
     case 11:
-        if (screen->panels[0].state == 0 && battle->unk498.unk0 == 0) {
-            battle->unk423 = 15;
+        if (screen->panels[0].state == 0 && battle->anim.current == CARD_ANIM_NONE) {
+            battle->effectStep.nextState = 15;
         }
         break;
     case 12:
         if (screen->message.state == 2) {
-            battle->unk423 = 13;
+            battle->effectStep.nextState = 13;
         }
         break;
     case 13:
         if (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->unk423 = 14;
+            battle->effectStep.nextState = 14;
         }
         break;
     case 14:
         if (screen->message.state == 0) {
-            battle->unk423 = 15;
+            battle->effectStep.nextState = 15;
         }
         break;
     case 15:
@@ -1613,10 +1613,10 @@ s32 CARDGAME_viewTable(CardBattle *battle, CardScreen *screen) {
     return done;
 }
 
-/* Starts CARDGAME_pickTableCard with unk438 */
+/* Starts CARDGAME_pickTableCard with effectStep.vars[4] */
 void CARDGAME_startPickTableCard(CardBattle *battle, CardScreen *screen, s32 arg2) {
-    battle->unk438 = arg2;
-    battle->unk423 = 1;
+    battle->effectStep.vars[4] = arg2;
+    battle->effectStep.nextState = 1;
 }
 
 /* CARDGAME_getTableHeight, for CARDGAME_pickTableCard */
@@ -1629,9 +1629,9 @@ void CARDGAME_movePickHighlight(CardBattle *battle, CardScreen *screen, s32 kind
     CARDGAME_moveTableHighlight(battle, screen, kind, delta);
 }
 
-/* Lets the player pick a card out on the table (unk445 bit 0: in their own
+/* Lets the player pick a card out on the table (effectStep.flags bit 0: in their own
    row, bit 1: in the opponent's): 2 once one is picked (its sprite in
-   unk440), 1 if there was none or the player backed out */
+   effectStep.choice), 1 if there was none or the player backed out */
 s32 CARDGAME_pickTableCard(CardBattle *battle, CardScreen *screen) {
     s32 result = 0;
     s32 i;
@@ -1639,26 +1639,26 @@ s32 CARDGAME_pickTableCard(CardBattle *battle, CardScreen *screen) {
        two loops other registers than it gives i */
     s32 j;
 
-    if (battle->unk423 != 0) {
-        switch (battle->unk423) {
+    if (battle->effectStep.nextState != 0) {
+        switch (battle->effectStep.nextState) {
         case 1:
-            if (battle->unk438 != 0) {
+            if (battle->effectStep.vars[4] != 0) {
                 for (j = 0; j < 3; j++) {
-                    battle->unk498.unk6[j + 12] = 1;
+                    battle->anim.dimmed[j + 12] = 1;
                 }
                 for (j = 0; j < 12; j++) {
-                    if (battle->unk446[j] != 0) {
-                        battle->unk498.unk6[j] = 0;
+                    if (battle->effectStep.eligible[j] != 0) {
+                        battle->anim.dimmed[j] = 0;
                     } else {
-                        battle->unk498.unk6[j] = 1;
+                        battle->anim.dimmed[j] = 1;
                     }
                 }
-                battle->unk498.unk1 = 1;
-                battle->unk43C = 0;
+                battle->anim.next = CARD_ANIM_SHOW_SLOTS;
+                battle->effectStep.cursor = 0;
                 screen->resetPanels(screen);
                 screen->openPanels(screen);
                 screen->addSprite(screen, 15, 0xE500, 0x6100);
-                screen->setSpriteCard(screen, 15, battle->record.entries[battle->record.entryCount].unk0);
+                screen->setSpriteCard(screen, 15, battle->record.plays[battle->record.playCount].card);
                 screen->sprites[15].scaleX = 0;
                 screen->scaleSprite(screen, 15, 8, 0x1000, 0x1000);
             } else {
@@ -1666,54 +1666,54 @@ s32 CARDGAME_pickTableCard(CardBattle *battle, CardScreen *screen) {
                     screen->sprites[i + 12].dimmed = 1;
                 }
                 for (i = 0; i < 12; i++) {
-                    if (battle->unk446[i] != 0) {
+                    if (battle->effectStep.eligible[i] != 0) {
                         screen->sprites[i].dimmed = 0;
                     } else {
                         screen->sprites[i].dimmed = 1;
                     }
                 }
             }
-            battle->unk42C = CARDGAME_getPickTableHeight(battle, screen);
+            battle->effectStep.vars[1] = CARDGAME_getPickTableHeight(battle, screen);
             CARDGAME_clearCardInfo(battle, screen);
             break;
         case 2:
             CARDGAME_clearCardInfo(battle, screen);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            battle->unk434 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[3] = 0;
             break;
         case 3:
             CARDGAME_clearCardInfo(battle, screen);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            battle->unk434 = 1;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[3] = 1;
             break;
         case 7:
-            screen->sprites[battle->unk43C].unk48 &= ~1;
-            screen->sprites[battle->unk43C].moving = 0;
+            screen->sprites[battle->effectStep.cursor].highlight &= ~1;
+            screen->sprites[battle->effectStep.cursor].moving = 0;
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             break;
         case 8:
-            screen->sprites[battle->unk43C + 6].unk48 &= ~1;
-            screen->sprites[battle->unk43C + 6].moving = 0;
+            screen->sprites[battle->effectStep.cursor + 6].highlight &= ~1;
+            screen->sprites[battle->effectStep.cursor + 6].moving = 0;
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             break;
         case 6:
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
-            screen->startBlink(screen, battle->unk440);
+            screen->startBlink(screen, battle->effectStep.choice);
             SOUND.playSound(SOUND_MENU_CONFIRM);
             break;
         case 9:
@@ -1722,114 +1722,114 @@ s32 CARDGAME_pickTableCard(CardBattle *battle, CardScreen *screen) {
             screen->closeWindow(screen, 1);
             screen->closeWindow(screen, 2);
             screen->closeWindow(screen, 3);
-            battle->unk498.unk1 = 2;
+            battle->anim.next = CARD_ANIM_HIDE_SLOTS;
             screen->scaleSprite(screen, 15, 8, 0, 0x1000);
             break;
         case 10:
             screen->closePanels(screen);
-            battle->unk498.unk1 = 2;
+            battle->anim.next = CARD_ANIM_HIDE_SLOTS;
             screen->scaleSprite(screen, 15, 8, 0, 0x1000);
             break;
         case 14:
             /* nothing to set up */
             break;
         }
-        battle->stepState = battle->unk423;
-        battle->unk423 = 0;
+        battle->effectStep.state = battle->effectStep.nextState;
+        battle->effectStep.nextState = 0;
     }
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (battle->unk438 == 0 || (screen->panels[0].state == 2 && battle->unk498.unk0 == 0)) {
-            if (battle->unk445 & 1) {
+        if (battle->effectStep.vars[4] == 0 || (screen->panels[0].state == 2 && battle->anim.current == CARD_ANIM_NONE)) {
+            if (battle->effectStep.flags & 1) {
                 if (battle->players[0].slotCount != 0) {
-                    battle->unk423 = 2;
-                    battle->unk434 = 0;
+                    battle->effectStep.nextState = 2;
+                    battle->effectStep.vars[3] = 0;
                 } else {
-                    battle->unk445 &= ~1;
+                    battle->effectStep.flags &= ~1;
                 }
             }
-            if (battle->unk445 & 2) {
+            if (battle->effectStep.flags & 2) {
                 if (battle->players[1].slotCount != 0) {
-                    battle->unk423 = 3;
-                    battle->unk434 = 1;
+                    battle->effectStep.nextState = 3;
+                    battle->effectStep.vars[3] = 1;
                 } else {
-                    battle->unk445 &= ~2;
+                    battle->effectStep.flags &= ~2;
                 }
             }
-            if (battle->unk445 == 0) {
-                battle->unk423 = 12;
-                battle->unk434 = 3;
+            if (battle->effectStep.flags == 0) {
+                battle->effectStep.nextState = 12;
+                battle->effectStep.vars[3] = 3;
             }
         }
         break;
     case 2:
     case 3:
-        battle->unk428 = CARDGAME_openStepWindows(battle, screen, battle->unk434, 0, battle->unk424, battle->unk428);
-        CARDGAME_showCardInfo(battle, screen, CARDGAME_rowSpriteOffsets[battle->unk434]);
-        battle->unk424++;
-        if (battle->unk424 >= 11) {
-            switch (battle->unk434) {
+        battle->effectStep.vars[0] = CARDGAME_openStepWindows(battle, screen, battle->effectStep.vars[3], 0, battle->effectStep.time, battle->effectStep.vars[0]);
+        CARDGAME_showCardInfo(battle, screen, CARDGAME_rowSpriteOffsets[battle->effectStep.vars[3]]);
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 11) {
+            switch (battle->effectStep.vars[3]) {
             case 0:
                 CARDGAME_movePickHighlight(battle, screen, 0, 0);
-                battle->unk423 = 4;
+                battle->effectStep.nextState = 4;
                 break;
             case 1:
                 CARDGAME_movePickHighlight(battle, screen, 1, 0);
-                battle->unk423 = 5;
+                battle->effectStep.nextState = 5;
                 break;
             }
         }
         break;
     case 4:
-        if ((battle->unk445 & 2) && PAD_PRESSED(PAD_UP) && battle->players[1].slotCount != 0) {
-            battle->unk423 = 7;
+        if ((battle->effectStep.flags & 2) && PAD_PRESSED(PAD_UP) && battle->players[1].slotCount != 0) {
+            battle->effectStep.nextState = 7;
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) {
-            if (battle->unk43C < battle->players[0].slotCount - 1) {
+            if (battle->effectStep.cursor < battle->players[0].slotCount - 1) {
                 CARDGAME_moveTableHighlight(battle, screen, 0, 1);
             }
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT)))) {
-            if (battle->unk43C > 0) {
+            if (battle->effectStep.cursor > 0) {
                 CARDGAME_moveTableHighlight(battle, screen, 0, -1);
             }
         }
         CARDGAME_showTableCardInfo(battle, screen, 0);
-        if (battle->unk438 != 0 && PAD_PRESSED(PAD_TRIANGLE)) {
+        if (battle->effectStep.vars[4] != 0 && PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
-            battle->unk423 = 9;
+            battle->effectStep.nextState = 9;
         }
-        if (PAD_PRESSED(PAD_CROSS) && battle->unk446[battle->unk43C] != 0) {
-            battle->unk423 = 6;
-            battle->unk440 = battle->unk43C;
+        if (PAD_PRESSED(PAD_CROSS) && battle->effectStep.eligible[battle->effectStep.cursor] != 0) {
+            battle->effectStep.nextState = 6;
+            battle->effectStep.choice = battle->effectStep.cursor;
         }
         break;
     case 5:
-        if ((battle->unk445 & 1) && PAD_PRESSED(PAD_DOWN) && battle->players[0].slotCount != 0) {
-            battle->unk423 = 8;
+        if ((battle->effectStep.flags & 1) && PAD_PRESSED(PAD_DOWN) && battle->players[0].slotCount != 0) {
+            battle->effectStep.nextState = 8;
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) {
-            if (battle->unk43C < battle->players[1].slotCount - 1) {
+            if (battle->effectStep.cursor < battle->players[1].slotCount - 1) {
                 CARDGAME_moveTableHighlight(battle, screen, 1, 1);
             }
         }
         if ((PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) | (PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT)))) {
-            if (battle->unk43C > 0) {
+            if (battle->effectStep.cursor > 0) {
                 CARDGAME_moveTableHighlight(battle, screen, 1, -1);
             }
         }
         CARDGAME_showTableCardInfo(battle, screen, 1);
-        if (battle->unk438 != 0 && PAD_PRESSED(PAD_TRIANGLE)) {
+        if (battle->effectStep.vars[4] != 0 && PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
-            battle->unk423 = 9;
-        } else if (PAD_PRESSED(PAD_CROSS) && battle->unk446[battle->unk43C + 6] != 0) {
-            battle->unk423 = 6;
-            battle->unk440 = battle->unk43C + 6;
+            battle->effectStep.nextState = 9;
+        } else if (PAD_PRESSED(PAD_CROSS) && battle->effectStep.eligible[battle->effectStep.cursor + 6] != 0) {
+            battle->effectStep.nextState = 6;
+            battle->effectStep.choice = battle->effectStep.cursor + 6;
         }
         break;
     case 6:
-        if (screen->sprites[battle->unk440].state == 1) {
-            if (battle->unk438 == 0) {
+        if (screen->sprites[battle->effectStep.choice].state == 1) {
+            if (battle->effectStep.vars[4] == 0) {
                 for (i = 0; i < 3; i++) {
                     screen->sprites[i + 12].dimmed = 0;
                 }
@@ -1837,40 +1837,40 @@ s32 CARDGAME_pickTableCard(CardBattle *battle, CardScreen *screen) {
                     screen->sprites[i].dimmed = 0;
                 }
             }
-            battle->unk423 = 14;
+            battle->effectStep.nextState = 14;
         }
         break;
     case 7:
-        battle->unk424++;
-        if (battle->unk424 >= 11) {
-            battle->unk423 = 3;
-            if (battle->unk43C > battle->players[1].slotCount - 1) {
-                battle->unk43C = battle->players[1].slotCount - 1;
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 11) {
+            battle->effectStep.nextState = 3;
+            if (battle->effectStep.cursor > battle->players[1].slotCount - 1) {
+                battle->effectStep.cursor = battle->players[1].slotCount - 1;
             }
         }
         break;
     case 8:
-        battle->unk424++;
-        if (battle->unk424 >= 11) {
-            battle->unk423 = 2;
-            if (battle->unk43C > battle->players[0].slotCount - 1) {
-                battle->unk43C = battle->players[0].slotCount - 1;
+        battle->effectStep.time++;
+        if (battle->effectStep.time >= 11) {
+            battle->effectStep.nextState = 2;
+            if (battle->effectStep.cursor > battle->players[0].slotCount - 1) {
+                battle->effectStep.cursor = battle->players[0].slotCount - 1;
             }
         }
         break;
     case 11:
-        battle->unk423 = 14;
+        battle->effectStep.nextState = 14;
         break;
     case 9:
     case 10:
-        if (screen->panels[0].state == 0 && battle->unk498.unk0 == 0) {
-            battle->unk423 = 13;
+        if (screen->panels[0].state == 0 && battle->anim.current == CARD_ANIM_NONE) {
+            battle->effectStep.nextState = 13;
         }
         break;
     case 12:
         if (PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
-            battle->unk423 = 10;
+            battle->effectStep.nextState = 10;
         }
         break;
     case 13:
@@ -1878,10 +1878,10 @@ s32 CARDGAME_pickTableCard(CardBattle *battle, CardScreen *screen) {
         break;
     case 14:
         for (i = 0; i < 15; i++) {
-            battle->unk46F[i] = 0;
+            battle->effectStep.marked[i] = 0;
         }
         result = 2;
-        battle->unk46F[battle->unk440] = 1;
+        battle->effectStep.marked[battle->effectStep.choice] = 1;
         break;
     }
     return result;
@@ -1894,41 +1894,41 @@ void CARDGAME_setupCardChoice(CardBattle *battle, CardScreen *screen, s32 side, 
 
     switch (kind) {
     case 0:
-        battle->unk438 = side != 0 ? 11 : 5;
-        battle->unk434 = battle->sides[side].pile.handCount;
+        battle->effectStep.vars[4] = side != 0 ? 11 : 5;
+        battle->effectStep.vars[3] = battle->sides[side].pile.handCount;
         break;
     case 1:
     case 2:
         if (side == 0) {
-            battle->unk438 = 7;
+            battle->effectStep.vars[4] = 7;
             battle->sortCards(battle, battle->sides[0].pile.deck, battle->sides[0].pile.deckTop | (40 << 16), 2);
         } else {
-            battle->unk438 = 13;
+            battle->effectStep.vars[4] = 13;
             if (kind != 2) {
                 battle->sortCards(battle, battle->sides[1].pile.deck, battle->sides[1].pile.deckTop | (40 << 16), 3);
             }
         }
-        battle->unk434 = battle->sides[side].pile.deckCount;
+        battle->effectStep.vars[3] = battle->sides[side].pile.deckCount;
         break;
     case 3:
-        battle->unk438 = side != 0 ? 15 : 9;
-        battle->unk434 = battle->sides[side].pile.discardCount;
+        battle->effectStep.vars[4] = side != 0 ? 15 : 9;
+        battle->effectStep.vars[3] = battle->sides[side].pile.discardCount;
         break;
     }
     for (i = 0; i < 40; i++) {
-        if (i < battle->unk434) {
-            battle->unk46F[i] = 0;
-            if (battle->unk446[i] != 0) {
-                battle->unk498.unk6[i] = 0;
+        if (i < battle->effectStep.vars[3]) {
+            battle->effectStep.marked[i] = 0;
+            if (battle->effectStep.eligible[i] != 0) {
+                battle->anim.dimmed[i] = 0;
             } else {
-                battle->unk498.unk6[i] = 1;
+                battle->anim.dimmed[i] = 1;
             }
         }
     }
-    battle->unk423 = 1;
+    battle->effectStep.nextState = 1;
     CARDGAME_clearCardInfo(battle, screen);
-    battle->unk43C = 0;
-    battle->unk440 = -1;
+    battle->effectStep.cursor = 0;
+    battle->effectStep.choice = -1;
 }
 
 /* CARDGAME_setupCardChoice of side, kind 0 */
@@ -1939,31 +1939,31 @@ void CARDGAME_setupSideChoice(CardBattle *battle, CardScreen *screen, s32 side) 
 /* Moves the highlight along the hand by delta, raising the highlighted card */
 void CARDGAME_moveHandHighlight(CardBattle *battle, CardScreen *screen, s32 delta) {
     SOUND.playSound(SOUND_MENU_MOVE);
-    screen->startSlide(screen, battle->unk43C, 5, screen->getHandOffset(battle->unk434, battle->unk43C) + 0x1800, 0x6100);
-    screen->sprites[battle->unk43C].unk48 &= ~1;
-    screen->sprites[battle->unk43C].moving = 0;
-    battle->unk43C += delta;
-    screen->startSlide(screen, battle->unk43C, 1, screen->getHandOffset(battle->unk434, battle->unk43C) + 0x1800, 0x5C00);
-    screen->sprites[battle->unk43C].unk48 |= 1;
-    screen->sprites[battle->unk43C].moving = 1;
+    screen->startSlide(screen, battle->effectStep.cursor, 5, screen->getHandOffset(battle->effectStep.vars[3], battle->effectStep.cursor) + 0x1800, 0x6100);
+    screen->sprites[battle->effectStep.cursor].highlight &= ~1;
+    screen->sprites[battle->effectStep.cursor].moving = 0;
+    battle->effectStep.cursor += delta;
+    screen->startSlide(screen, battle->effectStep.cursor, 1, screen->getHandOffset(battle->effectStep.vars[3], battle->effectStep.cursor) + 0x1800, 0x5C00);
+    screen->sprites[battle->effectStep.cursor].highlight |= 1;
+    screen->sprites[battle->effectStep.cursor].moving = 1;
 }
 
 /* Moves the highlight along the hand with left and right; cross picks a playable card */
 void CARDGAME_browseHand(CardBattle *battle, CardScreen *screen) {
-    screen->sprites[battle->unk43C].unk48 |= 1;
-    screen->sprites[battle->unk43C].moving = 1;
+    screen->sprites[battle->effectStep.cursor].highlight |= 1;
+    screen->sprites[battle->effectStep.cursor].moving = 1;
     if ((PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_LEFT))) | (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_LEFT)))) {
-        if (battle->unk43C > 0) {
+        if (battle->effectStep.cursor > 0) {
             CARDGAME_moveHandHighlight(battle, screen, -1);
         }
     } else if ((PAD.getRepeated(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT))) | (PAD.getPressed(0) & (1 << PAD.getButtonBit(0, PAD_RIGHT)))) {
-        if (battle->unk43C < battle->unk434 - 1) {
+        if (battle->effectStep.cursor < battle->effectStep.vars[3] - 1) {
             CARDGAME_moveHandHighlight(battle, screen, 1);
         }
-    } else if (PAD_PRESSED(PAD_CROSS) && battle->unk446[battle->unk43C] != 0) {
-        battle->unk423 = 3;
+    } else if (PAD_PRESSED(PAD_CROSS) && battle->effectStep.eligible[battle->effectStep.cursor] != 0) {
+        battle->effectStep.nextState = 3;
     }
-    battle->unk445 = 0;
+    battle->effectStep.flags = 0;
 }
 
 /* Lets a player pick a card of a row (set up by CARDGAME_setupCardChoice): 2 once one is
@@ -1972,11 +1972,11 @@ s32 CARDGAME_chooseCard(CardBattle *battle, CardScreen *screen, s32 mode) {
     s32 result = 0;
     s32 card;
 
-    if (battle->unk423 != 0) {
-        switch (battle->unk423) {
+    if (battle->effectStep.nextState != 0) {
+        switch (battle->effectStep.nextState) {
         case 1:
-            battle->unk498.unk1 = battle->unk438;
-            switch (battle->unk438) {
+            battle->anim.next = battle->effectStep.vars[4];
+            switch (battle->effectStep.vars[4]) {
             case 5:
                 CARDGAME_selectionText = 0x19;
                 break;
@@ -1997,26 +1997,26 @@ s32 CARDGAME_chooseCard(CardBattle *battle, CardScreen *screen, s32 mode) {
             if (mode == 2) {
                 screen->openPanel(screen, 0);
             }
-            battle->unk42C = 0;
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            battle->unk440 = 0;
-            battle->unk444 = 0;
+            battle->effectStep.vars[1] = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.choice = 0;
+            battle->effectStep.count = 0;
             break;
         case 3:
             SOUND.playSound(SOUND_MENU_CONFIRM);
             /* fallthrough */
         case 2:
-            battle->unk428 = 0;
-            battle->unk424 = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
             break;
         case 4:
             if (mode == 1) {
                 screen->scaleSprite(screen, 15, 8, 0, 0x1000);
             }
-            battle->unk428 = 0;
-            battle->unk424 = 0;
-            battle->unk498.unk1 = battle->unk498.unk3;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.time = 0;
+            battle->anim.next = battle->anim.hide;
             screen->closeWindow(screen, 4);
             screen->closeWindow(screen, 0);
             screen->closeWindow(screen, 1);
@@ -2024,44 +2024,44 @@ s32 CARDGAME_chooseCard(CardBattle *battle, CardScreen *screen, s32 mode) {
             screen->closeWindow(screen, 3);
             break;
         }
-        battle->stepState = battle->unk423;
-        battle->unk423 = 0;
+        battle->effectStep.state = battle->effectStep.nextState;
+        battle->effectStep.nextState = 0;
     }
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        battle->unk42C = CARDGAME_openStepWindows(battle, screen, 2, CARDGAME_selectionText, battle->unk424, battle->unk42C);
+        battle->effectStep.vars[1] = CARDGAME_openStepWindows(battle, screen, 2, CARDGAME_selectionText, battle->effectStep.time, battle->effectStep.vars[1]);
         CARDGAME_showCardInfo(battle, screen, 0);
-        if (battle->unk424 == 2 && mode == 1) {
+        if (battle->effectStep.time == 2 && mode == 1) {
 #if VERSION_US
             screen->addSprite(screen, 15, 0x1800, 0x9000);
 #elif VERSION_EU
             screen->addSprite(screen, 15, CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][0], CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][1]);
 #endif
-            screen->setSpriteCard(screen, 15, battle->record.entries[battle->record.entryCount].unk0);
+            screen->setSpriteCard(screen, 15, battle->record.plays[battle->record.playCount].card);
             screen->sprites[15].scaleX = 0;
             screen->scaleSprite(screen, 15, 8, 0x1000, 0x1000);
         }
-        if (battle->unk498.unk3C * 4 + 14 < battle->unk424) {
-            battle->unk423 = 2;
+        if (battle->anim.count * 4 + 14 < battle->effectStep.time) {
+            battle->effectStep.nextState = 2;
             screen->startSlide(screen, 0, 5, 0x1800, 0x5C00);
-            screen->sprites[battle->unk43C].unk48 |= 1;
-            screen->sprites[battle->unk43C].moving = 1;
+            screen->sprites[battle->effectStep.cursor].highlight |= 1;
+            screen->sprites[battle->effectStep.cursor].moving = 1;
         }
-        battle->unk424++;
+        battle->effectStep.time++;
         break;
     case 2:
         CARDGAME_browseHand(battle, screen);
         if (mode == 1 && PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
-            battle->unk445 = 1;
-            battle->unk423 = 4;
+            battle->effectStep.flags = 1;
+            battle->effectStep.nextState = 4;
         }
         CARDGAME_showCardInfo(battle, screen, 0);
         break;
     case 3:
         if (CARDGAME_stepPulseCard(battle, screen)) {
-            battle->unk445 = 2;
-            battle->unk423 = 4;
+            battle->effectStep.flags = 2;
+            battle->effectStep.nextState = 4;
             if (mode == 2) {
                 screen->closePanel(screen, 0);
             }
@@ -2069,56 +2069,56 @@ s32 CARDGAME_chooseCard(CardBattle *battle, CardScreen *screen, s32 mode) {
         CARDGAME_showCardInfo(battle, screen, 0);
         break;
     case 4:
-        if (battle->unk434 * 4 + 5 < battle->unk424++) {
-            battle->unk440 = battle->unk43C;
-            switch (battle->unk438) {
+        if (battle->effectStep.vars[3] * 4 + 5 < battle->effectStep.time++) {
+            battle->effectStep.choice = battle->effectStep.cursor;
+            switch (battle->effectStep.vars[4]) {
             case 7:
                 /* the picked card goes to the top of the hand */
                 card = battle->sides[0].pile.deck[battle->sides[0].pile.deckTop];
 
-                battle->sides[0].pile.deck[battle->sides[0].pile.deckTop] = battle->sides[0].pile.deck[battle->sides[0].pile.deckTop + battle->unk440];
-                battle->sides[0].pile.deck[battle->sides[0].pile.deckTop + battle->unk440] = card;
-                battle->unk440 = battle->sides[0].pile.deckTop;
+                battle->sides[0].pile.deck[battle->sides[0].pile.deckTop] = battle->sides[0].pile.deck[battle->sides[0].pile.deckTop + battle->effectStep.choice];
+                battle->sides[0].pile.deck[battle->sides[0].pile.deckTop + battle->effectStep.choice] = card;
+                battle->effectStep.choice = battle->sides[0].pile.deckTop;
                 battle->shufflePile(battle, battle->sides[0].pile.deckTop + 1, battle->sides[0].pile.deckCount - 1);
                 break;
             case 13:
-                battle->unk440 = battle->unk30A[battle->unk440 + battle->sides[1].pile.deckTop].unk0;
+                battle->effectStep.choice = battle->opponentDraws[battle->effectStep.choice + battle->sides[1].pile.deckTop].order;
                 CARDGAME_sortOpponentCards(battle);
                 break;
             }
-            battle->unk46F[battle->unk440] = 1;
-            result = battle->unk445;
-            battle->unk423 = 0;
-            battle->unk421 = 0;
-            battle->unk420 = 0;
-            battle->unk421 = 0;
+            battle->effectStep.marked[battle->effectStep.choice] = 1;
+            result = battle->effectStep.flags;
+            battle->effectStep.nextState = 0;
+            battle->effectStep.next = 0;
+            battle->effectStep.id = 0;
+            battle->effectStep.next = 0;
         }
         break;
     }
     return result;
 }
 
-/* The computer marks (unk46F) the cards of its hand it plays: up to six that
+/* The computer marks (effectStep.marked) the cards of its hand it plays: up to six that
    can be played, but not its kind 5 ones, paying their points; 1 */
 s32 CARDGAME_pickComputerCards(CardBattle *battle, CardScreen *screen) {
     s32 i;
     s32 card;
 
     for (i = 0; i < battle->sides[1].pile.handCount; i++) {
-        battle->unk46F[i] = 0;
-        if (battle->unk444 < 6 && CARDGAME_canPlayCard(battle, battle->sides[1].pile.points, battle->sides[1].pile.hand[i])) {
+        battle->effectStep.marked[i] = 0;
+        if (battle->effectStep.count < 6 && CARDGAME_canPlayCard(battle, battle->sides[1].pile.points, battle->sides[1].pile.hand[i])) {
             card = battle->sides[1].pile.hand[i];
-            if (battle->unk35C[card - 40].unk0 != 5) {
+            if (battle->opponentPlans[card - 40].kind != 5) {
                 CARDGAME_addCardPoints(battle, screen, &battle->sides[1].pile, 0, card);
-                battle->unk46F[i] = 1;
-                battle->unk444++;
+                battle->effectStep.marked[i] = 1;
+                battle->effectStep.count++;
             }
         }
     }
     return 1;
 }
 
-/* Sets unk440 to the unk446-marked card of the pile unk438 picks with the highest image unk8 (the lowest when lowest != 0), or -1 */
+/* Sets effectStep.choice to the effectStep.eligible-marked card of the pile effectStep.vars[4] picks with the highest image unk8 (the lowest when lowest != 0), or -1 */
 void CARDGAME_pickBestPileCard(CardBattle *battle, CardScreen *screen, s32 lowest) {
     CardDrawer drawer;
     CardImageHeader *header;
@@ -2130,7 +2130,7 @@ void CARDGAME_pickBestPileCard(CardBattle *battle, CardScreen *screen, s32 lowes
 
     /* the match depends on cases 11 and 13 having bodies of their own in
        both switches */
-    switch (battle->unk438) {
+    switch (battle->effectStep.vars[4]) {
     case 5:
         count = battle->sides[0].pile.handCount;
         break;
@@ -2155,8 +2155,8 @@ void CARDGAME_pickBestPileCard(CardBattle *battle, CardScreen *screen, s32 lowes
     initCardDrawer(&drawer);
     best = -1;
     for (i = 0; i < count; i++) {
-        if (battle->unk446[i] != 0) {
-            switch (battle->unk438) {
+        if (battle->effectStep.eligible[i] != 0) {
+            switch (battle->effectStep.vars[4]) {
             case 5:
                 card = battle->sides[0].pile.hand[i];
                 break;
@@ -2194,31 +2194,31 @@ void CARDGAME_pickBestPileCard(CardBattle *battle, CardScreen *screen, s32 lowes
             }
         }
     }
-    battle->unk440 = best;
+    battle->effectStep.choice = best;
 }
 
-/* The computer's pick from its deck: the first card flagged (unk446) from its
-   top up to unk41B, or else the last one flagged */
+/* The computer's pick from its deck: the first card flagged (effectStep.eligible) from its
+   top up to drawEnd, or else the last one flagged */
 void CARDGAME_pickComputerDeckCard(CardBattle *battle, CardScreen *screen) {
     s32 i;
     s32 found = 0;
 
-    for (i = battle->sides[1].pile.deckTop; i < battle->unk41B; i++) {
-        if (battle->unk446[i - battle->sides[1].pile.deckTop] != 0) {
-            battle->unk440 = i;
+    for (i = battle->sides[1].pile.deckTop; i < battle->drawEnd; i++) {
+        if (battle->effectStep.eligible[i - battle->sides[1].pile.deckTop] != 0) {
+            battle->effectStep.choice = i;
             found = 1;
             break;
         }
     }
     if (!found) {
         for (i = 39; battle->sides[1].pile.deckTop < i; i--) {
-            if (battle->unk446[i - battle->sides[1].pile.deckTop] != 0) {
+            if (battle->effectStep.eligible[i - battle->sides[1].pile.deckTop] != 0) {
                 break;
             }
         }
-        battle->unk440 = i;
+        battle->effectStep.choice = i;
     }
-    battle->unk46F[battle->unk440] = 1;
+    battle->effectStep.marked[battle->effectStep.choice] = 1;
 }
 
 /* Picks the player's card with the lowest header value unk8 */
@@ -2237,7 +2237,7 @@ void CARDGAME_pickLowestPlayerCard(CardBattle *battle, CardScreen *screen) {
             best = i;
         }
     }
-    battle->unk440 = best;
+    battle->effectStep.choice = best;
 }
 
 /* Shows the card being played as sprite 15 and the panels with flags, and
@@ -2247,35 +2247,35 @@ void CARDGAME_startPileChoice(CardBattle *battle, CardScreen *screen, s32 arg2) 
 
     screen->resetPanels(screen);
     screen->setPanelFlags(screen, arg2);
-    battle->unk440 = 0;
-    battle->stepState = 1;
-    battle->unk438 = arg2;
+    battle->effectStep.choice = 0;
+    battle->effectStep.state = 1;
+    battle->effectStep.vars[4] = arg2;
     screen->addSprite(screen, 15, 0xE500, 0x6100);
-    screen->setSpriteCard(screen, 15, battle->record.entries[battle->record.entryCount].unk0);
+    screen->setSpriteCard(screen, 15, battle->record.plays[battle->record.playCount].card);
     screen->sprites[15].scaleX = 0;
     screen->scaleSprite(screen, 15, 8, 0x1000, 0x1000);
     screen->openPanels(screen);
-    battle->unk498.unk5 = 2;
-    battle->unk498.unk6[15] = 0;
+    battle->anim.dimAll = CARD_ANIM_DIM_ALL;
+    battle->anim.dimmed[15] = 0;
     for (i = 0; i < 15; i++) {
-        battle->unk46F[i] = 0;
+        battle->effectStep.marked[i] = 0;
     }
-    battle->unk498.unk1 = 1;
+    battle->anim.next = CARD_ANIM_SHOW_SLOTS;
 }
 
-/* The steps of CARDGAME_startPileChoice: confirming is allowed when the pile the panel flags (unk438) pick has cards; 1 then, 0 on leaving with triangle, -1 until then */
+/* The steps of CARDGAME_startPileChoice: confirming is allowed when the pile the panel flags (effectStep.vars[4]) pick has cards; 1 then, 0 on leaving with triangle, -1 until then */
 s32 CARDGAME_stepPileChoice(CardBattle *battle, CardScreen *screen) {
     s32 result = -1;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (screen->panels[0].state == 2 && battle->unk498.unk0 == 0) {
-            battle->stepState = 2;
+        if (screen->panels[0].state == 2 && battle->anim.current == CARD_ANIM_NONE) {
+            battle->effectStep.state = 2;
         }
         break;
     case 2:
         if (PAD_PRESSED(PAD_CROSS)) {
-            switch (battle->unk438) {
+            switch (battle->effectStep.vars[4]) {
             case 0x400:
             case 0x1400:
                 if (battle->sides[0].pile.discardCount != 0) {
@@ -2312,14 +2312,14 @@ s32 CARDGAME_stepPileChoice(CardBattle *battle, CardScreen *screen) {
         } else if (PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
             screen->closePanels(screen);
-            battle->unk440 = 1;
-            battle->stepState = 3;
+            battle->effectStep.choice = 1;
+            battle->effectStep.state = 3;
             screen->scaleSprite(screen, 15, 4, 0, 0x1000);
-            battle->unk498.unk1 = 2;
+            battle->anim.next = CARD_ANIM_HIDE_SLOTS;
         }
         break;
     case 3:
-        if (screen->panels[0].state == 0 && battle->unk498.unk0 == 0) {
+        if (screen->panels[0].state == 0 && battle->anim.current == CARD_ANIM_NONE) {
             screen->removeSprite(screen, 15);
             screen->clearPanelFlags(screen);
             result = 0;
@@ -2339,27 +2339,27 @@ void CARDGAME_startPreviousCardChoice(CardBattle *battle, CardScreen *screen, s3
     s32 sprite;
 
     screen->resetPanels(screen);
-    battle->unk440 = 0;
-    battle->stepState = 1;
-    battle->unk438 = 0;
+    battle->effectStep.choice = 0;
+    battle->effectStep.state = 1;
+    battle->effectStep.vars[4] = 0;
     screen->addSprite(screen, 15, 0xE500, 0x6100);
-    screen->setSpriteCard(screen, 15, battle->record.entries[battle->record.entryCount].unk0);
+    screen->setSpriteCard(screen, 15, battle->record.plays[battle->record.playCount].card);
     screen->sprites[15].scaleX = 0;
     screen->scaleSprite(screen, 15, 8, 0x1000, 0x1000);
     screen->openPanels(screen);
     for (i = 0; i < 15; i++) {
-        battle->unk498.unk6[i] = 1;
+        battle->anim.dimmed[i] = 1;
     }
-    battle->unk498.unk6[15] = 0;
+    battle->anim.dimmed[15] = 0;
     for (j = 0; j < 15; j++) {
-        battle->unk46F[j] = 0;
+        battle->effectStep.marked[j] = 0;
     }
-    if (battle->record.entryCount != 0) {
+    if (battle->record.playCount != 0) {
         ok = 0;
         if (mode == 0) {
             ok = 1;
         } else if (mode == 1) {
-            card = battle->record.entries[battle->record.entryCount - 1].unk0;
+            card = battle->record.plays[battle->record.playCount - 1].card;
             initCardDrawer(&drawer);
             drawer.setCard(battle->cards[card] + 1);
             if (drawer.card->color == 6) {
@@ -2367,13 +2367,13 @@ void CARDGAME_startPreviousCardChoice(CardBattle *battle, CardScreen *screen, s3
             }
         }
         if (ok) {
-            sprite = battle->record.entryCount + 11;
-            screen->sprites[sprite].unk48 |= 1;
-            battle->unk498.unk6[sprite] = 0;
-            battle->unk438 = 1;
+            sprite = battle->record.playCount + 11;
+            screen->sprites[sprite].highlight |= 1;
+            battle->anim.dimmed[sprite] = 0;
+            battle->effectStep.vars[4] = 1;
         }
     }
-    battle->unk498.unk1 = 1;
+    battle->anim.next = CARD_ANIM_SHOW_SLOTS;
 }
 
 /* The steps of CARDGAME_startPreviousCardChoice: confirming takes the card before the last one played, if it can be taken; 1 then, 0 on leaving with triangle, -1 until then */
@@ -2381,36 +2381,36 @@ s32 CARDGAME_stepPreviousCardChoice(CardBattle *battle, CardScreen *screen) {
     s32 result = -1;
     s32 sprite;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (screen->panels[0].state == 2 && battle->unk498.unk0 == 0) {
-            battle->stepState = 2;
-            if (battle->record.entryCount != 0) {
-                screen->sprites[battle->record.entryCount + 11].unk48 |= 1;
+        if (screen->panels[0].state == 2 && battle->anim.current == CARD_ANIM_NONE) {
+            battle->effectStep.state = 2;
+            if (battle->record.playCount != 0) {
+                screen->sprites[battle->record.playCount + 11].highlight |= 1;
             }
         }
         break;
     case 2:
         if (PAD_PRESSED(PAD_CROSS)) {
-            if (battle->unk438 == 1) {
+            if (battle->effectStep.vars[4] == 1) {
                 SOUND.playSound(SOUND_MENU_CONFIRM);
-                sprite = battle->record.entryCount + 11;
-                screen->sprites[sprite].unk48 &= ~1;
-                battle->unk46F[sprite] = battle->record.entryCount + 1;
+                sprite = battle->record.playCount + 11;
+                screen->sprites[sprite].highlight &= ~1;
+                battle->effectStep.marked[sprite] = battle->record.playCount + 1;
                 result = 1;
-                battle->record.entries[battle->record.entryCount - 1].unk2 = battle->record.entryCount;
+                battle->record.plays[battle->record.playCount - 1].unk2 = battle->record.playCount;
             }
         } else if (PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
             screen->closePanels(screen);
-            battle->unk440 = 1;
-            battle->stepState = 3;
+            battle->effectStep.choice = 1;
+            battle->effectStep.state = 3;
             screen->scaleSprite(screen, 15, 4, 0, 0x1000);
-            battle->unk498.unk1 = 2;
+            battle->anim.next = CARD_ANIM_HIDE_SLOTS;
         }
         break;
     case 3:
-        if (screen->panels[0].state == 0 && battle->unk498.unk0 == 0) {
+        if (screen->panels[0].state == 0 && battle->anim.current == CARD_ANIM_NONE) {
             screen->removeSprite(screen, 15);
             screen->clearPanelFlags(screen);
             result = 0;
@@ -2420,7 +2420,7 @@ s32 CARDGAME_stepPreviousCardChoice(CardBattle *battle, CardScreen *screen) {
     return result;
 }
 
-/* Shows the card being played as sprite 15 and lets the slots out that its target picks (a side of owner's, both, or a card colour) be chosen: unk46F marks them, unk438 is 1 if there are any */
+/* Shows the card being played as sprite 15 and lets the slots out that its target picks (a side of owner's, both, or a card colour) be chosen: effectStep.marked marks them, effectStep.vars[4] is 1 if there are any */
 void CARDGAME_showTargetSlots(CardBattle *battle, CardScreen *screen, s32 owner, s32 target) {
     s32 i;
     s32 ok;
@@ -2428,18 +2428,18 @@ void CARDGAME_showTargetSlots(CardBattle *battle, CardScreen *screen, s32 owner,
     s32 j;
 
     screen->resetPanels(screen);
-    battle->unk440 = 0;
-    battle->stepState = 1;
+    battle->effectStep.choice = 0;
+    battle->effectStep.state = 1;
     screen->addSprite(screen, 15, 0xE500, 0x6100);
-    screen->setSpriteCard(screen, 15, battle->record.entries[battle->record.entryCount].unk0);
+    screen->setSpriteCard(screen, 15, battle->record.plays[battle->record.playCount].card);
     screen->sprites[15].scaleX = 0;
     screen->scaleSprite(screen, 15, 8, 0x1000, 0x1000);
     screen->openPanels(screen);
-    battle->unk438 = 0;
+    battle->effectStep.vars[4] = 0;
     for (i = 0, ok = 0; i < 12; i++, ok = 0) {
-        battle->unk46F[i] = 0;
-        battle->unk498.unk6[i] = 1;
-        screen->sprites[i].unk48 &= ~1;
+        battle->effectStep.marked[i] = 0;
+        battle->anim.dimmed[i] = 1;
+        screen->sprites[i].highlight &= ~1;
         if (i < 6) {
             if (i >= battle->players[0].slotCount) {
                 continue;
@@ -2500,62 +2500,62 @@ void CARDGAME_showTargetSlots(CardBattle *battle, CardScreen *screen, s32 owner,
             break;
         }
         if (ok) {
-            battle->unk46F[i] = 1;
-            battle->unk498.unk6[i] = 0;
-            battle->unk438 = 1;
+            battle->effectStep.marked[i] = 1;
+            battle->anim.dimmed[i] = 0;
+            battle->effectStep.vars[4] = 1;
         }
     }
     for (j = 0; j < 3; j++) {
-        battle->unk498.unk6[j + 12] = 1;
+        battle->anim.dimmed[j + 12] = 1;
     }
-    battle->unk498.unk6[15] = 0;
-    battle->unk498.unk1 = 1;
+    battle->anim.dimmed[15] = 0;
+    battle->anim.next = CARD_ANIM_SHOW_SLOTS;
 }
 
-/* The steps of CARDGAME_showTargetSlots: highlights the marked slots (unk46F); confirming needs one (unk438); 1 then, 0 on leaving with triangle, -1 until then */
+/* The steps of CARDGAME_showTargetSlots: highlights the marked slots (effectStep.marked); confirming needs one (effectStep.vars[4]); 1 then, 0 on leaving with triangle, -1 until then */
 s32 CARDGAME_stepTargetSlots(CardBattle *battle, CardScreen *screen) {
     s32 result = -1;
     s32 i;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (screen->panels[0].state == 2 && battle->unk498.unk0 == 0) {
-            battle->stepState = 2;
+        if (screen->panels[0].state == 2 && battle->anim.current == CARD_ANIM_NONE) {
+            battle->effectStep.state = 2;
             for (i = 0; i < 12; i++) {
-                if (battle->unk46F[i] != 0) {
-                    screen->sprites[i].unk48 |= 1;
+                if (battle->effectStep.marked[i] != 0) {
+                    screen->sprites[i].highlight |= 1;
                 }
             }
         }
         break;
     case 2:
         if (PAD_PRESSED(PAD_CROSS)) {
-            if (battle->unk438 != 0) {
+            if (battle->effectStep.vars[4] != 0) {
                 SOUND.playSound(SOUND_MENU_CONFIRM);
                 result = 1;
                 for (i = 0; i < 12; i++) {
-                    if (battle->unk46F[i] != 0) {
-                        screen->sprites[i].unk48 &= ~1;
+                    if (battle->effectStep.marked[i] != 0) {
+                        screen->sprites[i].highlight &= ~1;
                     }
                 }
             }
         } else if (PAD_PRESSED(PAD_TRIANGLE)) {
             SOUND.playSound(SOUND_MENU_CANCEL);
             screen->closePanels(screen);
-            battle->unk440 = 1;
-            battle->stepState = 3;
+            battle->effectStep.choice = 1;
+            battle->effectStep.state = 3;
             screen->scaleSprite(screen, 15, 4, 0, 0x1000);
-            battle->unk498.unk1 = 2;
+            battle->anim.next = CARD_ANIM_HIDE_SLOTS;
         }
         break;
     case 3:
-        if (screen->panels[0].state == 0 && battle->unk498.unk0 == 0) {
+        if (screen->panels[0].state == 0 && battle->anim.current == CARD_ANIM_NONE) {
             screen->removeSprite(screen, 15);
             screen->clearPanelFlags(screen);
             result = 0;
             for (i = 0; i < 12; i++) {
-                if (battle->unk46F[i] != 0) {
-                    screen->sprites[i].unk48 &= ~1;
+                if (battle->effectStep.marked[i] != 0) {
+                    screen->sprites[i].highlight &= ~1;
                 }
             }
         }
@@ -2588,15 +2588,15 @@ s32 CARDGAME_addColorCount(CardBattle *battle, CardScreen *screen, s32 side, s32
 s32 CARDGAME_stepShakeAway(CardBattle *battle, CardScreen *screen, s32 index) {
     s32 done = 0;
 
-    switch (battle->unk424) {
+    switch (battle->effectStep.time) {
     case 0:
     default:
         screen->startShake(screen, index);
-        battle->unk424 = 1;
+        battle->effectStep.time = 1;
         break;
     case 1:
         if (screen->sprites[index].state == 1) {
-            battle->unk424 = 2;
+            battle->effectStep.time = 2;
             screen->scaleSprite(screen, index, 5, 0, 0x1000);
         }
         break;
@@ -2616,12 +2616,12 @@ void CARDGAME_discardSlotCard(CardBattle *battle, CardScreen *screen, s32 side, 
     case 0:
         battle->sides[0].pile.discards[battle->sides[0].pile.discardCount] = battle->players[side].slots[index].card;
         battle->sides[0].pile.discardCount++;
-        screen->setPanelValue(screen, 0, 7, battle->sides[0].pile.discardCount);
+        screen->setPanelValue(screen, 0, CARD_PANEL_DISCARDS, battle->sides[0].pile.discardCount);
         break;
     case 1:
         battle->sides[1].pile.discards[battle->sides[1].pile.discardCount] = battle->players[side].slots[index].card;
         battle->sides[1].pile.discardCount++;
-        screen->setPanelValue(screen, 1, 7, battle->sides[1].pile.discardCount);
+        screen->setPanelValue(screen, 1, CARD_PANEL_DISCARDS, battle->sides[1].pile.discardCount);
         break;
     }
 }
@@ -2641,10 +2641,10 @@ s32 CARDGAME_stepDiscardSlotCard(CardBattle *battle, CardScreen *screen, s32 sid
 s32 CARDGAME_stepSendOff(CardBattle *battle, CardScreen *screen, s32 index) {
     s32 done = 0;
 
-    switch (battle->unk424) {
+    switch (battle->effectStep.time) {
     case 0:
     default:
-        battle->unk424 = 1;
+        battle->effectStep.time = 1;
         screen->sprites[index].moving = 1;
         screen->startMove(screen, index, 15, -0x5000, 0x6100);
         screen->setSpriteScale(screen, index, 0x1200, 0x1200);
@@ -2666,12 +2666,12 @@ void CARDGAME_returnSlotCard(CardBattle *battle, CardScreen *screen, s32 side, s
     case 0:
         battle->sides[0].pile.hand[battle->sides[0].pile.handCount] = battle->players[side].slots[index].card;
         battle->sides[0].pile.handCount++;
-        screen->setPanelValue(screen, 0, 6, battle->sides[0].pile.handCount);
+        screen->setPanelValue(screen, 0, CARD_PANEL_HAND, battle->sides[0].pile.handCount);
         break;
     case 1:
         battle->sides[1].pile.hand[battle->sides[1].pile.handCount] = battle->players[side].slots[index].card;
         battle->sides[1].pile.handCount++;
-        screen->setPanelValue(screen, 1, 6, battle->sides[1].pile.handCount);
+        screen->setPanelValue(screen, 1, CARD_PANEL_HAND, battle->sides[1].pile.handCount);
         break;
     }
 }
@@ -2694,7 +2694,7 @@ void CARDGAME_startSlotEffects(CardBattle *battle, CardScreen *screen, s32 arg2)
     s32 i;
 
     for (i = 0; i < 12; i++) {
-        if (battle->unk46F[i] != 0) {
+        if (battle->effectStep.marked[i] != 0) {
             if (i < 6) {
                 if (i < battle->players[0].slotCount) {
                     screen->startEffect(screen, i, arg2);
@@ -2717,51 +2717,51 @@ void CARDGAME_startSlotEffects(CardBattle *battle, CardScreen *screen, s32 arg2)
             break;
         }
     }
-    battle->unk424 = 0;
+    battle->effectStep.time = 0;
 }
 
-/* Counts unk424 up by the frame time; whether it passed duration */
+/* Counts effectStep.time up by the frame time; whether it passed duration */
 s32 CARDGAME_waitFor(CardBattle *battle, CardScreen *screen, s32 duration) {
-    battle->unk424 += GFX.funcs.getFrameTime();
-    return duration < battle->unk424;
+    battle->effectStep.time += GFX.funcs.getFrameTime();
+    return duration < battle->effectStep.time;
 }
 
-/* Starts moving the marked slots (unk46F) by an offset packed as x << 16 | y */
+/* Starts moving the marked slots (effectStep.marked) by an offset packed as x << 16 | y */
 void CARDGAME_moveMarkedSlots(CardBattle *battle, CardScreen *screen, s32 offset, s32 mode) {
     s16 dx = offset >> 16;
     s16 dy = offset;
     s32 i;
 
-    battle->unk424 = 0;
-    battle->unk428 = dx;
-    battle->unk42C = dy;
-    battle->unk430 = dx;
+    battle->effectStep.time = 0;
+    battle->effectStep.vars[0] = dx;
+    battle->effectStep.vars[1] = dy;
+    battle->effectStep.vars[2] = dx;
     if (dx < 0) {
-        battle->unk430 = -dx;
+        battle->effectStep.vars[2] = -dx;
     }
-    battle->unk434 = dy;
+    battle->effectStep.vars[3] = dy;
     if (dy < 0) {
-        battle->unk434 = -dy;
+        battle->effectStep.vars[3] = -dy;
     }
     for (i = 0; i < 12; i++) {
-        if (battle->unk46F[i] != 0) {
+        if (battle->effectStep.marked[i] != 0) {
             if (i < 6) {
                 if (i >= battle->players[0].slotCount) {
                     continue;
                 }
-                battle->players[0].slots[i].unk2 += dx;
-                battle->players[0].slots[i].unk4 += dy;
+                battle->players[0].slots[i].apBonus += dx;
+                battle->players[0].slots[i].hpBonus += dy;
                 if (mode == 2) {
-                    battle->players[0].slots[i].unk2 = battle->players[0].slots[i].unk6 * -1;
+                    battle->players[0].slots[i].apBonus = battle->players[0].slots[i].ap * -1;
                 }
             } else {
                 if (i - 6 >= battle->players[1].slotCount) {
                     continue;
                 }
-                battle->players[1].slots[i - 6].unk2 += dx;
-                battle->players[1].slots[i - 6].unk4 += dy;
+                battle->players[1].slots[i - 6].apBonus += dx;
+                battle->players[1].slots[i - 6].hpBonus += dy;
                 if (mode == 2) {
-                    battle->players[1].slots[i - 6].unk2 = battle->players[1].slots[i - 6].unk6 * -1;
+                    battle->players[1].slots[i - 6].apBonus = battle->players[1].slots[i - 6].ap * -1;
                 }
             }
             if (mode == 0) {
@@ -2773,98 +2773,98 @@ void CARDGAME_moveMarkedSlots(CardBattle *battle, CardScreen *screen, s32 offset
     }
 }
 
-/* Counts the marked slots' unk6 and unk8 up or down by one a frame (sign of unk428/unk42C, for unk430/unk434 frames, clamped to 0..99) with their sprites; when both are over, marks the slots whose unk8 reached 0 */
+/* Counts the marked slots' ap and hp up or down by one a frame (sign of effectStep.vars[0]/effectStep.vars[1], for effectStep.vars[2]/effectStep.vars[3] frames, clamped to 0..99) with their sprites; when both are over, marks the slots whose hp reached 0 */
 s32 CARDGAME_stepSlotStats(CardBattle *battle, CardScreen *screen) {
     s32 done = 1;
     s32 i;
 
-    if (battle->unk424 < battle->unk430) {
+    if (battle->effectStep.time < battle->effectStep.vars[2]) {
         for (i = 0; i < 12; i++) {
-            if (battle->unk46F[i] != 0) {
+            if (battle->effectStep.marked[i] != 0) {
                 if (i < 6) {
                     if (i < battle->players[0].slotCount) {
-                        if (battle->unk428 > 0) {
-                            if (battle->players[0].slots[i].unk6 < 99) {
-                                battle->players[0].slots[i].unk6++;
-                                screen->sprites[i].unk43++;
+                        if (battle->effectStep.vars[0] > 0) {
+                            if (battle->players[0].slots[i].ap < 99) {
+                                battle->players[0].slots[i].ap++;
+                                screen->sprites[i].ap++;
                             }
-                        } else if (battle->players[0].slots[i].unk6 > 0) {
-                            battle->players[0].slots[i].unk6--;
-                            screen->sprites[i].unk43--;
+                        } else if (battle->players[0].slots[i].ap > 0) {
+                            battle->players[0].slots[i].ap--;
+                            screen->sprites[i].ap--;
                         }
                     }
                 } else if (i - 6 < battle->players[1].slotCount) {
-                    if (battle->unk428 > 0) {
-                        if (battle->players[1].slots[i - 6].unk6 < 99) {
-                            battle->players[1].slots[i - 6].unk6++;
-                            screen->sprites[i].unk43++;
+                    if (battle->effectStep.vars[0] > 0) {
+                        if (battle->players[1].slots[i - 6].ap < 99) {
+                            battle->players[1].slots[i - 6].ap++;
+                            screen->sprites[i].ap++;
                         }
-                    } else if (battle->players[1].slots[i - 6].unk6 > 0) {
-                        battle->players[1].slots[i - 6].unk6--;
-                        screen->sprites[i].unk43--;
+                    } else if (battle->players[1].slots[i - 6].ap > 0) {
+                        battle->players[1].slots[i - 6].ap--;
+                        screen->sprites[i].ap--;
                     }
                 }
             }
         }
         done = 0;
     }
-    if (battle->unk424 < battle->unk434) {
+    if (battle->effectStep.time < battle->effectStep.vars[3]) {
         for (i = 0; i < 12; i++) {
-            if (battle->unk46F[i] != 0) {
+            if (battle->effectStep.marked[i] != 0) {
                 if (i < 6) {
                     if (i < battle->players[0].slotCount) {
-                        if (battle->unk42C > 0) {
-                            if (battle->players[0].slots[i].unk8 < 99) {
-                                battle->players[0].slots[i].unk8++;
-                                screen->sprites[i].unk44++;
+                        if (battle->effectStep.vars[1] > 0) {
+                            if (battle->players[0].slots[i].hp < 99) {
+                                battle->players[0].slots[i].hp++;
+                                screen->sprites[i].hp++;
                             }
-                        } else if (battle->players[0].slots[i].unk8 > 0) {
-                            battle->players[0].slots[i].unk8--;
-                            screen->sprites[i].unk44--;
+                        } else if (battle->players[0].slots[i].hp > 0) {
+                            battle->players[0].slots[i].hp--;
+                            screen->sprites[i].hp--;
                         }
                     }
                 } else if (i - 6 < battle->players[1].slotCount) {
-                    if (battle->unk42C > 0) {
-                        if (battle->players[1].slots[i - 6].unk8 < 99) {
-                            battle->players[1].slots[i - 6].unk8++;
-                            screen->sprites[i].unk44++;
+                    if (battle->effectStep.vars[1] > 0) {
+                        if (battle->players[1].slots[i - 6].hp < 99) {
+                            battle->players[1].slots[i - 6].hp++;
+                            screen->sprites[i].hp++;
                         }
-                    } else if (battle->players[1].slots[i - 6].unk8 > 0) {
-                        battle->players[1].slots[i - 6].unk8--;
-                        screen->sprites[i].unk44--;
+                    } else if (battle->players[1].slots[i - 6].hp > 0) {
+                        battle->players[1].slots[i - 6].hp--;
+                        screen->sprites[i].hp--;
                     }
                 }
             }
         }
         done = 0;
     }
-    battle->unk424++;
+    battle->effectStep.time++;
     if (done != 0) {
         for (i = 0; i < 12; i++) {
-            battle->unk46F[i] = 0;
+            battle->effectStep.marked[i] = 0;
             if (i < 6) {
-                if (i < battle->players[0].slotCount && battle->players[0].slots[i].unk8 <= 0) {
-                    battle->unk46F[i] = 1;
+                if (i < battle->players[0].slotCount && battle->players[0].slots[i].hp <= 0) {
+                    battle->effectStep.marked[i] = 1;
                 }
-            } else if (i - 6 < battle->players[1].slotCount && battle->players[1].slots[i - 6].unk8 <= 0) {
-                battle->unk46F[i] = 1;
+            } else if (i - 6 < battle->players[1].slotCount && battle->players[1].slots[i - 6].hp <= 0) {
+                battle->effectStep.marked[i] = 1;
             }
         }
     }
     return done;
 }
 
-/* Marks in unk46F the slots out that the last card played applies to, by its target (record.entries[].unk5): a side, both, or a card colour */
+/* Marks in effectStep.marked the slots out that the last card played applies to, by its target (record.plays[].targetKind): a side, both, or a card colour */
 void CARDGAME_markTargetSlots(CardBattle *battle, CardScreen *screen) {
     s32 i;
     s32 n;
     s32 owner;
     s32 card;
 
-    n = battle->record.entryCount - 1;
-    owner = battle->record.entries[n].unk4;
+    n = battle->record.playCount - 1;
+    owner = battle->record.plays[n].side;
     for (i = 0; i < 12; i++) {
-        battle->unk46F[i] = 0;
+        battle->effectStep.marked[i] = 0;
         if (i < 6) {
             if (i >= battle->players[0].slotCount) {
                 continue;
@@ -2876,51 +2876,51 @@ void CARDGAME_markTargetSlots(CardBattle *battle, CardScreen *screen) {
             }
             card = battle->players[1].slots[i - 6].card;
         }
-        switch (battle->record.entries[n].unk5) {
+        switch (battle->record.plays[n].targetKind) {
         case 1:
             if (owner == 0) {
                 if (i < 6) {
-                    battle->unk46F[i] = 1;
+                    battle->effectStep.marked[i] = 1;
                 }
             } else if (i >= 6) {
-                battle->unk46F[i] = 1;
+                battle->effectStep.marked[i] = 1;
             }
             break;
         case 2:
             if (owner == 0) {
                 if (i >= 6) {
-                    battle->unk46F[i] = 1;
+                    battle->effectStep.marked[i] = 1;
                 }
             } else if (i < 6) {
-                battle->unk46F[i] = 1;
+                battle->effectStep.marked[i] = 1;
             }
             break;
         case 3:
-            battle->unk46F[i] = 1;
+            battle->effectStep.marked[i] = 1;
             break;
         case 4:
             if (screen->getCardColor(screen, card) != 1) {
-                battle->unk46F[i] = 1;
+                battle->effectStep.marked[i] = 1;
             }
             break;
         case 5:
             if (screen->getCardColor(screen, card) != 2) {
-                battle->unk46F[i] = 1;
+                battle->effectStep.marked[i] = 1;
             }
             break;
         case 6:
             if (screen->getCardColor(screen, card) == 3) {
-                battle->unk46F[i] = 1;
+                battle->effectStep.marked[i] = 1;
             }
             break;
         case 7:
             if (screen->getCardColor(screen, card) != 4) {
-                battle->unk46F[i] = 1;
+                battle->effectStep.marked[i] = 1;
             }
             break;
         case 8:
             if (screen->getCardColor(screen, card) == 6) {
-                battle->unk46F[i] = 1;
+                battle->effectStep.marked[i] = 1;
             }
             break;
         }
@@ -2929,10 +2929,10 @@ void CARDGAME_markTargetSlots(CardBattle *battle, CardScreen *screen) {
 
 /* Starts a step's first state */
 void CARDGAME_beginStep(CardBattle *battle, CardScreen *screen) {
-    battle->stepState = 1;
+    battle->effectStep.state = 1;
 }
 
-/* Removes the slots marked in unk46F: slides the cards after them left on screen, then moves their slots and sprites down and shrinks slotCount; 1 when over */
+/* Removes the slots marked in effectStep.marked: slides the cards after them left on screen, then moves their slots and sprites down and shrinks slotCount; 1 when over */
 s32 CARDGAME_removeMarkedSlots(CardBattle *battle, CardScreen *screen) {
     s32 result = 0;
     s32 side, i, j, count;
@@ -2943,12 +2943,12 @@ s32 CARDGAME_removeMarkedSlots(CardBattle *battle, CardScreen *screen) {
     s8 mark;
     CardSprite sprite;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
         CARDGAME_markedCounts[0] = CARDGAME_markedCounts[1] = 0;
         CARDGAME_slotMoveCounts[0] = CARDGAME_slotMoveCounts[1] = 0;
         for (side = 0; side < 2; side++) {
-            marks = &battle->unk46F[side * 6];
+            marks = &battle->effectStep.marked[side * 6];
             for (i = 0; i < battle->players[side].slotCount; i++) {
                 if (marks[i] == 1) {
                     CARDGAME_markedCounts[side]++;
@@ -2994,16 +2994,16 @@ s32 CARDGAME_removeMarkedSlots(CardBattle *battle, CardScreen *screen) {
             }
         }
         if (CARDGAME_markedCounts[0] + CARDGAME_markedCounts[1] != 0) {
-            battle->stepState = 2;
-            battle->unk424 = 20;
+            battle->effectStep.state = 2;
+            battle->effectStep.time = 20;
         } else {
-            battle->stepState = 4;
+            battle->effectStep.state = 4;
         }
         break;
     case 2:
-        battle->unk424 -= GFX.funcs.getFrameTime();
-        if (battle->unk424 <= 0) {
-            battle->stepState = 3;
+        battle->effectStep.time -= GFX.funcs.getFrameTime();
+        if (battle->effectStep.time <= 0) {
+            battle->effectStep.state = 3;
         }
         break;
     case 3:
@@ -3026,7 +3026,7 @@ s32 CARDGAME_removeMarkedSlots(CardBattle *battle, CardScreen *screen) {
                 }
             }
         }
-        battle->stepState = 4;
+        battle->effectStep.state = 4;
         break;
     case 4:
         result = 1;
@@ -3035,7 +3035,7 @@ s32 CARDGAME_removeMarkedSlots(CardBattle *battle, CardScreen *screen) {
     return result;
 }
 
-/* Marks in unk446 the cards of a side's unk64 (kind 2), unk14 (3) or unk78 (4) whose colour has its bit (CARDGAME_colorFlags) in flags (kind 16 cards only with flags bit 0, the others with bit 1); 1 if any */
+/* Marks in effectStep.eligible the cards of a side's hand (kind 2), deck (3) or discards (4) whose colour has its bit (CARDGAME_colorFlags) in flags (kind 16 cards only with flags bit 0, the others with bit 1); 1 if any */
 s32 CARDGAME_markPileCardsByColor(CardBattle *battle, CardScreen *screen, s32 side, s32 kind, s32 flags) {
     CardDrawer drawer;
     s32 found;
@@ -3060,7 +3060,7 @@ s32 CARDGAME_markPileCardsByColor(CardBattle *battle, CardScreen *screen, s32 si
     }
     card = 0;
     for (i = 0; i < count; i++) {
-        battle->unk446[i] = 0;
+        battle->effectStep.eligible[i] = 0;
         switch (kind) {
         case 2:
             card = battle->sides[side].pile.hand[i];
@@ -3084,7 +3084,7 @@ s32 CARDGAME_markPileCardsByColor(CardBattle *battle, CardScreen *screen, s32 si
         if (ok) {
             for (j = 0; j < 6; j++) {
                 if ((flags & CARDGAME_colorFlags[j]) && drawer.card->color == j + 1) {
-                    battle->unk446[i] = 1;
+                    battle->effectStep.eligible[i] = 1;
                     found = 1;
                     break;
                 }
@@ -3094,7 +3094,7 @@ s32 CARDGAME_markPileCardsByColor(CardBattle *battle, CardScreen *screen, s32 si
     return found;
 }
 
-/* Marks in unk446 the slots of the sides flags picks (0x100 its own, 0x200 the other) whose card colour has its bit (CARDGAME_colorFlags) in flags; 1 if any */
+/* Marks in effectStep.eligible the slots of the sides flags picks (0x100 its own, 0x200 the other) whose card colour has its bit (CARDGAME_colorFlags) in flags; 1 if any */
 s32 CARDGAME_markSlotsByColor(CardBattle *battle, CardScreen *screen, s32 arg2, s32 flags) {
     CardDrawer drawer;
     s32 found = 0;
@@ -3104,12 +3104,12 @@ s32 CARDGAME_markSlotsByColor(CardBattle *battle, CardScreen *screen, s32 arg2, 
     s32 j;
 
     initCardDrawer(&drawer);
-    battle->unk445 = 0;
+    battle->effectStep.flags = 0;
     for (i = 0, skip = 0; i < 15; i++, skip = 0) {
-        battle->unk446[i] = 0;
+        battle->effectStep.eligible[i] = 0;
         if (i < 6) {
             if ((arg2 == 0 && (flags & 0x100)) || (arg2 != 0 && (flags & 0x200))) {
-                battle->unk445 |= 1;
+                battle->effectStep.flags |= 1;
                 if (i < battle->players[0].slotCount) {
                     card = battle->players[0].slots[i].card;
                 } else {
@@ -3120,7 +3120,7 @@ s32 CARDGAME_markSlotsByColor(CardBattle *battle, CardScreen *screen, s32 arg2, 
             }
         } else if (i < 12) {
             if ((arg2 == 0 && (flags & 0x200)) || (arg2 != 0 && (flags & 0x100))) {
-                battle->unk445 |= 2;
+                battle->effectStep.flags |= 2;
                 if (i - 6 < battle->players[1].slotCount) {
                     card = battle->players[1].slots[i - 6].card;
                 } else {
@@ -3136,7 +3136,7 @@ s32 CARDGAME_markSlotsByColor(CardBattle *battle, CardScreen *screen, s32 arg2, 
             drawer.setCard(battle->cards[card] + 1);
             for (j = 0; j < 6; j++) {
                 if ((flags & CARDGAME_colorFlags[j]) && drawer.card->color == j + 1) {
-                    battle->unk446[i] = 1;
+                    battle->effectStep.eligible[i] = 1;
                     found = 1;
                     break;
                 }
@@ -3146,38 +3146,38 @@ s32 CARDGAME_markSlotsByColor(CardBattle *battle, CardScreen *screen, s32 arg2, 
     return found;
 }
 
-/* Starts a count of side's hand and discards (unk428 and unk42C) */
+/* Starts a count of side's hand and discards (effectStep.vars[0] and effectStep.vars[1]) */
 void CARDGAME_startHandCount(CardBattle *battle, CardScreen *screen, s32 side) {
-    battle->stepState = 1;
-    battle->unk424 = 0;
-    battle->unk428 = battle->sides[side].pile.handCount;
-    battle->unk42C = battle->sides[side].pile.discardCount;
-    battle->unk430 = 0;
+    battle->effectStep.state = 1;
+    battle->effectStep.time = 0;
+    battle->effectStep.vars[0] = battle->sides[side].pile.handCount;
+    battle->effectStep.vars[1] = battle->sides[side].pile.discardCount;
+    battle->effectStep.vars[2] = 0;
 }
 
-/* Counts a side's unk64 cards over to unk78 on its panel, one every 7 frames, then moves them; 1 when done */
+/* Counts a side's hand cards over to its discards on its panel, one every 7 frames, then moves them; 1 when done */
 s32 CARDGAME_discardHand(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 done = 0;
     s32 more;
     s32 i;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        battle->unk430 += GFX.funcs.getFrameTime();
-        if (battle->unk430 >= 7) {
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        battle->effectStep.vars[2] += GFX.funcs.getFrameTime();
+        if (battle->effectStep.vars[2] >= 7) {
             more = 0;
-            if (battle->unk428 > 0) {
+            if (battle->effectStep.vars[0] > 0) {
                 more = 1;
-                battle->unk428--;
-                battle->unk42C++;
+                battle->effectStep.vars[0]--;
+                battle->effectStep.vars[1]++;
             }
             if (!more) {
-                battle->stepState = 2;
+                battle->effectStep.state = 2;
             }
-            screen->setPanelValue(screen, side, 6, battle->unk428);
-            screen->setPanelValue(screen, side, 7, battle->unk42C);
-            battle->unk430 -= 7;
+            screen->setPanelValue(screen, side, CARD_PANEL_HAND, battle->effectStep.vars[0]);
+            screen->setPanelValue(screen, side, CARD_PANEL_DISCARDS, battle->effectStep.vars[1]);
+            battle->effectStep.vars[2] -= 7;
         }
         break;
     case 2:
@@ -3192,56 +3192,56 @@ s32 CARDGAME_discardHand(CardBattle *battle, CardScreen *screen, s32 side) {
     return done;
 }
 
-/* Starts CARDGAME_stepColorValue: amount (unk434, below 0 to take) one at a
-   time, one each interval frames (unk430) */
+/* Starts CARDGAME_stepColorValue: amount (effectStep.vars[3], below 0 to take) one at a
+   time, one each interval frames (effectStep.vars[2]) */
 void CARDGAME_startColorChange(CardBattle *battle, CardScreen *screen, s32 arg2, s32 arg3) {
-    battle->unk430 = arg3;
-    battle->unk434 = arg2;
-    battle->unk423 = 1;
+    battle->effectStep.vars[2] = arg3;
+    battle->effectStep.vars[3] = arg2;
+    battle->effectStep.nextState = 1;
 }
 
-/* Moves a side's colour value (pile.points[color]) one step each unk430 frames towards using up unk434 (up to 99, down to 0), on its panel; 1 when done */
+/* Moves a side's colour value (pile.points[color]) one step each effectStep.vars[2] frames towards using up effectStep.vars[3] (up to 99, down to 0), on its panel; 1 when done */
 s32 CARDGAME_stepColorValue(CardBattle *battle, CardScreen *screen, s32 side, s32 color) {
     s32 done = 0;
 
-    if (battle->unk423 != 0) {
-        switch (battle->unk423) {
+    if (battle->effectStep.nextState != 0) {
+        switch (battle->effectStep.nextState) {
         case 1:
             screen->setPanelFlags(screen, 1 << (color * 2) << side);
-            battle->unk424 = 0;
-            battle->unk428 = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[0] = 0;
             break;
         case 2:
             screen->clearPanelFlags(screen);
             break;
         }
-        battle->stepState = battle->unk423;
-        battle->unk423 = 0;
+        battle->effectStep.state = battle->effectStep.nextState;
+        battle->effectStep.nextState = 0;
     }
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (battle->unk424 == battle->unk430 / 2) {
-            if (battle->unk434 > 0) {
+        if (battle->effectStep.time == battle->effectStep.vars[2] / 2) {
+            if (battle->effectStep.vars[3] > 0) {
                 if (battle->sides[side].pile.points[color] < 99) {
                     battle->sides[side].pile.points[color]++;
                 }
-                battle->unk434--;
+                battle->effectStep.vars[3]--;
                 SOUND.playSound(SOUND_COUNT);
             } else {
                 if (battle->sides[side].pile.points[color] != 0) {
                     battle->sides[side].pile.points[color]--;
                 }
-                battle->unk434++;
+                battle->effectStep.vars[3]++;
                 SOUND.playSound(SOUND_COUNT);
             }
             screen->setPanelValue(screen, side, color, battle->sides[side].pile.points[color]);
         }
-        battle->unk424++;
-        if (battle->unk424 > battle->unk430) {
-            if (battle->unk434 == 0 || battle->sides[side].pile.points[color] == 0) {
-                battle->unk423 = 2;
+        battle->effectStep.time++;
+        if (battle->effectStep.time > battle->effectStep.vars[2]) {
+            if (battle->effectStep.vars[3] == 0 || battle->sides[side].pile.points[color] == 0) {
+                battle->effectStep.nextState = 2;
             } else {
-                battle->unk423 = 1;
+                battle->effectStep.nextState = 1;
             }
         }
         break;
@@ -3255,10 +3255,10 @@ s32 CARDGAME_stepColorValue(CardBattle *battle, CardScreen *screen, s32 side, s3
 /* Starts CARDGAME_drainColorValues */
 void CARDGAME_startColorDrain(CardBattle *battle, CardScreen *screen) {
     CARDGAME_startColorChange(battle, screen, -0x80, 0x10);
-    battle->unk438 = 0;
+    battle->effectStep.vars[4] = 0;
 }
 
-/* Counts both sides' colour values (pile.points) down by one each unk430 frames, on the panels, until they are all 0; 1 when done */
+/* Counts both sides' colour values (pile.points) down by one each effectStep.vars[2] frames, on the panels, until they are all 0; 1 when done */
 s32 CARDGAME_drainColorValues(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
     s32 side;
@@ -3267,23 +3267,23 @@ s32 CARDGAME_drainColorValues(CardBattle *battle, CardScreen *screen) {
     s32 j;
     s32 k;
 
-    if (battle->unk423 != 0) {
-        switch (battle->unk423) {
+    if (battle->effectStep.nextState != 0) {
+        switch (battle->effectStep.nextState) {
         case 1:
             screen->setPanelFlags(screen, 0x3FF);
-            battle->unk424 = 0;
-            battle->unk428 = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[0] = 0;
             break;
         case 2:
             screen->clearPanelFlags(screen);
             break;
         }
-        battle->stepState = battle->unk423;
-        battle->unk423 = 0;
+        battle->effectStep.state = battle->effectStep.nextState;
+        battle->effectStep.nextState = 0;
     }
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (battle->unk424 == battle->unk430 / 2) {
+        if (battle->effectStep.time == battle->effectStep.vars[2] / 2) {
             for (side = 0; side < 2; side++) {
                 for (i = 0; i < 5; i++) {
                     if (battle->sides[side].pile.points[i] != 0) {
@@ -3293,8 +3293,8 @@ s32 CARDGAME_drainColorValues(CardBattle *battle, CardScreen *screen) {
                 }
             }
         }
-        battle->unk424++;
-        if (battle->unk424 > battle->unk430) {
+        battle->effectStep.time++;
+        if (battle->effectStep.time > battle->effectStep.vars[2]) {
             any = 0;
             for (j = 0; j < 2; j++) {
                 for (k = 0; k < 5; k++) {
@@ -3304,9 +3304,9 @@ s32 CARDGAME_drainColorValues(CardBattle *battle, CardScreen *screen) {
                 }
             }
             if (any) {
-                battle->unk423 = 1;
+                battle->effectStep.nextState = 1;
             } else {
-                battle->unk423 = 2;
+                battle->effectStep.nextState = 2;
             }
         }
         break;
@@ -3319,40 +3319,40 @@ s32 CARDGAME_drainColorValues(CardBattle *battle, CardScreen *screen) {
 
 /* Closes the gauge of the card before the last one */
 void CARDGAME_startCloseGauge(CardBattle *battle, CardScreen *screen) {
-    battle->unk424 = 0;
-    battle->stepState = 1;
-    screen->closeGauge(screen, battle->record.entryCount - 2);
+    battle->effectStep.time = 0;
+    battle->effectStep.state = 1;
+    screen->closeGauge(screen, battle->record.playCount - 2);
 }
 
-/* Puts the card played before the last one (record.entries[entryCount - 2]) on its side's unk78 once its sprite has turned; 1 when done */
+/* Puts the card played before the last one (record.plays[playCount - 2]) on its side's discards once its sprite has turned; 1 when done */
 s32 CARDGAME_discardPrevCard(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
     s32 side;
     s32 n;
     s32 i;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (CARDGAME_stepShakeAway(battle, screen, battle->record.entryCount + 10)) {
-            battle->unk428 = 10;
-            battle->stepState = 2;
-            side = battle->record.entries[battle->record.entryCount - 2].unk4;
-            battle->sides[side].pile.discards[battle->sides[side].pile.discardCount] = battle->record.entries[battle->record.entryCount - 2].unk0;
+        if (CARDGAME_stepShakeAway(battle, screen, battle->record.playCount + 10)) {
+            battle->effectStep.vars[0] = 10;
+            battle->effectStep.state = 2;
+            side = battle->record.plays[battle->record.playCount - 2].side;
+            battle->sides[side].pile.discards[battle->sides[side].pile.discardCount] = battle->record.plays[battle->record.playCount - 2].card;
             battle->sides[side].pile.discardCount++;
-            screen->setPanelValue(screen, 0, 7, battle->sides[0].pile.discardCount);
-            screen->setPanelValue(screen, 1, 7, battle->sides[1].pile.discardCount);
+            screen->setPanelValue(screen, 0, CARD_PANEL_DISCARDS, battle->sides[0].pile.discardCount);
+            screen->setPanelValue(screen, 1, CARD_PANEL_DISCARDS, battle->sides[1].pile.discardCount);
         }
         break;
     case 2:
-        battle->unk428 -= GFX.funcs.getFrameTime();
-        if (battle->unk428 <= 0) {
-            battle->stepState = 3;
-            n = battle->record.entryCount - 1;
+        battle->effectStep.vars[0] -= GFX.funcs.getFrameTime();
+        if (battle->effectStep.vars[0] <= 0) {
+            battle->effectStep.state = 3;
+            n = battle->record.playCount - 1;
             if (n >= 2) {
-                battle->record.entries[battle->record.entryCount - 3].unk2 = 0;
+                battle->record.plays[battle->record.playCount - 3].unk2 = 0;
             }
             for (i = 0; i < 15; i++) {
-                screen->sprites[i].unk3E[n - 1] = 0;
+                screen->sprites[i].marks[n - 1] = 0;
             }
         }
         break;
@@ -3363,17 +3363,17 @@ s32 CARDGAME_discardPrevCard(CardBattle *battle, CardScreen *screen) {
     return done;
 }
 
-/* Keeps the last card played in unk304 (as card + 1) and counts it (unk305);
+/* Keeps the last card played in keptCard (as card + 1) and counts it (keptCount);
    1 */
 s32 CARDGAME_keepLastCard(CardBattle *battle, CardScreen *screen) {
-    s32 card = battle->record.entries[battle->record.entryCount - 1].unk0;
+    s32 card = battle->record.plays[battle->record.playCount - 1].card;
 
-    battle->unk305++;
-    battle->unk304 = card + 1;
+    battle->keptCount++;
+    battle->keptCard = card + 1;
     return 1;
 }
 
-/* Shows side's card at unk440 as sprite 17: of its hand (which 0) or its deck
+/* Shows side's card at effectStep.choice as sprite 17: of its hand (which 0) or its deck
    (1) */
 void CARDGAME_showPileCard(CardBattle *battle, CardScreen *screen, s32 side, s32 which) {
     s32 card;
@@ -3383,82 +3383,82 @@ void CARDGAME_showPileCard(CardBattle *battle, CardScreen *screen, s32 side, s32
     screen->sprites[17].scaleX = 0;
     switch (which) {
     case 0:
-        card = battle->sides[side].pile.hand[battle->unk440];
-        battle->unk438 = card;
+        card = battle->sides[side].pile.hand[battle->effectStep.choice];
+        battle->effectStep.vars[4] = card;
         break;
     case 1:
-        card = battle->sides[side].pile.deck[battle->unk440];
-        battle->unk438 = card;
+        card = battle->sides[side].pile.deck[battle->effectStep.choice];
+        battle->effectStep.vars[4] = card;
         break;
     }
     screen->setSpriteCard(screen, 17, card);
     screen->scaleSprite(screen, 17, 8, 0x1000, 0x1000);
-    battle->unk424 = 0;
-    battle->stepState = 1;
+    battle->effectStep.time = 0;
+    battle->effectStep.state = 1;
 }
 
-/* Moves sprite 17 to the side's spot, then puts card unk438 on the side's unk78 pile and takes entry unk440 out of the pile it came from (from 0: unk64, from 1: unk14 after unk4); 1 when over */
+/* Moves sprite 17 to the side's spot, then puts card effectStep.vars[4] on the side's discards and takes entry effectStep.choice out of the pile it came from (from 0: the hand, from 1: the deck after deckTop); 1 when over */
 s32 CARDGAME_discardPickedCard(CardBattle *battle, CardScreen *screen, s32 side, s32 from) {
     s32 done = 0;
     /* the match depends on the loops of from 1 having a variable of their own */
     s32 i, j;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 21) {
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 21) {
             screen->startMove(screen, 17, 10, CARDGAME_discardPositions[side][0], CARDGAME_discardPositions[side][1]);
             screen->setSpriteScale(screen, 17, 0, 0);
-            battle->stepState = 2;
+            battle->effectStep.state = 2;
         }
         break;
     case 2:
         if (screen->sprites[17].state == 1) {
-            battle->stepState = 3;
-            battle->unk424 = 0;
-            battle->sides[side].pile.discards[battle->sides[side].pile.discardCount] = battle->unk438;
+            battle->effectStep.state = 3;
+            battle->effectStep.time = 0;
+            battle->sides[side].pile.discards[battle->sides[side].pile.discardCount] = battle->effectStep.vars[4];
             battle->sides[side].pile.discardCount++;
             switch (from) {
             case 0:
-                for (i = battle->unk440; i < battle->sides[side].pile.handCount - 1; i++) {
+                for (i = battle->effectStep.choice; i < battle->sides[side].pile.handCount - 1; i++) {
                     battle->sides[side].pile.hand[i] = battle->sides[side].pile.hand[i + 1];
                 }
-                screen->setPanelValue(screen, side, 6, --battle->sides[side].pile.handCount);
+                screen->setPanelValue(screen, side, CARD_PANEL_HAND, --battle->sides[side].pile.handCount);
                 break;
             case 1:
                 if (side == 0) {
-                    for (i = battle->unk440; i >= battle->sides[side].pile.deckTop + 1; i--) {
+                    for (i = battle->effectStep.choice; i >= battle->sides[side].pile.deckTop + 1; i--) {
                         battle->sides[side].pile.deck[i] = battle->sides[side].pile.deck[i - 1];
                     }
                     battle->sides[side].pile.deckTop++;
                     battle->sides[side].pile.deckCount--;
                 } else {
-                    for (j = battle->unk440; j >= battle->sides[side].pile.deckTop + 1; j--) {
+                    for (j = battle->effectStep.choice; j >= battle->sides[side].pile.deckTop + 1; j--) {
                         battle->sides[side].pile.deck[j] = battle->sides[side].pile.deck[j - 1];
-                        battle->unk30A[j] = battle->unk30A[j - 1];
+                        battle->opponentDraws[j] = battle->opponentDraws[j - 1];
                     }
-                    if (++battle->unk41B >= 40) {
-                        battle->unk41B = 39;
+                    if (++battle->drawEnd >= 40) {
+                        battle->drawEnd = 39;
                     }
-                    if (++battle->unk41C >= 40) {
-                        battle->unk41C = 39;
+                    if (++battle->reserveStart >= 40) {
+                        battle->reserveStart = 39;
                     }
                     battle->sides[side].pile.deckTop++;
                     battle->sides[side].pile.deckCount--;
                     for (j = 39; j >= 0; j--) {
-                        battle->unk30A[j].unk0 = j;
+                        battle->opponentDraws[j].order = j;
                     }
                 }
-                screen->setPanelValue(screen, side, 5, battle->sides[side].pile.deckCount);
+                screen->setPanelValue(screen, side, CARD_PANEL_DECK, battle->sides[side].pile.deckCount);
                 break;
             }
-            screen->setPanelValue(screen, side, 7, battle->sides[side].pile.discardCount);
+            screen->setPanelValue(screen, side, CARD_PANEL_DISCARDS, battle->sides[side].pile.discardCount);
         }
         break;
     case 3:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 46) {
-            battle->stepState = 4;
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 46) {
+            battle->effectStep.state = 4;
         }
         break;
     case 4:
@@ -3468,40 +3468,40 @@ s32 CARDGAME_discardPickedCard(CardBattle *battle, CardScreen *screen, s32 side,
     return done;
 }
 
-/* Adds card unk440 of a side's unk78 (which 4) or unk14 to its unk64 */
+/* Adds card effectStep.choice of a side's discards (which 4) or deck to its hand */
 void CARDGAME_takeCardToHand(CardBattle *battle, CardScreen *screen, s32 side, s32 which) {
     s32 card;
     s32 i;
 
-    battle->unk438 = battle->sides[side].pile.handCount;
+    battle->effectStep.vars[4] = battle->sides[side].pile.handCount;
     if (which == 4) {
-        card = battle->sides[side].pile.discards[battle->unk440];
+        card = battle->sides[side].pile.discards[battle->effectStep.choice];
     } else {
-        card = battle->sides[side].pile.deck[battle->unk440];
+        card = battle->sides[side].pile.deck[battle->effectStep.choice];
     }
     battle->sides[side].pile.hand[battle->sides[side].pile.handCount] = card;
     battle->sides[side].pile.handCount++;
-    if (battle->unk438 != 0) {
+    if (battle->effectStep.vars[4] != 0) {
         if (side == 0) {
-            battle->unk498.unk1 = 5;
+            battle->anim.next = CARD_ANIM_SHOW_HAND;
         } else {
-            battle->unk498.unk1 = 11;
-            battle->unk498.unk4 = 1;
+            battle->anim.next = CARD_ANIM_SHOW_OPPONENT_HAND;
+            battle->anim.faceDown = 1;
         }
     } else if (side == 0) {
-        battle->unk498.unk1 = 17;
+        battle->anim.next = CARD_ANIM_LAY_OUT_HAND;
     } else {
-        battle->unk498.unk1 = 18;
-        battle->unk498.unk4 = 1;
+        battle->anim.next = CARD_ANIM_LAY_OUT_OPPONENT_HAND;
+        battle->anim.faceDown = 1;
     }
     screen->openPanel(screen, side);
     for (i = 0; i < 40; i++) {
-        battle->unk498.unk6[i] = 0;
+        battle->anim.dimmed[i] = 0;
     }
-    battle->stepState = 1;
+    battle->effectStep.state = 1;
 }
 
-/* Moves the card just put in the hand into place, then takes card unk440 out of the deck (or out of the used pile when which is 4) */
+/* Moves the card just put in the hand into place, then takes card effectStep.choice out of the deck (or out of the used pile when which is 4) */
 s32 CARDGAME_drawFromDeck(CardBattle *battle, CardScreen *screen, s32 side, s32 which) {
     CardDrawer drawer;
     s32 done = 0;
@@ -3519,7 +3519,7 @@ s32 CARDGAME_drawFromDeck(CardBattle *battle, CardScreen *screen, s32 side, s32 
     s32 swap;
     s32 x;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
         ready = 0;
         if (side == 0) {
@@ -3529,57 +3529,57 @@ s32 CARDGAME_drawFromDeck(CardBattle *battle, CardScreen *screen, s32 side, s32 
         }
         last = battle->sides[side].pile.handCount - 1;
         screen->sprites[last].x = 0x14A00;
-        if (ready && battle->unk498.unk0 == 0) {
+        if (ready && battle->anim.current == CARD_ANIM_NONE) {
             x = screen->getHandOffset(battle->sides[side].pile.handCount, last);
             screen->sprites[last].scaleX = 0x1000;
             screen->startMove(screen, last, 15, x + 0x1800, 0x6100);
-            battle->stepState = 2;
+            battle->effectStep.state = 2;
         }
         break;
     case 2:
         index = battle->sides[side].pile.handCount - 1;
         if (screen->sprites[index].state == 1) {
             if (which == 4) {
-                for (i = battle->unk440; i < battle->sides[side].pile.discardCount - 1; i++) {
+                for (i = battle->effectStep.choice; i < battle->sides[side].pile.discardCount - 1; i++) {
                     battle->sides[side].pile.discards[i] = battle->sides[side].pile.discards[i + 1];
                 }
                 battle->sides[side].pile.discardCount--;
-                battle->stepState = 4;
-                battle->unk424 = 45;
+                battle->effectStep.state = 4;
+                battle->effectStep.time = 45;
             } else {
                 if (side == 0) {
-                    for (j = battle->unk440; j >= battle->sides[0].pile.deckTop + 1; j--) {
+                    for (j = battle->effectStep.choice; j >= battle->sides[0].pile.deckTop + 1; j--) {
                         battle->sides[0].pile.deck[j] = battle->sides[0].pile.deck[j - 1];
                     }
                 } else {
-                    if (battle->unk440 < battle->unk41B) {
-                        for (i = battle->unk440; i >= battle->sides[1].pile.deckTop + 1; i--) {
+                    if (battle->effectStep.choice < battle->drawEnd) {
+                        for (i = battle->effectStep.choice; i >= battle->sides[1].pile.deckTop + 1; i--) {
                             battle->sides[1].pile.deck[i] = battle->sides[1].pile.deck[i - 1];
-                            battle->unk30A[i] = battle->unk30A[i - 1];
+                            battle->opponentDraws[i] = battle->opponentDraws[i - 1];
                         }
                     } else {
-                        i = battle->unk440;
-                        if (battle->unk30A[i].unk1 == 7) {
+                        i = battle->effectStep.choice;
+                        if (battle->opponentDraws[i].group == 7) {
                             for (; i >= battle->sides[1].pile.deckTop + 1; i--) {
                                 battle->sides[1].pile.deck[i] = battle->sides[1].pile.deck[i - 1];
-                                battle->unk30A[i] = battle->unk30A[i - 1];
+                                battle->opponentDraws[i] = battle->opponentDraws[i - 1];
                             }
-                            battle->unk41B++;
-                            battle->unk41C++;
+                            battle->drawEnd++;
+                            battle->reserveStart++;
                         } else {
                             swap = battle->sides[1].pile.deck[i];
                             battle->sides[1].pile.deck[i] = battle->sides[1].pile.deck[39];
                             battle->sides[1].pile.deck[39] = swap;
                             for (i = 39; i >= battle->sides[1].pile.deckTop + 1; i--) {
                                 battle->sides[1].pile.deck[i] = battle->sides[1].pile.deck[i - 1];
-                                battle->unk30A[i] = battle->unk30A[i - 1];
+                                battle->opponentDraws[i] = battle->opponentDraws[i - 1];
                             }
-                            battle->unk41B++;
-                            battle->unk41C++;
+                            battle->drawEnd++;
+                            battle->reserveStart++;
                         }
                     }
                     for (k = 39; k >= 0; k--) {
-                        battle->unk30A[k].unk0 = k;
+                        battle->opponentDraws[k].order = k;
                     }
                 }
                 battle->sides[side].pile.deckTop++;
@@ -3588,26 +3588,26 @@ s32 CARDGAME_drawFromDeck(CardBattle *battle, CardScreen *screen, s32 side, s32 
                 initCardDrawer(&drawer);
                 drawer.setCard(battle->cards[card] + 1);
                 if (drawer.card->color < 6) {
-                    battle->stepState = 3;
+                    battle->effectStep.state = 3;
                     screen->startBlink(screen, index);
                 } else {
-                    battle->stepState = 4;
-                    battle->unk424 = 45;
+                    battle->effectStep.state = 4;
+                    battle->effectStep.time = 45;
                 }
             }
-            screen->setPanelValue(screen, 0, 5, battle->sides[0].pile.deckCount);
-            screen->setPanelValue(screen, 0, 6, battle->sides[0].pile.handCount);
-            screen->setPanelValue(screen, 0, 7, battle->sides[0].pile.discardCount);
-            screen->setPanelValue(screen, 1, 5, battle->sides[1].pile.deckCount);
-            screen->setPanelValue(screen, 1, 6, battle->sides[1].pile.handCount);
-            screen->setPanelValue(screen, 1, 7, battle->sides[1].pile.discardCount);
+            screen->setPanelValue(screen, 0, CARD_PANEL_DECK, battle->sides[0].pile.deckCount);
+            screen->setPanelValue(screen, 0, CARD_PANEL_HAND, battle->sides[0].pile.handCount);
+            screen->setPanelValue(screen, 0, CARD_PANEL_DISCARDS, battle->sides[0].pile.discardCount);
+            screen->setPanelValue(screen, 1, CARD_PANEL_DECK, battle->sides[1].pile.deckCount);
+            screen->setPanelValue(screen, 1, CARD_PANEL_HAND, battle->sides[1].pile.handCount);
+            screen->setPanelValue(screen, 1, CARD_PANEL_DISCARDS, battle->sides[1].pile.discardCount);
         }
         break;
     case 3:
         top = battle->sides[side].pile.handCount - 1;
         if (screen->sprites[top].state == 1) {
-            battle->stepState = 4;
-            battle->unk424 = 45;
+            battle->effectStep.state = 4;
+            battle->effectStep.time = 45;
             drawn = battle->sides[side].pile.hand[top];
             initCardDrawer(&drawer);
             drawer.setCard(battle->cards[drawn] + 1);
@@ -3620,11 +3620,11 @@ s32 CARDGAME_drawFromDeck(CardBattle *battle, CardScreen *screen, s32 side, s32 
         }
         break;
     case 4:
-        battle->unk424 -= GFX.funcs.getFrameTime();
-        if (battle->unk424 <= 0) {
-            battle->stepState = 5;
+        battle->effectStep.time -= GFX.funcs.getFrameTime();
+        if (battle->effectStep.time <= 0) {
+            battle->effectStep.state = 5;
             screen->closePanel(screen, side);
-            battle->unk498.unk1 = battle->unk498.unk3;
+            battle->anim.next = battle->anim.hide;
         }
         break;
     case 5:
@@ -3634,8 +3634,8 @@ s32 CARDGAME_drawFromDeck(CardBattle *battle, CardScreen *screen, s32 side, s32 
         } else if (screen->panels[1].state == 0) {
             closed = 1;
         }
-        if (closed && battle->unk498.unk0 == 0) {
-            battle->stepState = 6;
+        if (closed && battle->anim.current == CARD_ANIM_NONE) {
+            battle->effectStep.state = 6;
         }
         break;
     case 6:
@@ -3645,17 +3645,17 @@ s32 CARDGAME_drawFromDeck(CardBattle *battle, CardScreen *screen, s32 side, s32 
     return done;
 }
 
-/* Starts a count of side's discards and deck (unk428 and unk42C) */
+/* Starts a count of side's discards and deck (effectStep.vars[0] and effectStep.vars[1]) */
 void CARDGAME_startDiscardCount(CardBattle *battle, CardScreen *screen, s32 side) {
-    battle->unk424 = 0;
-    battle->unk434 = 0;
-    battle->unk428 = battle->sides[side].pile.discardCount;
-    battle->unk42C = battle->sides[side].pile.deckCount;
-    battle->stepState = 1;
+    battle->effectStep.time = 0;
+    battle->effectStep.vars[3] = 0;
+    battle->effectStep.vars[0] = battle->sides[side].pile.discardCount;
+    battle->effectStep.vars[1] = battle->sides[side].pile.deckCount;
+    battle->effectStep.state = 1;
 }
 
-/* Counts the panel values 7 down into 5, then puts the side's unk78 cards back
-   into its deck (unk14); 1 once done */
+/* Counts the panel's discards down into its deck, then puts the side's discards back
+   into its deck; 1 once done */
 s32 CARDGAME_returnUsedCards(CardBattle *battle, CardScreen *screen, s32 side) {
     CardPile *pile;
     s16 *deck;
@@ -3665,23 +3665,23 @@ s32 CARDGAME_returnUsedCards(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 i;
     s32 j;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        battle->unk434 += GFX.funcs.getFrameTime();
-        if (battle->unk434 >= 7) {
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        battle->effectStep.vars[3] += GFX.funcs.getFrameTime();
+        if (battle->effectStep.vars[3] >= 7) {
             more = 0;
-            if (battle->unk428 > 0) {
+            if (battle->effectStep.vars[0] > 0) {
                 more = 1;
-                battle->unk428--;
-                battle->unk42C++;
+                battle->effectStep.vars[0]--;
+                battle->effectStep.vars[1]++;
             }
             if (!more) {
-                battle->stepState = 2;
+                battle->effectStep.state = 2;
             }
-            screen->setPanelValue(screen, side, 7, battle->unk428);
-            screen->setPanelValue(screen, side, 5, battle->unk42C);
-            battle->unk434 -= 7;
+            screen->setPanelValue(screen, side, CARD_PANEL_DISCARDS, battle->effectStep.vars[0]);
+            screen->setPanelValue(screen, side, CARD_PANEL_DECK, battle->effectStep.vars[1]);
+            battle->effectStep.vars[3] -= 7;
         }
         break;
     case 2:
@@ -3703,15 +3703,15 @@ s32 CARDGAME_returnUsedCards(CardBattle *battle, CardScreen *screen, s32 side) {
                 pile->deckCount++;
                 for (j = pile->deckTop; j < 40; j++) {
                     deck[j] = deck[j + 1];
-                    battle->unk30A[j] = battle->unk30A[j + 1];
+                    battle->opponentDraws[j] = battle->opponentDraws[j + 1];
                 }
-                battle->unk41B--;
-                battle->unk41C--;
+                battle->drawEnd--;
+                battle->reserveStart--;
                 deck[39] = used[i];
-                battle->unk30A[39].unk1 = 7;
+                battle->opponentDraws[39].group = 7;
             }
             for (i = 39; i >= 0; i--) {
-                battle->unk30A[i].unk0 = i;
+                battle->opponentDraws[i].order = i;
             }
             pile->discardCount = 0;
         }
@@ -3721,19 +3721,19 @@ s32 CARDGAME_returnUsedCards(CardBattle *battle, CardScreen *screen, s32 side) {
     return done;
 }
 
-/* Starts drawing count cards (unk444) */
+/* Starts drawing count cards (effectStep.count) */
 void CARDGAME_startDraw(CardBattle *battle, CardScreen *screen, s32 arg2) {
     s32 i;
 
     for (i = 0; i < 40; i++) {
-        battle->unk46F[i] = 0;
+        battle->effectStep.marked[i] = 0;
     }
-    battle->unk444 = arg2;
-    battle->unk445 = 0;
+    battle->effectStep.count = arg2;
+    battle->effectStep.flags = 0;
 }
 
-/* Marks (unk46F) the cards side draws from its deck: from its top for the
-   player, by the round's level (unk300) for the computer; unk445 when the
+/* Marks (effectStep.marked) the cards side draws from its deck: from its top for the
+   player, by the round's level (round) for the computer; effectStep.flags when the
    deck runs out; 1 */
 s32 CARDGAME_markDrawnCards(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 i;
@@ -3741,31 +3741,31 @@ s32 CARDGAME_markDrawnCards(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 k;
     s32 m;
 
-    if (battle->unk444 != 0) {
+    if (battle->effectStep.count != 0) {
         if (side == 0) {
             n = 0;
-            for (i = battle->sides[0].pile.deckTop; i < battle->sides[0].pile.deckTop + battle->unk444; i++) {
+            for (i = battle->sides[0].pile.deckTop; i < battle->sides[0].pile.deckTop + battle->effectStep.count; i++) {
                 if (i >= 40) {
-                    battle->unk445 = 1;
-                    battle->unk444 = n;
+                    battle->effectStep.flags = 1;
+                    battle->effectStep.count = n;
                     break;
                 }
-                battle->unk46F[i] = 1;
+                battle->effectStep.marked[i] = 1;
                 n++;
             }
         } else {
             k = battle->sides[1].pile.deckTop;
             m = 39;
-            if (battle->unk444 > battle->sides[1].pile.deckCount) {
-                battle->unk445 = 1;
-                battle->unk444 = battle->sides[1].pile.deckCount;
+            if (battle->effectStep.count > battle->sides[1].pile.deckCount) {
+                battle->effectStep.flags = 1;
+                battle->effectStep.count = battle->sides[1].pile.deckCount;
             }
-            for (i = 0; i < battle->unk444; i++) {
-                if (battle->unk30A[k].unk1 == battle->unk300 * 2 + 2) {
-                    battle->unk46F[k] = 1;
+            for (i = 0; i < battle->effectStep.count; i++) {
+                if (battle->opponentDraws[k].group == battle->round * 2 + 2) {
+                    battle->effectStep.marked[k] = 1;
                     k++;
                 } else {
-                    battle->unk46F[m] = 1;
+                    battle->effectStep.marked[m] = 1;
                     m--;
                 }
             }
@@ -3780,43 +3780,43 @@ void CARDGAME_drawMarkedCards(CardBattle *battle, CardScreen *screen, s32 side) 
     s32 card;
     s32 j;
 
-    battle->unk438 = battle->sides[side].pile.handCount;
+    battle->effectStep.vars[4] = battle->sides[side].pile.handCount;
 #if VERSION_EU
-    battle->unk42C = 0;
+    battle->effectStep.vars[1] = 0;
 #endif
     for (i = battle->sides[side].pile.deckTop; i < 40; i++) {
-        if (battle->unk46F[i] != 0) {
+        if (battle->effectStep.marked[i] != 0) {
             card = battle->sides[side].pile.deck[i];
             battle->sides[side].pile.hand[battle->sides[side].pile.handCount] = card;
             battle->sides[side].pile.handCount++;
 #if VERSION_EU
-            battle->unk42C = 1;
+            battle->effectStep.vars[1] = 1;
 #endif
         }
     }
     for (j = 0; j < 40; j++) {
-        battle->unk498.unk6[j] = 0;
+        battle->anim.dimmed[j] = 0;
     }
-    if (battle->unk438 != 0) {
+    if (battle->effectStep.vars[4] != 0) {
         if (side == 0) {
-            battle->unk498.unk1 = 5;
+            battle->anim.next = CARD_ANIM_SHOW_HAND;
         } else {
-            battle->unk498.unk1 = 11;
-            battle->unk498.unk4 = 1;
+            battle->anim.next = CARD_ANIM_SHOW_OPPONENT_HAND;
+            battle->anim.faceDown = 1;
         }
     } else {
         if (side == 0) {
-            battle->unk498.unk1 = 17;
+            battle->anim.next = CARD_ANIM_LAY_OUT_HAND;
         } else {
-            battle->unk498.unk1 = 18;
-            battle->unk498.unk4 = 1;
+            battle->anim.next = CARD_ANIM_LAY_OUT_OPPONENT_HAND;
+            battle->anim.faceDown = 1;
         }
     }
     screen->openPanel(screen, side);
-    battle->stepState = 1;
+    battle->effectStep.state = 1;
 }
 
-/* Moves the cards drawn into the hand (from unk438 on) into place one at a time, counting their colours and taking each flagged card (unk46F) out of the deck */
+/* Moves the cards drawn into the hand (from effectStep.vars[4] on) into place one at a time, counting their colours and taking each flagged card (effectStep.marked) out of the deck */
 s32 CARDGAME_drawNewCards(CardBattle *battle, CardScreen *screen, s32 side) {
     CardDrawer drawer;
     s32 done = 0;
@@ -3833,7 +3833,7 @@ s32 CARDGAME_drawNewCards(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 swap;
     s32 x;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
         ready = 0;
         if (side == 0) {
@@ -3841,33 +3841,33 @@ s32 CARDGAME_drawNewCards(CardBattle *battle, CardScreen *screen, s32 side) {
         } else if (screen->panels[1].state == 2) {
             ready = 1;
         }
-        for (k = battle->unk438; k < battle->sides[side].pile.handCount; k++) {
+        for (k = battle->effectStep.vars[4]; k < battle->sides[side].pile.handCount; k++) {
             screen->sprites[k].x = 0x14A00;
         }
-        if (ready && battle->unk498.unk0 == 0) {
+        if (ready && battle->anim.current == CARD_ANIM_NONE) {
 #if VERSION_US
-            battle->stepState = 2;
+            battle->effectStep.state = 2;
 #elif VERSION_EU
-            if (battle->unk42C == 0) {
+            if (battle->effectStep.vars[1] == 0) {
                 screen->openMessage(screen, 0x35, 0, 0, side == 0 ? 2 : 0);
-                battle->stepState = 5;
+                battle->effectStep.state = 5;
             } else {
-                battle->stepState = 2;
+                battle->effectStep.state = 2;
             }
 #endif
-            battle->unk424 = 0;
-            battle->unk428 = battle->unk438;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[0] = battle->effectStep.vars[4];
         }
         break;
     case 2:
-        x = screen->getHandOffset(battle->sides[side].pile.handCount, battle->unk428);
-        screen->sprites[battle->unk428].scaleX = 0x1000;
-        screen->startMove(screen, battle->unk428, 15, x + 0x1800, 0x6100);
-        battle->stepState = 3;
+        x = screen->getHandOffset(battle->sides[side].pile.handCount, battle->effectStep.vars[0]);
+        screen->sprites[battle->effectStep.vars[0]].scaleX = 0x1000;
+        screen->startMove(screen, battle->effectStep.vars[0], 15, x + 0x1800, 0x6100);
+        battle->effectStep.state = 3;
         break;
     case 3:
-        if (screen->sprites[battle->unk428].state == 1) {
-            card = battle->sides[side].pile.hand[battle->unk428];
+        if (screen->sprites[battle->effectStep.vars[0]].state == 1) {
+            card = battle->sides[side].pile.hand[battle->effectStep.vars[0]];
             initCardDrawer(&drawer);
             drawer.setCard(battle->cards[card] + 1);
             if (drawer.card->color < 6) {
@@ -3875,64 +3875,64 @@ s32 CARDGAME_drawNewCards(CardBattle *battle, CardScreen *screen, s32 side) {
                     battle->sides[side].pile.points[drawer.card->color - 1]++;
                 }
                 screen->setPanelValue(screen, side, drawer.card->color - 1, battle->sides[side].pile.points[drawer.card->color - 1]);
-                screen->startBlink(screen, battle->unk428);
-                battle->stepState = 4;
+                screen->startBlink(screen, battle->effectStep.vars[0]);
+                battle->effectStep.state = 4;
             } else {
-                battle->unk428++;
-                if (battle->unk428 < battle->sides[side].pile.handCount) {
-                    battle->stepState = 2;
-                } else if (battle->unk445 != 0) {
+                battle->effectStep.vars[0]++;
+                if (battle->effectStep.vars[0] < battle->sides[side].pile.handCount) {
+                    battle->effectStep.state = 2;
+                } else if (battle->effectStep.flags != 0) {
                     screen->openMessage(screen, 0x35, 0, 0, side == 0 ? 2 : 0);
-                    battle->stepState = 5;
+                    battle->effectStep.state = 5;
                 } else {
-                    battle->unk424 = 45;
-                    battle->stepState = 8;
+                    battle->effectStep.time = 45;
+                    battle->effectStep.state = 8;
                 }
             }
             for (i = 39, found = 0; i >= 0; i--) {
-                if (battle->unk46F[i] != 0) {
+                if (battle->effectStep.marked[i] != 0) {
                     found = 1;
                     break;
                 }
             }
             if (found) {
-                battle->unk46F[i] = 0;
+                battle->effectStep.marked[i] = 0;
                 if (side == 0) {
                     for (m = i; m >= battle->sides[0].pile.deckTop + 1; m--) {
                         battle->sides[0].pile.deck[m] = battle->sides[0].pile.deck[m - 1];
-                        battle->unk46F[m] = battle->unk46F[m - 1];
+                        battle->effectStep.marked[m] = battle->effectStep.marked[m - 1];
                     }
                 } else {
-                    if (i < battle->unk41B) {
+                    if (i < battle->drawEnd) {
                         for (j = i; j >= battle->sides[1].pile.deckTop + 1; j--) {
                             battle->sides[1].pile.deck[j] = battle->sides[1].pile.deck[j - 1];
-                            battle->unk46F[j] = battle->unk46F[j - 1];
-                            battle->unk30A[j] = battle->unk30A[j - 1];
+                            battle->effectStep.marked[j] = battle->effectStep.marked[j - 1];
+                            battle->opponentDraws[j] = battle->opponentDraws[j - 1];
                         }
                     } else {
-                        if (battle->unk30A[i].unk1 == 7) {
+                        if (battle->opponentDraws[i].group == 7) {
                             for (j = i; j >= battle->sides[1].pile.deckTop + 1; j--) {
                                 battle->sides[1].pile.deck[j] = battle->sides[1].pile.deck[j - 1];
-                                battle->unk46F[j] = battle->unk46F[j - 1];
-                                battle->unk30A[j] = battle->unk30A[j - 1];
+                                battle->effectStep.marked[j] = battle->effectStep.marked[j - 1];
+                                battle->opponentDraws[j] = battle->opponentDraws[j - 1];
                             }
-                            battle->unk41B++;
-                            battle->unk41C++;
+                            battle->drawEnd++;
+                            battle->reserveStart++;
                         } else {
                             swap = battle->sides[1].pile.deck[i];
                             battle->sides[1].pile.deck[i] = battle->sides[1].pile.deck[39];
                             battle->sides[1].pile.deck[39] = swap;
                             for (j = 39; j >= battle->sides[1].pile.deckTop + 1; j--) {
                                 battle->sides[1].pile.deck[j] = battle->sides[1].pile.deck[j - 1];
-                                battle->unk46F[j] = battle->unk46F[j - 1];
-                                battle->unk30A[j] = battle->unk30A[j - 1];
+                                battle->effectStep.marked[j] = battle->effectStep.marked[j - 1];
+                                battle->opponentDraws[j] = battle->opponentDraws[j - 1];
                             }
-                            battle->unk41B++;
-                            battle->unk41C++;
+                            battle->drawEnd++;
+                            battle->reserveStart++;
                         }
                     }
                     for (n = 39; n >= 0; n--) {
-                        battle->unk30A[n].unk0 = n;
+                        battle->opponentDraws[n].order = n;
                     }
                 }
                 battle->sides[side].pile.deckTop++;
@@ -3941,48 +3941,48 @@ s32 CARDGAME_drawNewCards(CardBattle *battle, CardScreen *screen, s32 side) {
         }
         break;
     case 4:
-        if (screen->sprites[battle->unk428].state == 1) {
-            battle->unk428++;
-            if (battle->unk428 < battle->sides[side].pile.handCount) {
-                battle->stepState = 2;
-            } else if (battle->unk445 != 0) {
+        if (screen->sprites[battle->effectStep.vars[0]].state == 1) {
+            battle->effectStep.vars[0]++;
+            if (battle->effectStep.vars[0] < battle->sides[side].pile.handCount) {
+                battle->effectStep.state = 2;
+            } else if (battle->effectStep.flags != 0) {
                 screen->openMessage(screen, 0x35, 0, 0, side == 0 ? 2 : 0);
-                battle->stepState = 5;
+                battle->effectStep.state = 5;
             } else {
-                battle->unk424 = 45;
-                battle->stepState = 8;
+                battle->effectStep.time = 45;
+                battle->effectStep.state = 8;
             }
         }
         break;
     case 5:
         if (screen->message.state == 2) {
-            battle->stepState = 6;
+            battle->effectStep.state = 6;
         }
         break;
     case 6:
         if (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->stepState = 7;
+            battle->effectStep.state = 7;
             screen->closeMessage(screen);
         }
         break;
     case 7:
         if (screen->message.state == 0) {
-            battle->unk424 = 45;
-            battle->stepState = 8;
+            battle->effectStep.time = 45;
+            battle->effectStep.state = 8;
         }
         break;
     case 8:
-        screen->setPanelValue(screen, 0, 5, battle->sides[0].pile.deckCount);
-        screen->setPanelValue(screen, 0, 6, battle->sides[0].pile.handCount);
-        screen->setPanelValue(screen, 0, 7, battle->sides[0].pile.discardCount);
-        screen->setPanelValue(screen, 1, 5, battle->sides[1].pile.deckCount);
-        screen->setPanelValue(screen, 1, 6, battle->sides[1].pile.handCount);
-        screen->setPanelValue(screen, 1, 7, battle->sides[1].pile.discardCount);
-        battle->unk424 -= GFX.funcs.getFrameTime();
-        if (battle->unk424 <= 0) {
-            battle->stepState = 9;
+        screen->setPanelValue(screen, 0, CARD_PANEL_DECK, battle->sides[0].pile.deckCount);
+        screen->setPanelValue(screen, 0, CARD_PANEL_HAND, battle->sides[0].pile.handCount);
+        screen->setPanelValue(screen, 0, CARD_PANEL_DISCARDS, battle->sides[0].pile.discardCount);
+        screen->setPanelValue(screen, 1, CARD_PANEL_DECK, battle->sides[1].pile.deckCount);
+        screen->setPanelValue(screen, 1, CARD_PANEL_HAND, battle->sides[1].pile.handCount);
+        screen->setPanelValue(screen, 1, CARD_PANEL_DISCARDS, battle->sides[1].pile.discardCount);
+        battle->effectStep.time -= GFX.funcs.getFrameTime();
+        if (battle->effectStep.time <= 0) {
+            battle->effectStep.state = 9;
             screen->closePanel(screen, side);
-            battle->unk498.unk1 = battle->unk498.unk3;
+            battle->anim.next = battle->anim.hide;
         }
         break;
     case 9:
@@ -3992,8 +3992,8 @@ s32 CARDGAME_drawNewCards(CardBattle *battle, CardScreen *screen, s32 side) {
         } else if (screen->panels[1].state == 0) {
             closed = 1;
         }
-        if (closed && battle->unk498.unk0 == 0) {
-            battle->stepState = 10;
+        if (closed && battle->anim.current == CARD_ANIM_NONE) {
+            battle->effectStep.state = 10;
         }
         break;
     case 10:
@@ -4005,8 +4005,8 @@ s32 CARDGAME_drawNewCards(CardBattle *battle, CardScreen *screen, s32 side) {
 
 /* Starts CARDGAME_stepSlotSweep */
 void CARDGAME_startSlotSweep(CardBattle *battle, CardScreen *screen) {
-    battle->unk428 = 0;
-    battle->stepState = 1;
+    battle->effectStep.vars[0] = 0;
+    battle->effectStep.state = 1;
 }
 
 /* Goes over the marked slots one by one, discarding their cards (which 0) or
@@ -4016,34 +4016,34 @@ s32 CARDGAME_stepSlotSweep(CardBattle *battle, CardScreen *screen, s32 which) {
     s32 i;
     s32 ok;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        for (i = battle->unk428; i < 12; i++) {
-            if (battle->unk46F[i] != 0) {
-                battle->stepState = 2;
-                battle->unk424 = 0;
-                battle->unk428 = i;
-                battle->unk42C = i >= 6;
-                battle->unk430 = i;
+        for (i = battle->effectStep.vars[0]; i < 12; i++) {
+            if (battle->effectStep.marked[i] != 0) {
+                battle->effectStep.state = 2;
+                battle->effectStep.time = 0;
+                battle->effectStep.vars[0] = i;
+                battle->effectStep.vars[1] = i >= 6;
+                battle->effectStep.vars[2] = i;
                 if (i >= 6) {
-                    battle->unk430 = i - 6;
+                    battle->effectStep.vars[2] = i - 6;
                 }
                 break;
             }
         }
         if (i >= 12) {
-            battle->stepState = 3;
+            battle->effectStep.state = 3;
         }
         break;
     case 2:
         if (which == 0) {
-            ok = CARDGAME_stepDiscardSlotCard(battle, screen, battle->unk42C, battle->unk430);
+            ok = CARDGAME_stepDiscardSlotCard(battle, screen, battle->effectStep.vars[1], battle->effectStep.vars[2]);
         } else {
-            ok = CARDGAME_stepReturnSlotCard(battle, screen, battle->unk42C, battle->unk430);
+            ok = CARDGAME_stepReturnSlotCard(battle, screen, battle->effectStep.vars[1], battle->effectStep.vars[2]);
         }
         if (ok) {
-            battle->stepState = 1;
-            battle->unk428++;
+            battle->effectStep.state = 1;
+            battle->effectStep.vars[0]++;
         }
         break;
     case 3:
@@ -4053,61 +4053,61 @@ s32 CARDGAME_stepSlotSweep(CardBattle *battle, CardScreen *screen, s32 which) {
     return done;
 }
 
-/* Marks (unk3E) the record entries whose effect reaches sprite index, by
-   their target (unk5): a side, both, or a colour */
+/* Marks (marks) the plays whose effect reaches sprite index, by
+   their target (targetKind): a side, both, or a colour */
 void CARDGAME_markRecordHits(CardBattle *battle, CardScreen *screen, s32 arg2, s32 index) {
     s32 i;
     s32 color;
     s32 n;
-    n = battle->record.entryCount - 1;
+    n = battle->record.playCount - 1;
     color = screen->sprites[index].color + 1;
     for (i = 0; i < n; i++) {
-        screen->sprites[index].unk3E[i] = 0;
-        switch (battle->record.entries[i].unk5) {
+        screen->sprites[index].marks[i] = 0;
+        switch (battle->record.plays[i].targetKind) {
         case 1:
-            if (battle->record.entries[i].unk4 == 0) {
+            if (battle->record.plays[i].side == 0) {
                 if (index < 6) {
-                    screen->sprites[index].unk3E[i] = 1;
+                    screen->sprites[index].marks[i] = 1;
                 }
             } else if (index >= 6) {
-                screen->sprites[index].unk3E[i] = 1;
+                screen->sprites[index].marks[i] = 1;
             }
             break;
         case 2:
-            if (battle->record.entries[i].unk4 == 0) {
+            if (battle->record.plays[i].side == 0) {
                 if (index >= 6) {
-                    screen->sprites[index].unk3E[i] = 1;
+                    screen->sprites[index].marks[i] = 1;
                 }
             } else if (index < 6) {
-                screen->sprites[index].unk3E[i] = 1;
+                screen->sprites[index].marks[i] = 1;
             }
             break;
         case 3:
-            screen->sprites[index].unk3E[i] = 1;
+            screen->sprites[index].marks[i] = 1;
             break;
         case 4:
             if (color != 1) {
-                screen->sprites[index].unk3E[i] = 1;
+                screen->sprites[index].marks[i] = 1;
             }
             break;
         case 5:
             if (color != 2) {
-                screen->sprites[index].unk3E[i] = 1;
+                screen->sprites[index].marks[i] = 1;
             }
             break;
         case 6:
             if (color == 3) {
-                screen->sprites[index].unk3E[i] = 1;
+                screen->sprites[index].marks[i] = 1;
             }
             break;
         case 7:
             if (color != 4) {
-                screen->sprites[index].unk3E[i] = 1;
+                screen->sprites[index].marks[i] = 1;
             }
             break;
         case 8:
             if (color == 6) {
-                screen->sprites[index].unk3E[i] = 1;
+                screen->sprites[index].marks[i] = 1;
             }
             break;
         }
@@ -4126,21 +4126,21 @@ void CARDGAME_putSlotCard(CardBattle *battle, CardScreen *screen, s32 side, s32 
     }
     initCardDrawer(&drawer);
     drawer.setCard(battle->cards[card] + 1);
-    player->slots[slot].unk6 = drawer.card->ap;
-    player->slots[slot].unk8 = drawer.card->hp;
-    player->slots[slot].unk2 = 0;
-    player->slots[slot].unk4 = 0;
+    player->slots[slot].ap = drawer.card->ap;
+    player->slots[slot].hp = drawer.card->hp;
+    player->slots[slot].apBonus = 0;
+    player->slots[slot].hpBonus = 0;
     player->slots[slot].card = card;
     player->slots[slot].owner = side;
     player->slots[slot].side = 2;
     player->slots[slot].order = battle->slotCount++;
     screen->addSprite(screen, index, 0xE500, 0x6100);
     screen->setSpriteCard(screen, index, card);
-    screen->sprites[index].unk43 = player->slots[slot].unk6;
-    screen->sprites[index].unk44 = player->slots[slot].unk8;
+    screen->sprites[index].ap = player->slots[slot].ap;
+    screen->sprites[index].hp = player->slots[slot].hp;
     screen->sprites[index].scaleX = 0;
     CARDGAME_markRecordHits(battle, screen, side, index);
-    battle->stepState = 1;
+    battle->effectStep.state = 1;
     screen->scaleSprite(screen, index, 20, 0x1000, 0x1000);
 }
 
@@ -4158,8 +4158,8 @@ void CARDGAME_takeHandCard(CardBattle *battle, CardScreen *screen, s32 side) {
         index += 6;
     }
     for (i = 0; i < pile->handCount; i++) {
-        if (battle->record.entries[battle->record.entryCount - 1].unk6 == pile->hand[i]) {
-            battle->addCard(battle, side, battle->record.entries[battle->record.entryCount - 1].unk6);
+        if (battle->record.plays[battle->record.playCount - 1].target == pile->hand[i]) {
+            battle->addCard(battle, side, battle->record.plays[battle->record.playCount - 1].target);
             break;
         }
     }
@@ -4173,12 +4173,12 @@ void CARDGAME_takeHandCard(CardBattle *battle, CardScreen *screen, s32 side) {
     for (i = 0; i < 5; i++) {
         CARDGAME_setCountingCardValues(battle, &player->slots[slot], side, i);
     }
-    screen->sprites[index].unk43 = player->slots[slot].unk6;
-    screen->sprites[index].unk44 = player->slots[slot].unk8;
+    screen->sprites[index].ap = player->slots[slot].ap;
+    screen->sprites[index].hp = player->slots[slot].hp;
     screen->sprites[index].scaleX = 0;
     CARDGAME_markRecordHits(battle, screen, side, index);
-    battle->stepState = 1;
-    screen->setPanelValue(screen, side, 6, pile->handCount);
+    battle->effectStep.state = 1;
+    screen->setPanelValue(screen, side, CARD_PANEL_HAND, pile->handCount);
     screen->scaleSprite(screen, index, 20, 0x1000, 0x1000);
 }
 
@@ -4211,23 +4211,23 @@ s32 CARDGAME_moveSlotCard(CardBattle *battle, CardScreen *screen, s32 side) {
         y = CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][3];
     }
 #endif
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
         if (screen->sprites[index].state == 1) {
             screen->startBlink(screen, index);
-            battle->stepState = 2;
+            battle->effectStep.state = 2;
         }
         break;
     case 2:
         if (screen->sprites[index].state == 1) {
             screen->startMove(screen, index, 20, x, y);
             screen->sprites[index].moving = 1;
-            battle->stepState = 3;
+            battle->effectStep.state = 3;
         }
         break;
     case 3:
         if (screen->sprites[index].state == 1) {
-            battle->stepState = 4;
+            battle->effectStep.state = 4;
             screen->sprites[index].moving = 0;
             player->slotCount++;
         }
@@ -4239,7 +4239,7 @@ s32 CARDGAME_moveSlotCard(CardBattle *battle, CardScreen *screen, s32 side) {
     return done;
 }
 
-/* Copies the first marked slot card (unk46F) into the side's next slot */
+/* Copies the first marked slot card (effectStep.marked) into the side's next slot */
 void CARDGAME_copySlotCard(CardBattle *battle, CardScreen *screen, s32 side) {
     CardPlayer *player = &battle->players[side];
     s32 index = player->slotCount;
@@ -4265,7 +4265,7 @@ void CARDGAME_copySlotCard(CardBattle *battle, CardScreen *screen, s32 side) {
             }
             src = &battle->players[1].slots[i - 6];
         }
-        if (battle->unk46F[i] != 0) {
+        if (battle->effectStep.marked[i] != 0) {
             from = i;
             break;
         }
@@ -4276,17 +4276,17 @@ void CARDGAME_copySlotCard(CardBattle *battle, CardScreen *screen, s32 side) {
     screen->sprites[index] = screen->sprites[from];
     screen->sprites[index].scaleX = 0;
     CARDGAME_markRecordHits(battle, screen, side, index);
-    for (i = 0; i < battle->record.entryCount - 1; i++) {
-        if (battle->record.entries[i].unk5 == 0 && screen->sprites[from].unk3E[i] != 0) {
-            screen->sprites[index].unk3E[i] = 1;
+    for (i = 0; i < battle->record.playCount - 1; i++) {
+        if (battle->record.plays[i].targetKind == 0 && screen->sprites[from].marks[i] != 0) {
+            screen->sprites[index].marks[i] = 1;
         }
     }
-    battle->stepState = 1;
+    battle->effectStep.state = 1;
     screen->scaleSprite(screen, from, 5, 0, 0x1000);
-    battle->unk424 = 7;
+    battle->effectStep.time = 7;
 }
 
-/* Waits unk424 frames, then flips the side's next slot card over and moves it
+/* Waits effectStep.time frames, then flips the side's next slot card over and moves it
    into place; 1 once it is there */
 s32 CARDGAME_flipSlotCard(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 done = 0;
@@ -4316,30 +4316,30 @@ s32 CARDGAME_flipSlotCard(CardBattle *battle, CardScreen *screen, s32 side) {
         y = CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][3];
     }
 #endif
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        battle->unk424 -= GFX.funcs.getFrameTime();
-        if (battle->unk424 <= 0) {
+        battle->effectStep.time -= GFX.funcs.getFrameTime();
+        if (battle->effectStep.time <= 0) {
             screen->scaleSprite(screen, index, 5, 0x1000, 0x1000);
-            battle->stepState = 2;
+            battle->effectStep.state = 2;
         }
         break;
     case 2:
         if (screen->sprites[index].state == 1) {
             screen->startBlink(screen, index);
-            battle->stepState = 3;
+            battle->effectStep.state = 3;
         }
         break;
     case 3:
         if (screen->sprites[index].state == 1) {
             screen->startMove(screen, index, 20, x, y);
             screen->sprites[index].moving = 1;
-            battle->stepState = 4;
+            battle->effectStep.state = 4;
         }
         break;
     case 4:
         if (screen->sprites[index].state == 1) {
-            battle->stepState = 5;
+            battle->effectStep.state = 5;
             screen->sprites[index].moving = 0;
             player->slotCount++;
         }
@@ -4360,39 +4360,39 @@ void CARDGAME_startPlayCard(CardBattle *battle, CardScreen *screen, s32 side) {
     if (side == 0 || screen->panels[0].state == 0) {
         if (screen->panels[0].state == 0) {
             screen->resetPanels(screen);
-            battle->unk440 = 0;
+            battle->effectStep.choice = 0;
             screen->addSprite(screen, 15, 0xE500, 0x6100);
-            screen->setSpriteCard(screen, 15, battle->record.entries[battle->record.entryCount].unk0);
+            screen->setSpriteCard(screen, 15, battle->record.plays[battle->record.playCount].card);
             screen->sprites[15].scaleX = 0;
             screen->scaleSprite(screen, 15, 8, 0x1000, 0x1000);
             screen->openPanels(screen);
-            battle->unk498.unk5 = 1;
-            battle->unk498.unk6[15] = 0;
+            battle->anim.dimAll = CARD_ANIM_UNDIM_ALL;
+            battle->anim.dimmed[15] = 0;
             if (side == 0) {
                 for (j = 0; j < 15; j++) {
-                    battle->unk46F[j] = 0;
+                    battle->effectStep.marked[j] = 0;
                 }
             }
-            battle->unk498.unk1 = 1;
-            battle->stepState = 1;
+            battle->anim.next = CARD_ANIM_SHOW_SLOTS;
+            battle->effectStep.state = 1;
         } else {
-            screen->startMove(screen, 15, 10, CARDGAME_recordCardPositions[battle->record.entryCount][0], CARDGAME_recordCardPositions[battle->record.entryCount][1]);
+            screen->startMove(screen, 15, 10, CARDGAME_recordCardPositions[battle->record.playCount][0], CARDGAME_recordCardPositions[battle->record.playCount][1]);
 #if VERSION_US
-            battle->stepState = 3;
+            battle->effectStep.state = 3;
 #elif VERSION_EU
-            battle->stepState = 5;
+            battle->effectStep.state = 5;
 #endif
-            battle->unk424 = 0;
+            battle->effectStep.time = 0;
         }
     } else {
         screen->addSprite(screen, 15, 0xE500, 0x6100);
-        screen->setSpriteCard(screen, 15, battle->record.entries[battle->record.entryCount].unk0);
+        screen->setSpriteCard(screen, 15, battle->record.plays[battle->record.playCount].card);
         screen->sprites[15].scaleX = 0;
         screen->scaleSprite(screen, 15, 8, 0x1000, 0x1000);
-        battle->stepState = 2;
-        battle->unk424 = 0;
+        battle->effectStep.state = 2;
+        battle->effectStep.time = 0;
 #if VERSION_EU
-        battle->unk428 = 0;
+        battle->effectStep.vars[0] = 0;
 #endif
     }
     screen->clearPanelFlags(screen);
@@ -4402,7 +4402,7 @@ void CARDGAME_startPlayCard(CardBattle *battle, CardScreen *screen, s32 side) {
 }
 
 /* Card 15 goes off and the marked slot cards turn over; it then lands in
-   sprite 12 + CardBattle560.unk15. 1 once done */
+   sprite 12 + CardRecord.unk15. 1 once done */
 s32 CARDGAME_stepPlayCard(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
     s32 i;
@@ -4411,103 +4411,103 @@ s32 CARDGAME_stepPlayCard(CardBattle *battle, CardScreen *screen) {
     s32 card;
 #endif
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
 #if VERSION_US
     case 2:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 21) {
-            screen->startMove(screen, 15, 10, CARDGAME_recordCardPositions[battle->record.entryCount][0], CARDGAME_recordCardPositions[battle->record.entryCount][1]);
-            battle->stepState = 3;
-            battle->unk424 = 0;
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 21) {
+            screen->startMove(screen, 15, 10, CARDGAME_recordCardPositions[battle->record.playCount][0], CARDGAME_recordCardPositions[battle->record.playCount][1]);
+            battle->effectStep.state = 3;
+            battle->effectStep.time = 0;
         }
         break;
 #elif VERSION_EU
     case 2:
         screen->windows[1].unkE = 0;
-        screen->windows[1].unk10 = 0;
-        screen->windows[2].unk10 = 0;
-        screen->windows[3].unk10 = 0;
-        screen->windows[4].unk10 = 0;
-        battle->unk428 = CARDGAME_openStepWindows(battle, screen, 2, 0, battle->unk424, battle->unk428);
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 21) {
-            battle->unk424 = 0;
-            battle->unk428 = 0;
-            battle->stepState = 3;
+        screen->windows[1].value = 0;
+        screen->windows[2].value = 0;
+        screen->windows[3].value = 0;
+        screen->windows[4].value = 0;
+        battle->effectStep.vars[0] = CARDGAME_openStepWindows(battle, screen, 2, 0, battle->effectStep.time, battle->effectStep.vars[0]);
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 21) {
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.state = 3;
         }
         break;
     case 3:
         if (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->stepState = 4;
+            battle->effectStep.state = 4;
         }
-        card = battle->cards[battle->record.entries[battle->record.entryCount].unk0] + 1;
-        screen->windows[4].unk14[2] = 0;
-        screen->windows[2].unk10 = card;
-        screen->windows[4].unk10 = card;
+        card = battle->cards[battle->record.plays[battle->record.playCount].card] + 1;
+        screen->windows[4].numbers[2] = 0;
+        screen->windows[2].value = card;
+        screen->windows[4].value = card;
         break;
     case 4:
-        screen->startMove(screen, 15, 10, CARDGAME_recordCardPositions[battle->record.entryCount][0], CARDGAME_recordCardPositions[battle->record.entryCount][1]);
+        screen->startMove(screen, 15, 10, CARDGAME_recordCardPositions[battle->record.playCount][0], CARDGAME_recordCardPositions[battle->record.playCount][1]);
         screen->closeWindow(screen, 4);
         screen->closeWindow(screen, 1);
         screen->closeWindow(screen, 2);
         screen->closeWindow(screen, 3);
-        battle->stepState = 5;
-        battle->unk424 = 0;
-        battle->unk428 = 0;
+        battle->effectStep.state = 5;
+        battle->effectStep.time = 0;
+        battle->effectStep.vars[0] = 0;
         break;
 #endif
     case 1:
-        if (screen->panels[0].state == 2 && battle->unk498.unk0 == 0) {
-            screen->startMove(screen, 15, 10, CARDGAME_recordCardPositions[battle->record.entryCount][0], CARDGAME_recordCardPositions[battle->record.entryCount][1]);
-            battle->stepState = 3 + CARD_INFO_STEPS;
-            battle->unk424 = 0;
+        if (screen->panels[0].state == 2 && battle->anim.current == CARD_ANIM_NONE) {
+            screen->startMove(screen, 15, 10, CARDGAME_recordCardPositions[battle->record.playCount][0], CARDGAME_recordCardPositions[battle->record.playCount][1]);
+            battle->effectStep.state = 3 + CARD_INFO_STEPS;
+            battle->effectStep.time = 0;
         }
         break;
     case 3 + CARD_INFO_STEPS:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 12) {
-            battle->unk424 = 0;
-            battle->stepState = 4 + CARD_INFO_STEPS;
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 12) {
+            battle->effectStep.time = 0;
+            battle->effectStep.state = 4 + CARD_INFO_STEPS;
             screen->startBlink(screen, 15);
             for (i = 0; i < 15; i++) {
-                if (battle->unk46F[i] != 0) {
+                if (battle->effectStep.marked[i] != 0) {
                     screen->startBlink(screen, i);
                 }
             }
         }
         break;
     case 4 + CARD_INFO_STEPS:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 21) {
-            battle->stepState = 5 + CARD_INFO_STEPS;
-            battle->unk424 = 0;
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 21) {
+            battle->effectStep.state = 5 + CARD_INFO_STEPS;
+            battle->effectStep.time = 0;
             screen->scaleSprite(screen, 15, 5, 0, 0x1000);
             for (j = 0; j < 15; j++) {
-                if (battle->unk46F[j] != 0) {
-                    screen->sprites[j].unk3E[battle->record.entryCount] = 1;
+                if (battle->effectStep.marked[j] != 0) {
+                    screen->sprites[j].marks[battle->record.playCount] = 1;
                 }
             }
         }
         break;
     case 5 + CARD_INFO_STEPS:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 7) {
-            battle->unk424 = 0;
-            screen->sprites[15].unk46 = battle->record.entryCount + 1;
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 7) {
+            battle->effectStep.time = 0;
+            screen->sprites[15].order = battle->record.playCount + 1;
             screen->scaleSprite(screen, 15, 8, 0x1000, 0x1000);
-            battle->stepState = 6 + CARD_INFO_STEPS;
-            screen->openGauge(screen, battle->record.entryCount, battle->record.unk19);
+            battle->effectStep.state = 6 + CARD_INFO_STEPS;
+            screen->openGauge(screen, battle->record.playCount, battle->record.turnSide);
         }
         break;
     case 6 + CARD_INFO_STEPS:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 11) {
-            battle->unk424 = 0;
-            battle->stepState = 7 + CARD_INFO_STEPS;
-            screen->sprites[battle->record.entryCount + 12] = screen->sprites[15];
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 11) {
+            battle->effectStep.time = 0;
+            battle->effectStep.state = 7 + CARD_INFO_STEPS;
+            screen->sprites[battle->record.playCount + 12] = screen->sprites[15];
             screen->removeSprite(screen, 15);
             for (j = 0; j < 12; j++) {
-                screen->sprites[j].unk48 &= ~1;
+                screen->sprites[j].highlight &= ~1;
             }
         }
         break;
@@ -4522,12 +4522,12 @@ s32 CARDGAME_stepPlayCard(CardBattle *battle, CardScreen *screen) {
 void CARDGAME_clearHands(CardBattle *battle, CardScreen *screen) {
     battle->sides[0].pile.handCount = 0;
     battle->sides[1].pile.handCount = 0;
-    screen->setPanelValue(screen, 0, 6, battle->sides[0].pile.handCount);
-    screen->setPanelValue(screen, 1, 6, battle->sides[1].pile.handCount);
-    screen->setPanelValue(screen, 0, 5, battle->sides[0].pile.deckCount);
-    screen->setPanelValue(screen, 1, 5, battle->sides[1].pile.deckCount);
-    battle->unk440 = 0;
-    battle->unk423 = 1;
+    screen->setPanelValue(screen, 0, CARD_PANEL_HAND, battle->sides[0].pile.handCount);
+    screen->setPanelValue(screen, 1, CARD_PANEL_HAND, battle->sides[1].pile.handCount);
+    screen->setPanelValue(screen, 0, CARD_PANEL_DECK, battle->sides[0].pile.deckCount);
+    screen->setPanelValue(screen, 1, CARD_PANEL_DECK, battle->sides[1].pile.deckCount);
+    battle->effectStep.choice = 0;
+    battle->effectStep.nextState = 1;
 }
 
 /* Deals six cards from each side's deck into its hand and puts them on the
@@ -4537,11 +4537,11 @@ void CARDGAME_dealHands(CardBattle *battle, CardScreen *screen) {
     s32 i;
     s32 j;
 
-    battle->unk424 = 0;
-    battle->unk428 = 0;
-    battle->unk434 = 0;
-    battle->unk42C = battle->sides[0].pile.deckCount;
-    battle->unk430 = battle->sides[1].pile.deckCount;
+    battle->effectStep.time = 0;
+    battle->effectStep.vars[0] = 0;
+    battle->effectStep.vars[3] = 0;
+    battle->effectStep.vars[1] = battle->sides[0].pile.deckCount;
+    battle->effectStep.vars[2] = battle->sides[1].pile.deckCount;
     for (side = 0; side < 2; side++) {
         for (j = 0; j < 6; j++) {
             battle->sides[side].pile.hand[j] = battle->sides[side].pile.deck[battle->sides[side].pile.deckTop];
@@ -4578,8 +4578,8 @@ void CARDGAME_dealHands(CardBattle *battle, CardScreen *screen) {
 s32 CARDGAME_stepStart(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
 
-    if (battle->unk423 != 0) {
-        switch (battle->unk423) {
+    if (battle->effectStep.nextState != 0) {
+        switch (battle->effectStep.nextState) {
         case 1:
             screen->openPanels(screen);
             break;
@@ -4588,31 +4588,31 @@ s32 CARDGAME_stepStart(CardBattle *battle, CardScreen *screen) {
             break;
         case 3:
         case 4:
-            battle->unk424 = 0;
-            battle->unk428 = 0;
-            battle->unk434 = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.vars[3] = 0;
             break;
         case 5:
-            battle->unk424 = 0;
-            battle->unk428 = 0;
-            battle->unk434 = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.vars[3] = 0;
             screen->closePanels(screen);
             break;
         case 6:
             screen->setPanelFlags(screen, 0x1000);
             screen->openMessage(screen, 0x21, 0, 1, 1);
-            battle->unk440 = 1;
+            battle->effectStep.choice = 1;
             break;
         case 7:
             SOUND.playSound(SOUND_WIN_JINGLE);
             screen->setPanelFlags(screen, 0x2000);
             screen->openMessage(screen, 0x22, 0, 1, 1);
-            battle->unk440 = 2;
+            battle->effectStep.choice = 2;
             break;
         case 9:
-            battle->unk424 = 0;
-            battle->unk428 = 0;
-            battle->unk434 = 0;
+            battle->effectStep.time = 0;
+            battle->effectStep.vars[0] = 0;
+            battle->effectStep.vars[3] = 0;
             screen->closePanels(screen);
             screen->closeMessage(screen);
             break;
@@ -4625,127 +4625,127 @@ s32 CARDGAME_stepStart(CardBattle *battle, CardScreen *screen) {
             /* nothing to set up */
             break;
         }
-        battle->stepState = battle->unk423;
-        battle->unk423 = 0;
+        battle->effectStep.state = battle->effectStep.nextState;
+        battle->effectStep.nextState = 0;
     }
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
         if (screen->panels[0].state == 2) {
             if (battle->sides[0].pile.deckCount < 6) {
-                battle->unk423 = 6;
+                battle->effectStep.nextState = 6;
             } else if (battle->sides[1].pile.deckCount < 6) {
-                battle->unk423 = 7;
+                battle->effectStep.nextState = 7;
             } else {
-                battle->unk423 = 2;
+                battle->effectStep.nextState = 2;
             }
         }
         break;
     case 2:
-        if (battle->unk434 >= 7) {
-            if (battle->unk428 < 6) {
+        if (battle->effectStep.vars[3] >= 7) {
+            if (battle->effectStep.vars[0] < 6) {
 #if VERSION_US
-                screen->startMove(screen, battle->unk428, 20, battle->unk428 * 0x2900 + 0x1800, 0x9000);
+                screen->startMove(screen, battle->effectStep.vars[0], 20, battle->effectStep.vars[0] * 0x2900 + 0x1800, 0x9000);
 #elif VERSION_EU
-                screen->startMove(screen, battle->unk428, 20, CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][0] + battle->unk428 * 0x2900, CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][1]);
+                screen->startMove(screen, battle->effectStep.vars[0], 20, CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][0] + battle->effectStep.vars[0] * 0x2900, CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][1]);
 #endif
-                screen->setSpriteScale(screen, battle->unk428, 0x1000, 0x1000);
+                screen->setSpriteScale(screen, battle->effectStep.vars[0], 0x1000, 0x1000);
 #if VERSION_US
-                screen->startMove(screen, battle->unk428 + 6, 20, battle->unk428 * 0x2900 + 0x1800, 0x3200);
+                screen->startMove(screen, battle->effectStep.vars[0] + 6, 20, battle->effectStep.vars[0] * 0x2900 + 0x1800, 0x3200);
 #elif VERSION_EU
-                screen->startMove(screen, battle->unk428 + 6, 20, CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][2] + battle->unk428 * 0x2900, CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][3]);
+                screen->startMove(screen, battle->effectStep.vars[0] + 6, 20, CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][2] + battle->effectStep.vars[0] * 0x2900, CARDGAME_slotRowPositions[SHIFT_PAL_SCREEN][3]);
 #endif
-                screen->setSpriteScale(screen, battle->unk428 + 6, 0x1000, 0x1000);
-                battle->unk428++;
-                battle->unk42C--;
-                battle->unk430--;
-                screen->setPanelValue(screen, 0, 6, battle->unk428);
-                screen->setPanelValue(screen, 1, 6, battle->unk428);
-                screen->setPanelValue(screen, 0, 5, battle->unk42C);
-                screen->setPanelValue(screen, 1, 5, battle->unk430);
+                screen->setSpriteScale(screen, battle->effectStep.vars[0] + 6, 0x1000, 0x1000);
+                battle->effectStep.vars[0]++;
+                battle->effectStep.vars[1]--;
+                battle->effectStep.vars[2]--;
+                screen->setPanelValue(screen, 0, CARD_PANEL_HAND, battle->effectStep.vars[0]);
+                screen->setPanelValue(screen, 1, CARD_PANEL_HAND, battle->effectStep.vars[0]);
+                screen->setPanelValue(screen, 0, CARD_PANEL_DECK, battle->effectStep.vars[1]);
+                screen->setPanelValue(screen, 1, CARD_PANEL_DECK, battle->effectStep.vars[2]);
             }
-            battle->unk434 -= 7;
+            battle->effectStep.vars[3] -= 7;
         }
-        if (battle->unk424 > 60) {
-            battle->unk423 = 3;
+        if (battle->effectStep.time > 60) {
+            battle->effectStep.nextState = 3;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
-        battle->unk434 += GFX.funcs.getFrameTime();
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        battle->effectStep.vars[3] += GFX.funcs.getFrameTime();
         break;
     case 3:
-        if (battle->unk434 >= 7) {
-            if (battle->unk428 < 6) {
-                screen->startFlip(screen, battle->unk428);
-                battle->unk428++;
+        if (battle->effectStep.vars[3] >= 7) {
+            if (battle->effectStep.vars[0] < 6) {
+                screen->startFlip(screen, battle->effectStep.vars[0]);
+                battle->effectStep.vars[0]++;
             }
-            battle->unk434 -= 7;
+            battle->effectStep.vars[3] -= 7;
         }
-        if (battle->unk424 > 65) {
-            battle->unk423 = 4;
+        if (battle->effectStep.time > 65) {
+            battle->effectStep.nextState = 4;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
-        battle->unk434 += GFX.funcs.getFrameTime();
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        battle->effectStep.vars[3] += GFX.funcs.getFrameTime();
         break;
     case 4:
-        if (battle->unk434 >= 7) {
-            if (battle->unk428 < 6) {
-                if (CARDGAME_addColorCount(battle, screen, 0, battle->sides[0].pile.hand[battle->unk428])) {
-                    screen->startBlink(screen, battle->unk428);
+        if (battle->effectStep.vars[3] >= 7) {
+            if (battle->effectStep.vars[0] < 6) {
+                if (CARDGAME_addColorCount(battle, screen, 0, battle->sides[0].pile.hand[battle->effectStep.vars[0]])) {
+                    screen->startBlink(screen, battle->effectStep.vars[0]);
                 }
-                if (CARDGAME_addColorCount(battle, screen, 1, battle->sides[1].pile.hand[battle->unk428])) {
-                    screen->startBlink(screen, battle->unk428 + 6);
+                if (CARDGAME_addColorCount(battle, screen, 1, battle->sides[1].pile.hand[battle->effectStep.vars[0]])) {
+                    screen->startBlink(screen, battle->effectStep.vars[0] + 6);
                 }
-                battle->unk428++;
+                battle->effectStep.vars[0]++;
             }
-            battle->unk434 -= 7;
+            battle->effectStep.vars[3] -= 7;
         }
-        if (battle->unk424 > 80) {
-            battle->unk423 = 5;
+        if (battle->effectStep.time > 80) {
+            battle->effectStep.nextState = 5;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
-        battle->unk434 += GFX.funcs.getFrameTime();
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        battle->effectStep.vars[3] += GFX.funcs.getFrameTime();
         break;
     case 5:
-        if (battle->unk434 >= 3) {
-            if (battle->unk428 < 6) {
-                screen->scaleSprite(screen, battle->unk428, 5, 0, 0x1000);
-                screen->scaleSprite(screen, battle->unk428 + 6, 5, 0, 0x1000);
-                battle->unk428++;
+        if (battle->effectStep.vars[3] >= 3) {
+            if (battle->effectStep.vars[0] < 6) {
+                screen->scaleSprite(screen, battle->effectStep.vars[0], 5, 0, 0x1000);
+                screen->scaleSprite(screen, battle->effectStep.vars[0] + 6, 5, 0, 0x1000);
+                battle->effectStep.vars[0]++;
             }
-            battle->unk434 -= 3;
+            battle->effectStep.vars[3] -= 3;
         }
-        if (battle->unk424 > 40) {
-            battle->unk423 = 10;
+        if (battle->effectStep.time > 40) {
+            battle->effectStep.nextState = 10;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
-        battle->unk434 += GFX.funcs.getFrameTime();
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        battle->effectStep.vars[3] += GFX.funcs.getFrameTime();
         break;
     case 6:
     case 7:
         if (screen->message.state == 2) {
-            battle->unk423 = 8;
+            battle->effectStep.nextState = 8;
         }
         break;
     case 8:
         if (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->unk423 = 9;
+            battle->effectStep.nextState = 9;
         }
         break;
     case 9:
         if (screen->message.state == 0 && screen->panels[0].state == 0) {
-            battle->unk423 = 10;
+            battle->effectStep.nextState = 10;
         }
         break;
     case 10:
-        if (battle->unk440 == 2) {
-            battle->unk423 = 11;
+        if (battle->effectStep.choice == 2) {
+            battle->effectStep.nextState = 11;
         } else {
             done = 1;
         }
         break;
     case 11:
         if (screen->message.state == 2) {
-            battle->unk423 = 12;
+            battle->effectStep.nextState = 12;
         }
         break;
     case 12:
@@ -4757,26 +4757,26 @@ s32 CARDGAME_stepStart(CardBattle *battle, CardScreen *screen) {
     return done;
 }
 
-/* Starts CARDGAME_stepAttack: side's unk0 comes off the other side's unk2
+/* Starts CARDGAME_stepAttack: side's apTotal comes off the other side's hpTotal
    (down to 0), counted down over its cards out */
 void CARDGAME_startAttack(CardBattle *battle, CardScreen *screen, s32 side) {
-    battle->unk424 = 0;
-    battle->unk428 = 0;
-    battle->unk42C = battle->sides[side].pile.unk0;
-    battle->unk430 = battle->sides[side ^ 1].pile.unk2 << 8;
-    battle->sides[side ^ 1].pile.unk2 -= battle->sides[side].pile.unk0;
-    if (battle->sides[side ^ 1].pile.unk2 < 0) {
-        battle->sides[side ^ 1].pile.unk2 = 0;
+    battle->effectStep.time = 0;
+    battle->effectStep.vars[0] = 0;
+    battle->effectStep.vars[1] = battle->sides[side].pile.apTotal;
+    battle->effectStep.vars[2] = battle->sides[side ^ 1].pile.hpTotal << 8;
+    battle->sides[side ^ 1].pile.hpTotal -= battle->sides[side].pile.apTotal;
+    if (battle->sides[side ^ 1].pile.hpTotal < 0) {
+        battle->sides[side ^ 1].pile.hpTotal = 0;
     }
     if (battle->players[side].slotCount != 0) {
-        battle->unk434 = (battle->unk430 - (battle->sides[side ^ 1].pile.unk2 << 8)) / (battle->players[side].slotCount * 28 - 16);
-        if (battle->unk434 == 0) {
-            battle->unk434 = 1;
+        battle->effectStep.vars[3] = (battle->effectStep.vars[2] - (battle->sides[side ^ 1].pile.hpTotal << 8)) / (battle->players[side].slotCount * 28 - 16);
+        if (battle->effectStep.vars[3] == 0) {
+            battle->effectStep.vars[3] = 1;
         }
     } else {
-        battle->unk434 = 1;
+        battle->effectStep.vars[3] = 1;
     }
-    battle->stepState = 1;
+    battle->effectStep.state = 1;
 }
 
 /* The side's slot cards go over one by one (every 27 frames) while the panels
@@ -4791,10 +4791,10 @@ s32 CARDGAME_stepAttack(CardBattle *battle, CardScreen *screen, s32 side) {
 #endif
     s32 i;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (battle->unk424 % 27 == 0 && battle->unk428 < battle->players[side].slotCount) {
-            index = battle->unk428;
+        if (battle->effectStep.time % 27 == 0 && battle->effectStep.vars[0] < battle->players[side].slotCount) {
+            index = battle->effectStep.vars[0];
             if (side != 0) {
                 index += 6;
             }
@@ -4808,36 +4808,36 @@ s32 CARDGAME_stepAttack(CardBattle *battle, CardScreen *screen, s32 side) {
                 screen->startFly(screen, index, 6, x, 0x6100);
             }
 #endif
-            battle->unk428++;
+            battle->effectStep.vars[0]++;
             screen->sprites[index].moving = 1;
         }
-        if (battle->unk424 >= 16) {
+        if (battle->effectStep.time >= 16) {
             value = 0;
-            if (battle->unk424 < battle->players[side].slotCount * 28) {
-                value = battle->unk42C - (battle->unk42C / (battle->players[side].slotCount * 56 + 1) + 1) * battle->unk424;
+            if (battle->effectStep.time < battle->players[side].slotCount * 28) {
+                value = battle->effectStep.vars[1] - (battle->effectStep.vars[1] / (battle->players[side].slotCount * 56 + 1) + 1) * battle->effectStep.time;
                 if (value < 0) {
                     value = 0;
                 }
             }
-            screen->setPanelValue(screen, side, 8, value);
-            if (battle->unk424 < battle->players[side].slotCount * 28) {
-                battle->unk430 -= battle->unk434;
-                if (battle->unk430 < battle->sides[other].pile.unk2 << 8) {
-                    battle->unk430 = battle->sides[other].pile.unk2 << 8;
+            screen->setPanelValue(screen, side, CARD_PANEL_AP, value);
+            if (battle->effectStep.time < battle->players[side].slotCount * 28) {
+                battle->effectStep.vars[2] -= battle->effectStep.vars[3];
+                if (battle->effectStep.vars[2] < battle->sides[other].pile.hpTotal << 8) {
+                    battle->effectStep.vars[2] = battle->sides[other].pile.hpTotal << 8;
                 }
             } else {
-                battle->unk430 = battle->sides[other].pile.unk2 << 8;
+                battle->effectStep.vars[2] = battle->sides[other].pile.hpTotal << 8;
             }
-            screen->setPanelValue(screen, other, 9, battle->unk430 >> 8);
+            screen->setPanelValue(screen, other, CARD_PANEL_HP, battle->effectStep.vars[2] >> 8);
         }
-        if (screen->unk54 & 2) {
+        if (screen->spriteFlags & 2) {
             for (i = 0; i < battle->players[other].slotCount; i++) {
                 screen->startJitter(screen, side == 0 ? i + 6 : i);
             }
         }
-        battle->unk424++;
-        if (battle->unk424 > battle->players[side].slotCount * 28 + 25) {
-            battle->stepState = 2;
+        battle->effectStep.time++;
+        if (battle->effectStep.time > battle->players[side].slotCount * 28 + 25) {
+            battle->effectStep.state = 2;
         }
         break;
     case 2:
@@ -4849,21 +4849,21 @@ s32 CARDGAME_stepAttack(CardBattle *battle, CardScreen *screen, s32 side) {
 
 /* Starts CARDGAME_stepDiscardAllSlots from side's last slot */
 void CARDGAME_startDiscardAllSlots(CardBattle *battle, CardScreen *screen, s32 side) {
-    battle->unk424 = 0;
-    battle->unk428 = battle->players[side].slotCount - 1;
-    battle->stepState = 1;
+    battle->effectStep.time = 0;
+    battle->effectStep.vars[0] = battle->players[side].slotCount - 1;
+    battle->effectStep.state = 1;
 }
 
 /* Discards side's slot cards from the last to the first; 1 once done */
 s32 CARDGAME_stepDiscardAllSlots(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 done = 0;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (CARDGAME_stepDiscardSlotCard(battle, screen, side, battle->unk428)) {
-            battle->unk424 = 0;
-            if (--battle->unk428 < 0) {
-                battle->stepState = 2;
+        if (CARDGAME_stepDiscardSlotCard(battle, screen, side, battle->effectStep.vars[0])) {
+            battle->effectStep.time = 0;
+            if (--battle->effectStep.vars[0] < 0) {
+                battle->effectStep.state = 2;
                 battle->players[side].slotCount = 0;
             }
         }
@@ -4895,76 +4895,76 @@ s32 CARDGAME_interpolate(s32 to, s32 from, s32 duration, s32 time) {
     return from;
 }
 
-/* Shows the kept card (unk304) as sprite 17 for CARDGAME_stepSwap */
+/* Shows the kept card (keptCard) as sprite 17 for CARDGAME_stepSwap */
 void CARDGAME_startSwap(CardBattle *battle, CardScreen *screen) {
     screen->addSprite(screen, 0x11, 0x8300, 0x6100);
-    screen->setSpriteCard(screen, 0x11, battle->unk304 - 1);
+    screen->setSpriteCard(screen, 0x11, battle->keptCard - 1);
     screen->sprites[0x11].scaleX = 0;
     screen->scaleSprite(screen, 0x11, 10, 0x1000, 0x1000);
-    battle->stepState = 1;
+    battle->effectStep.state = 1;
 }
 
-/* Swaps the two sides' pile unk0 and unk2, counting the panels' values 8 and 9 over to each other, then shows message 0x2D until cross or triangle; 1 once done */
+/* Swaps the two sides' pile apTotal and hpTotal, counting the panels' ap and hp over to each other, then shows message 0x2D until cross or triangle; 1 once done */
 s32 CARDGAME_stepSwap(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
     s32 unk0;
     s32 unk2;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
         if (screen->sprites[0x11].state == 1) {
             screen->startBlink(screen, 0x11);
-            battle->stepState = 2;
+            battle->effectStep.state = 2;
         }
         break;
     case 2:
         if (screen->sprites[0x11].state == 1) {
-            battle->stepState = 3;
-            battle->unk424 = 0;
+            battle->effectStep.state = 3;
+            battle->effectStep.time = 0;
         }
         break;
     case 3:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 < 15) {
-            screen->setPanelValue(screen, 0, 8, CARDGAME_interpolate(battle->sides[1].pile.unk0, battle->sides[0].pile.unk0, 15, battle->unk424));
-            screen->setPanelValue(screen, 0, 9, CARDGAME_interpolate(battle->sides[1].pile.unk2, battle->sides[0].pile.unk2, 15, battle->unk424));
-            screen->setPanelValue(screen, 1, 8, CARDGAME_interpolate(battle->sides[0].pile.unk0, battle->sides[1].pile.unk0, 15, battle->unk424));
-            screen->setPanelValue(screen, 1, 9, CARDGAME_interpolate(battle->sides[0].pile.unk2, battle->sides[1].pile.unk2, 15, battle->unk424));
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time < 15) {
+            screen->setPanelValue(screen, 0, CARD_PANEL_AP, CARDGAME_interpolate(battle->sides[1].pile.apTotal, battle->sides[0].pile.apTotal, 15, battle->effectStep.time));
+            screen->setPanelValue(screen, 0, CARD_PANEL_HP, CARDGAME_interpolate(battle->sides[1].pile.hpTotal, battle->sides[0].pile.hpTotal, 15, battle->effectStep.time));
+            screen->setPanelValue(screen, 1, CARD_PANEL_AP, CARDGAME_interpolate(battle->sides[0].pile.apTotal, battle->sides[1].pile.apTotal, 15, battle->effectStep.time));
+            screen->setPanelValue(screen, 1, CARD_PANEL_HP, CARDGAME_interpolate(battle->sides[0].pile.hpTotal, battle->sides[1].pile.hpTotal, 15, battle->effectStep.time));
         } else {
-            unk0 = battle->sides[0].pile.unk0;
-            battle->sides[0].pile.unk0 = battle->sides[1].pile.unk0;
-            battle->sides[1].pile.unk0 = unk0;
-            unk2 = battle->sides[0].pile.unk2;
-            battle->sides[0].pile.unk2 = battle->sides[1].pile.unk2;
-            battle->sides[1].pile.unk2 = unk2;
-            screen->setPanelValue(screen, 0, 8, battle->sides[0].pile.unk0);
-            screen->setPanelValue(screen, 0, 9, battle->sides[0].pile.unk2);
-            screen->setPanelValue(screen, 1, 8, battle->sides[1].pile.unk0);
-            screen->setPanelValue(screen, 1, 9, battle->sides[1].pile.unk2);
+            unk0 = battle->sides[0].pile.apTotal;
+            battle->sides[0].pile.apTotal = battle->sides[1].pile.apTotal;
+            battle->sides[1].pile.apTotal = unk0;
+            unk2 = battle->sides[0].pile.hpTotal;
+            battle->sides[0].pile.hpTotal = battle->sides[1].pile.hpTotal;
+            battle->sides[1].pile.hpTotal = unk2;
+            screen->setPanelValue(screen, 0, CARD_PANEL_AP, battle->sides[0].pile.apTotal);
+            screen->setPanelValue(screen, 0, CARD_PANEL_HP, battle->sides[0].pile.hpTotal);
+            screen->setPanelValue(screen, 1, CARD_PANEL_AP, battle->sides[1].pile.apTotal);
+            screen->setPanelValue(screen, 1, CARD_PANEL_HP, battle->sides[1].pile.hpTotal);
             screen->scaleSprite(screen, 0x11, 10, 0, 0x1000);
-            battle->stepState = 4;
+            battle->effectStep.state = 4;
         }
         break;
     case 4:
         if (screen->sprites[0x11].state == 1) {
-            battle->stepState = 5;
+            battle->effectStep.state = 5;
             screen->openMessage(screen, 0x2D, 0, 0, 1);
         }
         break;
     case 5:
         if (screen->message.state == 2) {
-            battle->stepState = 6;
+            battle->effectStep.state = 6;
         }
         break;
     case 6:
         if (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->stepState = 7;
+            battle->effectStep.state = 7;
             screen->closeMessage(screen);
         }
         break;
     case 7:
         if (screen->message.state == 0) {
-            battle->stepState = 8;
+            battle->effectStep.state = 8;
         }
         break;
     case 8:
@@ -4974,7 +4974,7 @@ s32 CARDGAME_stepSwap(CardBattle *battle, CardScreen *screen) {
     return done;
 }
 
-/* Adds up the marked slots' unk6 and unk8 (at most 99, 20 more for four or more slots) and shows them on sprite 0x11 with card unk438, looked for among the card list's last 100 cards */
+/* Adds up the marked slots' ap and hp (at most 99, 20 more for four or more slots) and shows them on sprite 0x11 with card effectStep.vars[4], looked for among the card list's last 100 cards */
 void CARDGAME_showSlotTotal(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 i;
     s32 card;
@@ -4983,62 +4983,62 @@ void CARDGAME_showSlotTotal(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 index;
     s32 base;
 
-    battle->unk42C = 0;
-    battle->unk430 = 0;
+    battle->effectStep.vars[1] = 0;
+    battle->effectStep.vars[2] = 0;
     for (i = 0; i < battle->players[side].slotCount; i++) {
-        if (battle->unk446[i] != 0) {
-            battle->unk42C += battle->players[side].slots[i].unk6;
-            if (battle->unk42C >= 100) {
-                battle->unk42C = 99;
+        if (battle->effectStep.eligible[i] != 0) {
+            battle->effectStep.vars[1] += battle->players[side].slots[i].ap;
+            if (battle->effectStep.vars[1] >= 100) {
+                battle->effectStep.vars[1] = 99;
             }
-            battle->unk430 += battle->players[side].slots[i].unk8;
-            if (battle->unk430 >= 100) {
-                battle->unk430 = 99;
+            battle->effectStep.vars[2] += battle->players[side].slots[i].hp;
+            if (battle->effectStep.vars[2] >= 100) {
+                battle->effectStep.vars[2] = 99;
             }
             count++;
         }
     }
     if (count >= 4) {
-        battle->unk42C += 20;
-        if (battle->unk42C >= 100) {
-            battle->unk42C = 99;
+        battle->effectStep.vars[1] += 20;
+        if (battle->effectStep.vars[1] >= 100) {
+            battle->effectStep.vars[1] = 99;
         }
-        battle->unk430 += 20;
-        if (battle->unk430 >= 100) {
-            battle->unk430 = 99;
+        battle->effectStep.vars[2] += 20;
+        if (battle->effectStep.vars[2] >= 100) {
+            battle->effectStep.vars[2] = 99;
         }
     }
     screen->addSprite(screen, 0x11, 0x8300, 0x6100);
     index = 0;
     for (card = 89; card < battle->cardCount; card++) {
-        if (battle->cards[card] == battle->unk438 - 1) {
+        if (battle->cards[card] == battle->effectStep.vars[4] - 1) {
             index = card;
             break;
         }
     }
     if (index == 0) {
         index = 87;
-        battle->unk438 = 0x13B;
+        battle->effectStep.vars[4] = 0x13B;
     }
     screen->setSpriteCard(screen, 0x11, index);
     screen->sprites[0x11].color = 5;
-    screen->sprites[0x11].unk43 = battle->unk42C;
-    screen->sprites[0x11].unk44 = battle->unk430;
+    screen->sprites[0x11].ap = battle->effectStep.vars[1];
+    screen->sprites[0x11].hp = battle->effectStep.vars[2];
     base = 0;
     if (side != 0) {
         base = 6;
     }
     for (slot = 0; slot < battle->players[side].slotCount; slot++) {
-        if (battle->unk446[slot] != 0) {
-            screen->sprites[base + slot].unk48 |= 4;
+        if (battle->effectStep.eligible[slot] != 0) {
+            screen->sprites[base + slot].highlight |= 4;
         }
     }
     screen->sprites[0x11].scaleX = 0;
-    battle->unk424 = 0;
-    battle->stepState = 1;
+    battle->effectStep.time = 0;
+    battle->effectStep.state = 1;
 }
 
-/* Takes the marked slots' sprites away, shows card unk438 in window 2 for 90 frames (or until cross or triangle), then adds unk42C and unk430 to the side's pile unk0 and unk2, counting the panel values up; 1 once done */
+/* Takes the marked slots' sprites away, shows card effectStep.vars[4] in window 2 for 90 frames (or until cross or triangle), then adds effectStep.vars[1] and effectStep.vars[2] to the side's pile apTotal and hpTotal, counting the panel values up; 1 once done */
 s32 CARDGAME_stepSlotTotal(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 done = 0;
     s32 base;
@@ -5046,90 +5046,90 @@ s32 CARDGAME_stepSlotTotal(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 first;
     s32 j;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 21) {
-            battle->stepState = 2;
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 21) {
+            battle->effectStep.state = 2;
             base = 0;
             if (side != 0) {
                 base = 6;
             }
             for (i = 0; i < battle->players[side].slotCount; i++) {
-                if (battle->unk446[i] != 0) {
+                if (battle->effectStep.eligible[i] != 0) {
                     screen->startBlink(screen, base + i);
-                    battle->unk434 = base + i;
+                    battle->effectStep.vars[3] = base + i;
                 }
             }
         }
         break;
     case 2:
-        if (screen->sprites[battle->unk434].state == 1) {
+        if (screen->sprites[battle->effectStep.vars[3]].state == 1) {
             screen->scaleSprite(screen, 0x11, 10, 0x1000, 0x1000);
-            battle->stepState = 3;
+            battle->effectStep.state = 3;
             first = 0;
             if (side != 0) {
                 first = 6;
             }
             for (j = 0; j < battle->players[side].slotCount; j++) {
-                if (battle->unk446[j] != 0) {
-                    screen->sprites[first + j].unk48 &= ~4;
+                if (battle->effectStep.eligible[j] != 0) {
+                    screen->sprites[first + j].highlight &= ~4;
                 }
             }
         }
         break;
     case 3:
         if (screen->sprites[0x11].state == 1) {
-            battle->stepState = 4;
+            battle->effectStep.state = 4;
 #if VERSION_US
-            screen->openWindow(screen, 2, 1, battle->unk438, CARDGAME_cardWindowPositions[0][side][0], CARDGAME_cardWindowPositions[0][side][1]);
+            screen->openWindow(screen, 2, 1, battle->effectStep.vars[4], CARDGAME_cardWindowPositions[0][side][0], CARDGAME_cardWindowPositions[0][side][1]);
 #elif VERSION_EU
-            screen->openWindow(screen, 2, 1, battle->unk438, CARDGAME_cardWindowPositions[SHIFT_PAL_SCREEN][side][0], CARDGAME_cardWindowPositions[SHIFT_PAL_SCREEN][side][1]);
+            screen->openWindow(screen, 2, 1, battle->effectStep.vars[4], CARDGAME_cardWindowPositions[SHIFT_PAL_SCREEN][side][0], CARDGAME_cardWindowPositions[SHIFT_PAL_SCREEN][side][1]);
 #endif
         }
         break;
     case 4:
         if (screen->windows[2].state == 2) {
-            battle->stepState = 5;
-            battle->unk424 = 90;
+            battle->effectStep.state = 5;
+            battle->effectStep.time = 90;
         }
         break;
     case 5:
-        battle->unk424 -= GFX.funcs.getFrameTime();
-        if (battle->unk424 <= 0 || PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->stepState = 6;
+        battle->effectStep.time -= GFX.funcs.getFrameTime();
+        if (battle->effectStep.time <= 0 || PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
+            battle->effectStep.state = 6;
             screen->closeWindow(screen, 2);
         }
         break;
     case 6:
         if (screen->windows[2].state == 0) {
             screen->startBlink(screen, 0x11);
-            battle->stepState = 7;
+            battle->effectStep.state = 7;
         }
         break;
     case 7:
         if (screen->sprites[0x11].state == 1) {
-            battle->stepState = 8;
-            battle->unk424 = 0;
+            battle->effectStep.state = 8;
+            battle->effectStep.time = 0;
         }
         break;
     case 8:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 < 20) {
-            screen->setPanelValue(screen, side, 8, CARDGAME_interpolate(battle->sides[side].pile.unk0 + battle->unk42C, battle->sides[side].pile.unk0, 20, battle->unk424));
-            screen->setPanelValue(screen, side, 9, CARDGAME_interpolate(battle->sides[side].pile.unk2 + battle->unk430, battle->sides[side].pile.unk2, 20, battle->unk424));
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time < 20) {
+            screen->setPanelValue(screen, side, CARD_PANEL_AP, CARDGAME_interpolate(battle->sides[side].pile.apTotal + battle->effectStep.vars[1], battle->sides[side].pile.apTotal, 20, battle->effectStep.time));
+            screen->setPanelValue(screen, side, CARD_PANEL_HP, CARDGAME_interpolate(battle->sides[side].pile.hpTotal + battle->effectStep.vars[2], battle->sides[side].pile.hpTotal, 20, battle->effectStep.time));
         } else {
-            battle->sides[side].pile.unk0 += battle->unk42C;
-            battle->sides[side].pile.unk2 += battle->unk430;
-            screen->setPanelValue(screen, side, 8, battle->sides[side].pile.unk0);
-            screen->setPanelValue(screen, side, 9, battle->sides[side].pile.unk2);
+            battle->sides[side].pile.apTotal += battle->effectStep.vars[1];
+            battle->sides[side].pile.hpTotal += battle->effectStep.vars[2];
+            screen->setPanelValue(screen, side, CARD_PANEL_AP, battle->sides[side].pile.apTotal);
+            screen->setPanelValue(screen, side, CARD_PANEL_HP, battle->sides[side].pile.hpTotal);
             screen->scaleSprite(screen, 0x11, 10, 0, 0x1000);
-            battle->stepState = 9;
+            battle->effectStep.state = 9;
         }
         break;
     case 9:
         if (screen->sprites[0x11].state == 1) {
-            battle->stepState = 10;
+            battle->effectStep.state = 10;
         }
         break;
     case 10:
@@ -5141,59 +5141,59 @@ s32 CARDGAME_stepSlotTotal(CardBattle *battle, CardScreen *screen, s32 side) {
 
 /* Starts CARDGAME_stepTotals */
 void CARDGAME_startTotals(CardBattle *battle, CardScreen *screen) {
-    battle->stepState = 1;
-    battle->unk424 = 0;
-    battle->unk428 = 0;
-    battle->unk42C = 0;
-    battle->unk430 = 0;
-    battle->unk434 = 0;
+    battle->effectStep.state = 1;
+    battle->effectStep.time = 0;
+    battle->effectStep.vars[0] = 0;
+    battle->effectStep.vars[1] = 0;
+    battle->effectStep.vars[2] = 0;
+    battle->effectStep.vars[3] = 0;
 }
 
-/* Adds up both players' slots' unk6 and unk8 and counts the panels' values 8 and 9 over to the totals, which become the sides' pile unk0 and unk2; 1 once done */
+/* Adds up both players' slots' ap and hp and counts the panels' ap and hp over to the totals, which become the sides' pile apTotal and hpTotal; 1 once done */
 s32 CARDGAME_stepTotals(CardBattle *battle, CardScreen *screen) {
     s32 done = 0;
     s32 i;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
         for (i = 0; i < battle->players[0].slotCount; i++) {
-            battle->unk428 += battle->players[0].slots[i].unk6;
-            battle->unk42C += battle->players[0].slots[i].unk8;
+            battle->effectStep.vars[0] += battle->players[0].slots[i].ap;
+            battle->effectStep.vars[1] += battle->players[0].slots[i].hp;
         }
         for (i = 0; i < battle->players[1].slotCount; i++) {
-            battle->unk430 += battle->players[1].slots[i].unk6;
-            battle->unk434 += battle->players[1].slots[i].unk8;
+            battle->effectStep.vars[2] += battle->players[1].slots[i].ap;
+            battle->effectStep.vars[3] += battle->players[1].slots[i].hp;
         }
-        if (battle->sides[0].pile.unk0 == battle->unk428 && battle->sides[0].pile.unk2 == battle->unk42C &&
-            battle->sides[1].pile.unk0 == battle->unk430 && battle->sides[1].pile.unk2 == battle->unk434) {
-            battle->stepState = 4;
+        if (battle->sides[0].pile.apTotal == battle->effectStep.vars[0] && battle->sides[0].pile.hpTotal == battle->effectStep.vars[1] &&
+            battle->sides[1].pile.apTotal == battle->effectStep.vars[2] && battle->sides[1].pile.hpTotal == battle->effectStep.vars[3]) {
+            battle->effectStep.state = 4;
         } else {
-            battle->unk424 = 0;
-            battle->stepState = 2;
+            battle->effectStep.time = 0;
+            battle->effectStep.state = 2;
         }
         break;
     case 2:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        if (battle->unk424 < 15) {
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time < 15) {
             SOUND.playSound(SOUND_COUNT);
-            screen->setPanelValue(screen, 0, 8, CARDGAME_interpolate(battle->unk428, battle->sides[0].pile.unk0, 15, battle->unk424));
-            screen->setPanelValue(screen, 0, 9, CARDGAME_interpolate(battle->unk42C, battle->sides[0].pile.unk2, 15, battle->unk424));
-            screen->setPanelValue(screen, 1, 8, CARDGAME_interpolate(battle->unk430, battle->sides[1].pile.unk0, 15, battle->unk424));
-            screen->setPanelValue(screen, 1, 9, CARDGAME_interpolate(battle->unk434, battle->sides[1].pile.unk2, 15, battle->unk424));
+            screen->setPanelValue(screen, 0, CARD_PANEL_AP, CARDGAME_interpolate(battle->effectStep.vars[0], battle->sides[0].pile.apTotal, 15, battle->effectStep.time));
+            screen->setPanelValue(screen, 0, CARD_PANEL_HP, CARDGAME_interpolate(battle->effectStep.vars[1], battle->sides[0].pile.hpTotal, 15, battle->effectStep.time));
+            screen->setPanelValue(screen, 1, CARD_PANEL_AP, CARDGAME_interpolate(battle->effectStep.vars[2], battle->sides[1].pile.apTotal, 15, battle->effectStep.time));
+            screen->setPanelValue(screen, 1, CARD_PANEL_HP, CARDGAME_interpolate(battle->effectStep.vars[3], battle->sides[1].pile.hpTotal, 15, battle->effectStep.time));
         } else {
-            battle->sides[0].pile.unk0 = battle->unk428;
-            battle->sides[0].pile.unk2 = battle->unk42C;
-            battle->sides[1].pile.unk0 = battle->unk430;
-            battle->sides[1].pile.unk2 = battle->unk434;
-            screen->setPanelValue(screen, 0, 8, battle->sides[0].pile.unk0);
-            screen->setPanelValue(screen, 0, 9, battle->sides[0].pile.unk2);
-            screen->setPanelValue(screen, 1, 8, battle->sides[1].pile.unk0);
-            screen->setPanelValue(screen, 1, 9, battle->sides[1].pile.unk2);
-            battle->stepState = 3;
+            battle->sides[0].pile.apTotal = battle->effectStep.vars[0];
+            battle->sides[0].pile.hpTotal = battle->effectStep.vars[1];
+            battle->sides[1].pile.apTotal = battle->effectStep.vars[2];
+            battle->sides[1].pile.hpTotal = battle->effectStep.vars[3];
+            screen->setPanelValue(screen, 0, CARD_PANEL_AP, battle->sides[0].pile.apTotal);
+            screen->setPanelValue(screen, 0, CARD_PANEL_HP, battle->sides[0].pile.hpTotal);
+            screen->setPanelValue(screen, 1, CARD_PANEL_AP, battle->sides[1].pile.apTotal);
+            screen->setPanelValue(screen, 1, CARD_PANEL_HP, battle->sides[1].pile.hpTotal);
+            battle->effectStep.state = 3;
         }
         break;
     case 3:
-        battle->stepState = 4;
+        battle->effectStep.state = 4;
         break;
     case 4:
         done = 1;
@@ -5204,96 +5204,96 @@ s32 CARDGAME_stepTotals(CardBattle *battle, CardScreen *screen) {
 
 /* Starts CARDGAME_stepRoundEnd */
 void CARDGAME_startRoundEnd(CardBattle *battle, CardScreen *screen) {
-    battle->stepState = 1;
-    battle->unk424 = 0;
-    battle->unk428 = 0;
-    battle->unk42C = 0;
-    battle->unk430 = 0;
-    battle->unk434 = 0;
-    battle->unk438 = 0;
+    battle->effectStep.state = 1;
+    battle->effectStep.time = 0;
+    battle->effectStep.vars[0] = 0;
+    battle->effectStep.vars[1] = 0;
+    battle->effectStep.vars[2] = 0;
+    battle->effectStep.vars[3] = 0;
+    battle->effectStep.vars[4] = 0;
 }
 
-/* Takes the side's slots away one by one, then moves both sides' hands back into their decks one at a time (the panels' values 6 and 5) and shows window 5 until cross or triangle; 1 once done */
+/* Takes the side's slots away one by one, then moves both sides' hands back into their decks one at a time (the panels' hand and deck) and shows window 5 until cross or triangle; 1 once done */
 s32 CARDGAME_stepRoundEnd(CardBattle *battle, CardScreen *screen, s32 side) {
     s32 done = 0;
     s32 index;
     s32 counting;
 
-    switch (battle->stepState) {
+    switch (battle->effectStep.state) {
     case 1:
-        if (battle->unk438 >= 3) {
-            if (battle->unk428 < battle->players[side].slotCount) {
-                index = battle->unk428;
+        if (battle->effectStep.vars[4] >= 3) {
+            if (battle->effectStep.vars[0] < battle->players[side].slotCount) {
+                index = battle->effectStep.vars[0];
                 if (side != 0) {
                     index += 6;
                 }
                 screen->scaleSprite(screen, index, 4, 0, 0x1000);
-                CARDGAME_discardSlotCard(battle, screen, side, battle->unk428);
-                battle->unk428++;
+                CARDGAME_discardSlotCard(battle, screen, side, battle->effectStep.vars[0]);
+                battle->effectStep.vars[0]++;
             }
-            battle->unk438 -= 3;
+            battle->effectStep.vars[4] -= 3;
         }
-        battle->unk424 += GFX.funcs.getFrameTime();
-        battle->unk438 += GFX.funcs.getFrameTime();
-        if (battle->unk424 >= 61) {
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        battle->effectStep.vars[4] += GFX.funcs.getFrameTime();
+        if (battle->effectStep.time >= 61) {
             battle->players[side].slotCount = 0;
-            battle->unk424 = 0;
-            battle->stepState = 2;
-            battle->unk438 = 0;
-            battle->unk428 = battle->sides[0].pile.handCount;
-            battle->unk42C = battle->sides[0].pile.deckCount;
-            battle->unk430 = battle->sides[1].pile.handCount;
-            battle->unk434 = battle->sides[1].pile.deckCount;
+            battle->effectStep.time = 0;
+            battle->effectStep.state = 2;
+            battle->effectStep.vars[4] = 0;
+            battle->effectStep.vars[0] = battle->sides[0].pile.handCount;
+            battle->effectStep.vars[1] = battle->sides[0].pile.deckCount;
+            battle->effectStep.vars[2] = battle->sides[1].pile.handCount;
+            battle->effectStep.vars[3] = battle->sides[1].pile.deckCount;
         }
         break;
     case 2:
-        battle->unk424 += GFX.funcs.getFrameTime();
-        battle->unk438 += GFX.funcs.getFrameTime();
-        if (battle->unk438 >= 3) {
+        battle->effectStep.time += GFX.funcs.getFrameTime();
+        battle->effectStep.vars[4] += GFX.funcs.getFrameTime();
+        if (battle->effectStep.vars[4] >= 3) {
             counting = 0;
-            if (battle->unk428 > 0) {
+            if (battle->effectStep.vars[0] > 0) {
                 counting = 1;
-                battle->unk428--;
-                battle->unk42C++;
+                battle->effectStep.vars[0]--;
+                battle->effectStep.vars[1]++;
             }
-            if (battle->unk430 > 0) {
+            if (battle->effectStep.vars[2] > 0) {
                 counting = 1;
-                battle->unk430--;
-                battle->unk434++;
+                battle->effectStep.vars[2]--;
+                battle->effectStep.vars[3]++;
             }
             if (!counting) {
-                battle->stepState = 4;
+                battle->effectStep.state = 4;
                 screen->openWindow(screen, 5, 5, 20, 0, 110);
             } else {
                 SOUND.playSound(SOUND_COUNT);
             }
-            screen->setPanelValue(screen, 0, 6, battle->unk428);
-            screen->setPanelValue(screen, 0, 5, battle->unk42C);
-            screen->setPanelValue(screen, 1, 6, battle->unk430);
-            screen->setPanelValue(screen, 1, 5, battle->unk434);
-            battle->unk438 -= 3;
+            screen->setPanelValue(screen, 0, CARD_PANEL_HAND, battle->effectStep.vars[0]);
+            screen->setPanelValue(screen, 0, CARD_PANEL_DECK, battle->effectStep.vars[1]);
+            screen->setPanelValue(screen, 1, CARD_PANEL_HAND, battle->effectStep.vars[2]);
+            screen->setPanelValue(screen, 1, CARD_PANEL_DECK, battle->effectStep.vars[3]);
+            battle->effectStep.vars[4] -= 3;
         }
         break;
     case 3:
         if (screen->windows[5].state == 2) {
-            battle->stepState = 4;
+            battle->effectStep.state = 4;
         }
         break;
     case 4:
         if (PAD_PRESSED(PAD_CROSS) || PAD_PRESSED(PAD_TRIANGLE)) {
-            battle->stepState = 5;
+            battle->effectStep.state = 5;
             screen->closeWindow(screen, 5);
         }
         break;
     case 5:
         if (screen->windows[5].state == 0) {
-            battle->stepState = 6;
+            battle->effectStep.state = 6;
             screen->closePanels(screen);
         }
         break;
     case 6:
         if (screen->panels[0].state == 0) {
-            battle->stepState = 7;
+            battle->effectStep.state = 7;
         }
         break;
     case 7:

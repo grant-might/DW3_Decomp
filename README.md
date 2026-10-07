@@ -22,7 +22,7 @@ This repository holds no game data. You need your own copy of the game to build 
 | Compiler | GCC 2.8.1 for the PSX |
 | Progress | 100.00% code, 100.00% data, both versions |
 
-![fake matches | hacks](https://img.shields.io/badge/fake%20matches%20%7C%20hacks-0%20%7C%20191-yellow)
+![fake matches | hacks](https://img.shields.io/badge/fake%20matches%20%7C%20hacks-0%20%7C%20189-yellow)
 ![compiler](https://img.shields.io/badge/compiler-GCC%202.8.1-orange)
 ![platform](https://img.shields.io/badge/platform-PlayStation-003791)
 ![versions](https://img.shields.io/badge/versions-USA%20%7C%20Europe-blue)

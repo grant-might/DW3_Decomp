@@ -50,14 +50,19 @@ segments:
     subalign: 4
     subsegments:
       # us's modules, each with its rodata, data and bss (tools/split_version.py)
-      - [0x0, .rodata, stcrdshp]
-      - [0xF4, .rodata, stcrdshp_2]
-      - [0x1C4, .rodata, stcrdshp_3]
-      - [0x35C, c, stcrdshp]
-      - [0x33C4, c, stcrdshp_2]
-      - [0x4F2C, c, stcrdshp_3]
-      # each object's data
-      - [0x65D8, .data, stcrdshp]
-      - [0x9E60, .data, stcrdshp_2]
-      - [0x9E78, .data, stcrdshp_3]
+      # each module's rodata: the ones with jump tables or strings
+      - [0x0, .rodata, pack_open]
+      - [0xF4, .rodata, buy]
+      - [0x1C4, .rodata, shop]
+      # the modules (src/stcrdshp/), in the order they link
+      - [0x35C, c, pack_open]
+      - [0x2704, c, fader]
+      - [0x29C8, c, card_grid]
+      - [0x33C4, c, buy]
+      - [0x4F2C, c, stcrdshp]
+      - [0x5050, c, shop]
+      # each module's data
+      - [0x65D8, .data, pack_open]
+      - [0x9E60, .data, buy]
+      - [0x9E78, .data, shop]
   - [0xA250]

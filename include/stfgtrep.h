@@ -153,4 +153,14 @@ extern BattleReward STFGTREP_rewards[];
 extern FightReportFuncs STFGTREP_funcs;
 extern Evolution *STFGTREP_evolutions[8]; /* each partner's (STFGTREP_learnDigimon) */
 
+extern s32 STFGTREP_animations[][7]; /* each partner Digimon's sprite frames, -1 ending them early */
+
+void STFGTREP_drawPartner(ReportPartner *partner);
+s32 STFGTREP_learnDigimon(s32 partner);
+void STFGTREP_runPartner(ReportPartner *partner, ReportPartnerWindows *windows);
+void STFGTREP_runReport(FightReport *report, FightReportChildren *children);
+void STFGTREP_updatePartner();
+void STFGTREP_updateReport();
+FightReport *STFGTREP_createScreen(void);
+
 #endif /* STFGTREP_H */

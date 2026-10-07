@@ -3,7 +3,7 @@
 
 #include "fightstg.h"
 
-/* Sets the stage model's color and layer 0x1000's background to their fades'
+/* Sets the stage model's color and SCREEN_LAYER's background to their fades'
    current values (a black background is drawn as 1, 1, 1) */
 void FIGHTSTG_fadeStage(FightStage *task, Model **children) {
     u8 color[3];
@@ -17,7 +17,7 @@ void FIGHTSTG_fadeStage(FightStage *task, Model **children) {
     model = children[0];
     model->setColor(model, 1, color);
     FIGHTSTG_interp.lerp(&task->bgFrom, &task->bgTo, task->fade, &task->bg);
-    layer = GFX.funcs.getLayer(0x1000);
+    layer = GFX.funcs.getLayer(SCREEN_LAYER);
     if (task->bg.vx != 0 || task->bg.vy != 0 || task->bg.vz != 0) {
         layer->setBgColor(layer, (u8)task->bg.vx, (u8)task->bg.vy, (u8)task->bg.vz);
     } else {
@@ -81,7 +81,7 @@ void FIGHTSTG_updateStage(FightStage *task, Model **children) {
                 color[2] = 0;
                 model = children[0];
                 model->setColor(model, 1, color);
-                layer = GFX.funcs.getLayer(0x1000);
+                layer = GFX.funcs.getLayer(SCREEN_LAYER);
                 layer->setBgColor(layer, 1, 1, 1);
                 task->nextSubstate(task);
             }

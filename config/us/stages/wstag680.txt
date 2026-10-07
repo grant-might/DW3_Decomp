@@ -4,8 +4,13 @@ startStage = 0x800A5318; // type:func
 setupStage = 0x800A5374; // type:func
 stageFuncs = 0x800A5854; // size:0x4
 
-// named by their use (D_800990B4, the field state, in setupStage)
+// named by their use (FIELDSTG_state, the field state, in setupStage)
 stageObjects = 0x800A5710;
 stageImages = 0x800A5678;
 stageActors = 0x800A5708;
 stageEvents = 0x800A5858;
+
+// named by their place in the stage's tables (tools/name_stage_data.py)
+script412 = 0x800A5438;
+actor0Conditions = 0x800A56E8;
+actor0 = 0x800A56F4;

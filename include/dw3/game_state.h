@@ -1,7 +1,7 @@
 #ifndef DW3_GAME_STATE_H
 #define DW3_GAME_STATE_H
 
-/* The game state: modes, party, items, cards, flags (game3.c, game3_2.c, system.c) */
+/* The game state: modes, party, items, cards, flags (game/) */
 
 #include "common.h"
 #include <sys/types.h>
@@ -53,6 +53,30 @@ typedef struct GameFlags {
     /* 0x18 */ void (*updateModeFlags)(void);
 } GameFlags;
 
+/*
+ * The codes of the (code, value) pairs that FLAGS_00 checks as conditions
+ * and applies as actions (events.c's checkCondition and applyAction): the
+ * talks' and characters' lists, which end with CODES_END, and a StageSlot's
+ * two conditions, CODES_END for none. code >> 8 & 0xFE is the kind, code &
+ * 0x1FF the flag, value or item. A condition holds when the flag is value,
+ * or when the test is (1) or isn't (0) true; an action sets the flag to
+ * value. The kinds the stages use and these don't name (0x7A, 0x7C and
+ * 0x94, actions that change the mode) stay numbers.
+ */
+#define FLAG(group, id) ((group) << 8 | (id)) /* group 0x00-0x40: FLAGS_00, GAME.flags02-flags40 */
+#define PROGRESS(n) (0x6000 | (n)) /* GAME.progress is n */
+#define SPECIAL(id) (0x7000 | (id)) /* SPECIAL_CONDITIONS entry id */
+#define PARTY_STAT(id) (0x7200 | (id)) /* checkPartyStat */
+#define EVENT_BATTLE(id) (0x7400 | (id)) /* action: FIELDSTG_battleFuncs.startEventBattle */
+#define CARD_BATTLE(opponent, kind) (0x7600 + (kind) * 0x200 | (opponent)) /* action: startCardBattle */
+#define WARP_ARG(id) (0x7E00 | (id)) /* checkWarpArg */
+/* an item, in the bag or equipped; kind (bits 9-11) isn't read, and the
+   scripts set it after the item's kind loosely */
+#define ITEM(kind, id) (0x8000 | (kind) << 9 | (id))
+#define START_EVENT(index) (0x9000 | (index)) /* action: FIELDSTG_startListedEvent */
+#define CARD(id) (0x9200 | (id)) /* a card: the player has one, or gets or loses one */
+#define CODES_END 0xFFFF
+
 /* Digimon definition (DIGIMON_DATA, 52 of them; the first 8 are the partners) */
 typedef struct DigimonData {
     /* 0x00 */ u16 id;
@@ -79,7 +103,7 @@ typedef struct DigimonData {
 
 /* An item (ITEMS, GET_ITEM) */
 typedef struct ItemInfo {
-    /* 0x0 */ u8 *data;
+    /* 0x0 */ u8 *data; /* the type's record (ItemData), or the usable items' effect */
     /* 0x4 */ u16 price;
     /* 0x6 */ u16 sellPrice; /* 0: cannot be sold */
     /* 0x8 */ u8 unk8;
@@ -90,21 +114,21 @@ typedef struct ItemInfo {
 /* A technique (TECHS, from 1: technique n is TECHS[n - 1]) */
 typedef struct TechData {
     /* 0x00 */ u16 mp; /* its cost */
-    /* 0x02 */ u16 unk2;
+    /* 0x02 */ u16 power; /* its damage, times the user's attack over the target's defense */
     /* 0x04 */ u8 icon; /* a frame of the menu sprites, from 0x37 */
     /* 0x05 */ u8 kind; /* 3: heals the target */
-    /* 0x06 */ u8 unk6;
-    /* 0x07 */ u8 unk7;
-    /* 0x08 */ u8 unk8;
-    /* 0x09 */ u8 unk9;
-    /* 0x0A */ u8 unkA;
-    /* 0x0B */ u8 unkB;
-    /* 0x0C */ u8 power;
+    /* 0x06 */ u8 accuracy;
+    /* 0x07 */ u8 element; /* ELEMENT_FIRST and up, under it none */
+    /* 0x08 */ u8 elementPower; /* how much the element adds, against the target's resistance */
+    /* 0x09 */ u8 family; /* FAMILY_FIRST and up, under it none */
+    /* 0x0A */ u8 effect; /* TECH_EFFECT_* (fightstg.h), under TECH_EFFECT_FIRST none */
+    /* 0x0B */ u8 effectChance;
+    /* 0x0C */ u8 effectPower; /* the effect's strength (a boost's amount, a drain's 128ths) */
     /* 0x0D */ u8 unkD;
     /* 0x0E */ u8 unkE;
     /* 0x0F */ u8 unkF;
     /* 0x10 */ u8 unk10;
-    /* 0x11 */ u8 unk11;
+    /* 0x11 */ u8 hitCount;
 } TechData;
 
 /* What ItemInfo.data points to for a weapon (types 2-14, WEAPON_DATA) */
@@ -142,9 +166,29 @@ typedef struct AccessoryData {
     /* 0x9 */ u8 unk9[3];
 } AccessoryData;
 
+/* The record ItemInfo.data points to, by ItemInfo.type */
+typedef union ItemData {
+    WeaponData weapon;
+    ArmorData armor;
+    AccessoryData acc;
+} ItemData;
+
+/* ItemInfo.type's ranges: 2-14 weapons, 15-20 armour, 21-24 accessories,
+   each tested as one unsigned byte compare */
+#define IS_WEAPON_TYPE(type) ((u8)((type) - 2) < 13)
+#define IS_ARMOR_TYPE(type) ((u8)((type) - 15) < 6)
+#define IS_ACCESSORY_TYPE(type) ((u8)((type) - 21) < 4)
+
+/* The Digimon a partner can have, and the ones it takes to battle */
+#define PARTNER_ENTRY_COUNT 44
+#define PARTNER_SLOT_COUNT 3
+
+/* The first PartnerEntry.id of a Digimon: 0 is a free entry, 1 and 2 unused ones */
+#define FIRST_ENTRY_ID 3
+
 /* One of a partner's Digimon (getPartnerEntry, setPartnerEntry) */
 typedef struct PartnerEntry {
-    /* 0x00 */ s16 id; /* 0-2 unused */
+    /* 0x00 */ s16 id; /* FIRST_ENTRY_ID and up */
     /* 0x02 */ s8 level; /* shown in the lab; 1 when added */
     /* 0x03 */ u8 unk3;
     /* 0x04 */ s32 exp;
@@ -154,12 +198,25 @@ typedef struct PartnerEntry {
 /* PartnerEntry.skills */
 #define SKILL_ID 0x1FFF /* the skill, from 1 (TECHS[id - 1]) */
 #define SKILL_KNOWN 0x2000
+#define SKILL_MARKED 0x4000 /* marked in the lab (STGDGLAB_updateSkillPanel) */
 #define SKILL_LAST 0x8000 /* the sixth skill */
+
+/* The cards of a deck, and the decks the player has */
+#define DECK_SIZE 40
+#define DECK_COUNT 3
+
+/* The copies of a card the player can have */
+#define CARD_COPIES_MAX 9
+
+/* A partner's equipment set: the four items computeStats compares with equip[0-3] */
+typedef struct EquipSet {
+    s16 items[4];
+} EquipSet;
 
 /* A card deck */
 typedef struct Deck {
     /* 0x00 */ char name[0x16];
-    /* 0x16 */ s16 cards[40];
+    /* 0x16 */ s16 cards[DECK_SIZE];
 } Deck;
 
 /* Indices of a partner's stats (PartnerStats.stats, computeStats, setStat) */
@@ -181,10 +238,12 @@ typedef struct PartnerStats {
     /* 0x018 */ s32 exp;
     /* 0x01C */ s16 stats[19];
     /* 0x042 */ s16 status[3];
-    /* 0x048 */ s16 slots[4]; /* three entries picked from entries[] */
-    /* 0x050 */ PartnerEntry entries[44];
+    /* 0x048 */ s16 slots[4]; /* PARTNER_SLOT_COUNT entries picked from entries[] */
+    /* 0x050 */ PartnerEntry entries[PARTNER_ENTRY_COUNT];
     /* 0x3C0 */ s16 equip[6];
-    /* 0x3CC */ u8 unk3CC[4];
+    /* 0x3CC */ u8 lastBonus; /* the training whose bonus try last worked, 0 for
+                                 none: its try can't work again at once */
+    /* 0x3CD */ u8 unk3CD[3];
 } PartnerStats;
 
 /* One of the eight partner Digimon */
@@ -217,7 +276,7 @@ typedef struct BattleSetup {
     /* 0x18 */ BattleEnemy enemies[3];
     /* 0x3C */ u8 ambushChance; /* a chance that WFIGHTMN scales by level */
     /* 0x3D */ u8 unk3D;
-    /* 0x3E */ u8 unk3E[12]; /* FIGHTSTG's func_800A0400 gives 0 for side 0 when [5] is set */
+    /* 0x3E */ u8 unk3E[12]; /* FIGHTSTG_rollDrain gives 0 for side 0 when [5] is set */
     /* 0x4C */ s32 hasPrize; /* 1: the battle always gives prize */
     /* 0x50 */ s32 prize; /* an item (BattleResult.item) */
     /* 0x54 */ void (*clearGauges)(void);
@@ -256,15 +315,41 @@ typedef union PartnerTotals {
 /* Game modes (GameState: mode >> 8 is the overlay) that more than their own
    overlay asks for */
 #define MODE_NEW_GAME 0x2D7 /* FIELDSTG, where a new game starts */
+#define MODE_DECK_EDITOR 0x400 /* STCRDDEK */
+#define MODE_PLAYER_NAME 0x500 /* STPLNMET: the player's name entry */
+#define MODE_BATTLE 0x600 /* FIGHTSTG */
+#define MODE_CARD_GAME 0x700 /* CARDGAME: a card battle */
+#define MODE_TRAINING 0xA00 /* STGTRAIN */
+#define MODE_NAMING 0xB00 /* STDGNAME */
 #define MODE_CONTINUE 0xC00 /* STGMCARD, to load a game */
-#define MODE_TITLE 0xE00 /* STDWTITL's title screen */
+#define MODE_DIGI_LAB 0xD00 /* STGDGLAB */
+#define MODE_TITLE 0xE00 /* STDWTITL's title screen; its movies follow */
 #define MODE_OPENING 0xE01 /* STDWTITL's first movie */
 #if VERSION_US
+#define MODE_BATTLE_MOVIE 0xE09 /* STDWTITL's movie before each battle at GAME.progress 0x2B */
 #define MODE_ENDING 0xE0A /* STDWTITL's movie after the last battle */
 #elif VERSION_EU
+#define MODE_BATTLE_MOVIE 0xE0A
 #define MODE_ENDING 0xE0B
 #endif
+#define MODE_ITEM_SHOP 0xF00 /* STITSHOP */
+#define MODE_STATUS 0x1000 /* STSTATUS: the field menu's screens (FIELD_MENU_CHOICE) */
+#define MODE_CARD_ALBUM 0x1200 /* STCRDABM */
+#define MODE_CARD_SHOP 0x1300 /* STCRDSHP */
 #define MODE_BATTLE_REPORT 0x1400 /* STFGTREP */
+#define MODE_STAGE_SELECT 0x1500 /* STAGSLCT, the debug stage select */
+#define MODE_COUNTRY_SELECT 0x1600 /* CNTY_SEL, where the European version starts */
+
+/* The first mode of a mode's overlay: MODE_OVERLAY(mode) == MODE_TITLE for
+   all of STDWTITL's */
+#define MODE_OVERLAY(mode) ((mode) & 0xFF00)
+
+/* The partner Digimon, and the ones in the party */
+#define PARTNER_COUNT 8
+#define PARTY_SIZE 3
+
+/* The most money the player can have */
+#define MONEY_MAX 9999999
 
 /*
  * The game state (GAME): the first 0x26BC bytes are what newGame clears (the
@@ -281,12 +366,12 @@ typedef struct GameState {
     /* 0x0010 */ u8 unk10[0x18];
     /* 0x0028 */ s32 stageSelectTop; /* the debug stage select's first line */
     /* 0x002C */ s32 stageSelectCursor;
-    /* 0x0030 */ s32 unk30;
+    /* 0x0030 */ s32 battleSteps; /* to the next random battle, which each step lowers */
     /* 0x0034 */ s32 fieldMode; /* where the menu returns to */
     /* 0x0038 */ Vec2 fieldPos; /* the player's, there */
     /* 0x0040 */ s32 fieldDir;
-    /* 0x0044 */ u16 unk44;
-    /* 0x0046 */ u16 unk46;
+    /* 0x0044 */ u16 place; /* where the last warp or trigger put the player (FieldBattles.id) */
+    /* 0x0046 */ u16 placeArg; /* the place's argument, which the stage reads with it */
     /* 0x0048 */ s32 playFrames; /* 8.8, counted by the vsync callback */
     /* 0x004C */ s16 playHours;
     /* 0x004E */ s16 playMinutes;
@@ -294,14 +379,14 @@ typedef struct GameState {
     /* 0x0052 */ s16 playTimeMaxed;
     /* 0x0054 */ char name[0x18]; /* the player's */
     /* 0x006C */ s32 money;
-    /* 0x0070 */ s32 party[3]; /* partner indices */
+    /* 0x0070 */ s32 party[PARTY_SIZE]; /* partner indices */
     /* 0x007C */ s8 items[0x193]; /* counts, up to 99 */
     /* 0x020F */ s8 equippedItems[0x193];
-    /* 0x03A2 */ s8 cards[0x13D]; /* counts, up to 9 */
+    /* 0x03A2 */ s8 cards[0x13D]; /* counts, up to CARD_COPIES_MAX */
     /* 0x04DF */ u8 cardsSeen[0x149];
-    /* 0x0628 */ Deck decks[3];
+    /* 0x0628 */ Deck decks[DECK_COUNT];
     /* 0x075A */ u8 unk75A[2];
-    /* 0x075C */ Partner partners[8];
+    /* 0x075C */ Partner partners[PARTNER_COUNT];
     /* 0x263C */ s32 progress;
     /* 0x2640 */ s32 partySet; /* setParty's */
     /*
@@ -329,13 +414,13 @@ typedef struct GameState {
     /* 0x26C8 */ s32 modeArg;
     /* 0x26CC */ u8 countdown[4]; /* three digits of seconds, then frames */
     /* 0x26D0 */ s32 clearTempFlags;
-    /* 0x26D4 */ s32 unk26D4;
-    /* 0x26D8 */ s32 unk26D8;
+    /* 0x26D4 */ s32 lastFieldMode; /* the field mode FIELDSTG last started */
+    /* 0x26D8 */ s32 mapIndex; /* which of the stage's maps the field uses */
     /* 0x26DC */ s32 unk26DC;
-    /* 0x26E0 */ s32 unk26E0;
-    /* 0x26E4 */ s32 unk26E4;
+    /* 0x26E0 */ s32 playerDepth; /* the player's depth, kept while in the mode */
+    /* 0x26E4 */ s32 prizeSpot; /* the hidden spot that has the prize */
     /* 0x26E8 */ s32 unk26E8;
-    /* 0x26EC */ s32 unk26EC;
+    /* 0x26EC */ s32 flightZ; /* the flying player's height, kept while in the mode */
     /* 0x26F0 */ GameFuncs funcs;
 #elif VERSION_EU
     /* 0x2644 */ u8 flags02[0x12];
@@ -357,17 +442,25 @@ typedef struct GameState {
     /* 0x26D0 */ s32 modeArg;
     /* 0x26D4 */ u8 countdown[4];
     /* 0x26D8 */ s32 clearTempFlags;
-    /* 0x26DC */ s32 unk26D4;
-    /* 0x26E0 */ s32 unk26D8;
+    /* 0x26DC */ s32 lastFieldMode;
+    /* 0x26E0 */ s32 mapIndex;
     /* 0x26E4 */ s32 unk26DC;
-    /* 0x26E8 */ s32 unk26E0;
-    /* 0x26EC */ s32 unk26E4;
+    /* 0x26E8 */ s32 playerDepth;
+    /* 0x26EC */ s32 prizeSpot;
     /* 0x26F0 */ s32 unk26E8;
-    /* 0x26F4 */ s32 unk26EC;
-    /* 0x26F8 */ s32 unk26F8;
+    /* 0x26F4 */ s32 flightZ;
+    /* 0x26F8 */ s32 randomGauges; /* gauge games left with random rows, reset with each new mode */
     /* 0x26FC */ GameFuncs funcs;
 #endif
 } GameState;
+
+/* The saved part of the game state, GAME up to mode: a save's data section
+   (stgmcard.h's GameSave) */
+#if VERSION_US
+#define GAME_SAVE_SIZE 0x26BC
+#elif VERSION_EU
+#define GAME_SAVE_SIZE 0x26C4
+#endif
 
 s32 unequipItem(s32 slot, s32 item);
 s32 checkPartner(u32 op, s32 arg);
@@ -385,7 +478,17 @@ s32 listPartnerEntries(s32 partner, u16 *out);
 s32 addPartnerEntry(s32 partner, s32 id);
 s32 getPartnerEntry(s32 partner, s32 id, PartnerEntry *out);
 s32 setPartnerEntry(s32 partner, s32 id, PartnerEntry *in);
+void addStatBonus(s16 *p, s32 stat, s32 delta);
 PartnerStats *getPartnerStats(s32 partner);
+s32 getPartyMember(u32 index);
+void setParty(s32 set);
+void giveStarterDeck(void);
+void resetPlayTime(void);
+void updatePlayTime(void);
+s32 getPartyPartner(u32 index);
+void setStat(s32 partner, u32 stat, s16 value);
+void addStat(s32 partner, u32 stat, s32 delta);
+void computeStats(s32 partner, PartnerTotals *out);
 
 extern DigimonData DIGIMON_DATA[];
 extern DigimonData *(*GET_DIGIMON)(s32 id); /* getDigimon */
@@ -426,9 +529,13 @@ extern u8 SPECIAL_CONDITIONS[];
 extern s32 MONEY_GAINS[];
 extern s32 MONEY_LOSSES[];
 extern GameFlags FLAGS_00;
-extern s32 STARTER_DECK[40];
+extern s32 STARTER_DECK[DECK_SIZE];
 extern u8 STARTER_PARTIES[][3];
 extern u8 PROGRESS_RANGES[][2];
+extern s32 PARTY_STAT_THRESHOLDS[];
+extern EquipSet EQUIP_SETS[];
+extern s16 EQUIP_SET_BONUSES[][6];
+extern u16 *ITEM_LISTS[]; /* listItems' lists, 0-terminated */
 extern GameState GAME;
 
 #endif /* DW3_GAME_STATE_H */

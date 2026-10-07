@@ -67,4 +67,15 @@ typedef struct ShockTestRow {
     /* 0x8 */ s32 highlight[4]; /* per column: selected, then being edited */
 } ShockTestRow;
 
+/* The C library's functions the loader parses the text with */
+int atoi(u8 *s);
+int strcspn(u8 *s, char *reject);
+
+Task *SHOCKTST_createLoader(void);
+s32 SHOCKTST_playAllPatterns(ShockTest *task, ShockTestWindows *win);
+void SHOCKTST_convertText(ShockLoader *task);
+void SHOCKTST_showPattern(ShockTest *task, ShockTestWindows *win, s32 pattern);
+
+extern const char SHOCKTST_STR_START_BACK[];
+
 #endif /* SHOCKTST_H */

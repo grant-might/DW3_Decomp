@@ -84,6 +84,12 @@ NON_MATCHING = re.compile(r"\bNON_?MATCHING\b")
 IF_0 = re.compile(r"^[ \t]*#[ \t]*if[ \t]+0\b", re.M)
 FUNC_NAME = re.compile(r"(\w+)\s*\([^;{}]*\)\s*$")
 DIRECTIVE = re.compile(r"^[ \t]*#(?:[^\n]*\\\n)*[^\n]*", re.M)
+# the shared files (src/menu_common/*.inc.c) name their functions with
+# OVL_NAME(name), directly or through a macro of their own, which each
+# overlay that includes them defines to its prefix
+OVL_NAME = re.compile(r"\bOVL_NAME\s*\(\s*(\w+)\s*\)")
+OVL_ALIAS = re.compile(r"^[ \t]*#[ \t]*define[ \t]+(\w+)[ \t]+OVL_NAME\s*\(\s*(\w+)\s*\)", re.M)
+INCLUDE_INC = re.compile(r'^[ \t]*#[ \t]*include[ \t]+"([^"]+\.inc\.c)"', re.M)
 
 
 def comment_text(comment):
@@ -106,10 +112,12 @@ def blank_comment(match):
     return blank(match) if match[0][0] == "/" else match[0]
 
 
-def functions(code):
+def functions(code, aliases=None, prefix="OVL_NAME_"):
     """{line: function} for each line inside a function's braces, and the
     first line of each function definition, from code without comments or
-    strings."""
+    strings. A function named with OVL_NAME(name), or with one of the
+    aliases ({macro: name}) of it, gets the name with the prefix."""
+    aliases = aliases or {}
     owner = {}
     depth = 0
     current = None
@@ -122,8 +130,13 @@ def functions(code):
                     # the header is the text since the last top-level ; or }
                     head = " ".join(lines[start:n - 1] + [line[:i]])
                     head = head.split(";")[-1].split("}")[-1]
-                    m = FUNC_NAME.search(head.strip())
+                    shared = OVL_NAME.sub(r"\1", head)
+                    m = FUNC_NAME.search(shared.strip())
                     current = m[1] if m and "=" not in head else None
+                    if current in aliases:
+                        current = prefix + aliases[current]
+                    elif current and shared != head:
+                        current = prefix + current
                     if current:
                         owner[n] = current
                 depth += 1
@@ -154,6 +167,18 @@ def line_of(text, pos):
     return text.count("\n", 0, pos) + 1
 
 
+def includers():
+    """{shared file: the prefix its functions get}, as {A,B}_ for the
+    overlays A and B (src/a, src/b) that include it, or A_ for one."""
+    users = {}
+    for path in sorted((ROOT / "src").rglob("*.c")):
+        for m in INCLUDE_INC.finditer(path.read_text(errors="replace")):
+            inc = (path.parent / m[1]).resolve().relative_to(ROOT).as_posix()
+            users.setdefault(inc, set()).add(path.parent.name.upper())
+    return {inc: (f"{{{','.join(sorted(names))}}}_" if len(names) > 1 else f"{min(names)}_")
+            for inc, names in users.items()}
+
+
 def scan():
     """{kind: [(path, line, function, text)]}, the forbidden code as
     [(path, line, function, why)], and what is assembly without being a
@@ -161,6 +186,7 @@ def scan():
     found = {key: [] for key, _ in KINDS}
     forbidden = []
     other = {key: [] for key, _ in OTHER}
+    shared = includers()
     for top in DIRS:
         for path in sorted((ROOT / top).rglob("*")):
             rel = path.relative_to(ROOT).as_posix()
@@ -174,7 +200,8 @@ def scan():
             # and the preprocessor's lines, so that a macro's braces don't
             # look like a function's
             plain = DIRECTIVE.sub(blank, code)
-            owner, lines = functions(plain)
+            aliases = {m[1]: m[2] for m in OVL_ALIAS.finditer(code)}
+            owner, lines = functions(plain, aliases, shared.get(rel, "OVL_NAME_"))
             for m in tokens:
                 if m[0][0] != "/":
                     continue

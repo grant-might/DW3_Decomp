@@ -49,7 +49,18 @@ segments:
     align: 4
     subalign: 4
     subsegments:
-      - [0x0, .rodata, stitshop]
+      # each module's rodata: the ones with jump tables or strings
+      - [0x0, .rodata, trade]
+      - [0x400, .rodata, info]
+      - [0x4E8, .rodata, shop]
+      - [0x548, .rodata, equip]
+      # the modules (src/stitshop/), in the order they link
       - [0x56C, c, stitshop]
-      - [0x9C8C, .data, stitshop]
+      - [0x95C, c, trade]
+      - [0x46E4, c, item_list]
+      - [0x5D08, c, info]
+      - [0x875C, c, shop]
+      - [0x966C, c, equip]
+      # STITSHOP's data, all of it in one file
+      - [0x9C8C, .data, data/stitshop]
   - [0xA3BC]

@@ -33,4 +33,8 @@ typedef struct SoundTest {
     /* 0x70 */ s32 voice;
 } SoundTest;
 
+Task *SOUNDTST_createSoundTest(void);
+
+extern const char SOUNDTST_STR_CURSOR[];
+
 #endif /* SOUNDTST_H */

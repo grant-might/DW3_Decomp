@@ -3,7 +3,7 @@
 #include <libgte.h>
 
 /*
- * Between pad.c's data and text_window.c's, and read by nothing in the
+ * Between pad/pad.c's data and text/text_window.c's, and read by nothing in the
  * executable: a zero vector, the identity (FIGHTSTG's root bone's parent)
  * and three scales that double x, y or both.
  */

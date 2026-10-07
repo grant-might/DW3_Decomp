@@ -11,7 +11,7 @@
  *   FIELDSTG_stages, which links it as WSTAGnnn_startStage, include/stages.h):
  *   creates the StageTask, updateStage, and runs the stage's setup through
  *   its stageFuncs;
- * - setupStage(), the first of stageFuncs: fills D_800990B4 (FieldState)
+ * - setupStage(), the first of stageFuncs: fills FIELDSTG_state (FieldState)
  *   with the stage's file, text, map objects, triggers and battles;
  * - stepAnimation and its kin, the animation steppers.
  *
@@ -104,7 +104,7 @@ typedef struct StageTween {
  * (startTween and updateTween)
  */
 typedef struct StageFuncs {
-    /* 0x0 */ void (*setup)(void); /* fills D_800990B4 */
+    /* 0x0 */ void (*setup)(void); /* fills FIELDSTG_state */
     /* 0x4 */ void (*start)(StageTween *tween, s32 up);
     /* 0x8 */ s32 (*update)(StageTween *tween); /* whether it has ended */
 } StageFuncs;
@@ -750,13 +750,39 @@ typedef struct StageListMenuChildren {
  * The files a stage's setup function gives FIELDSTG, numbered differently in
  * each version, are the stage's own defines: STAGE_TEXT, its text file (the
  * European version adds the language), and STAGE_FILE, the file whose
- * entries go to D_8009A70C.setFile (STAGE_FILE << 16 | n), its neighbours
+ * entries go to FIELDSTG_map.setFile (STAGE_FILE << 16 | n), its neighbours
  * usually the files at mapFile and imageFile (STAGE_FILE_8 and STAGE_ARCHIVE
  * otherwise). EVENT_TEXT_FILE is the text file of the stage's events,
  * counted from TEXT_FILE(1) as FieldEvent.text is.
  */
 /* An entry of the stage's events' text file, for FieldEvent.text */
 #define EVENT_TEXT(n) (EVENT_TEXT_FILE << 16 | (n))
+
+/* The sounds the stages play, with SOUNDTST's names (dw3/sound.h has the
+   ones the overlays share) */
+#define SOUND_MTL_DOWN 0x40012
+#define SOUND_COMAT102 0x8004213E
+#define SOUND_COMAT103 0x800421BF
+#define SOUND_COMEX105 0x800442C1
+#define SOUND_COMEX112 0x80044648
+#define SOUND_COMEX114 0x8004474A
+#define SOUND_BULB_000 0x340001
+#define SOUND_BULB_001 0x340002
+#define SOUND_GONDRA_B 0x340003
+#define SOUND_BULB_002 0x4C0001
+#define SOUND_FLOOR_LT 0x4C0002
+#define SOUND_DIGITAMA 0x540001
+#define SOUND_SE000000 0xA40004
+#define SOUND_DOOROPEN 0x80A4203C
+#define SOUND_LOGINEF 0xCC0001
+#define SOUND_FLOOR_DN 0xEC0001
+#define SOUND_ENTRY_02 0x1000000
+#define SOUND_SIGNALON 0x1000002
+#define SOUND_DOORCLSE 0x8100303C
+#define SOUND_CCOMBINE 0x8100383C
+#define SOUND_DIGI_EN0 0x10C0000
+#define SOUND_DIGI_EN1 0x10C0001
+#define SOUND_DIGI_EN2 0x10C0002
 
 
 /*
@@ -775,7 +801,7 @@ extern StageFuncs stageFuncs;
 extern void (*stageFuncs[])(void);
 #endif
 
-/* The tables and color setupStage gives D_800990B4 (FieldState) */
+/* The tables and color setupStage gives FIELDSTG_state (FieldState) */
 extern StageTile stageObjects[];
 extern StageSlot stageSlots[];
 extern ActorImage stageImages[];

@@ -88,8 +88,8 @@ def config_path(version: str, binary: str) -> Path:
 
 
 def source_module(source: str) -> tuple:
-    """(binary, module, object) of the C file SOURCE: src/main/inn.c is
-    main's inn, src/stages/wstag200.c the stage's wstag200."""
+    """(binary, module, object) of the C file SOURCE: src/main/menu/inn.c is
+    main's menu/inn, src/stages/wstag200.c the stage's wstag200."""
     rel = Path(source).resolve().relative_to(ROOT / "src")
     module = "/".join(rel.parts[1:])[: -len(".c")]
     binary = rel.stem if rel.parts[0] == "stages" else rel.parts[0]

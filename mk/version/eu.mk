@@ -37,18 +37,20 @@ GP_VALUE := 0x8005CB50
 # are split into the USA version's modules (tools/split_version.py), so that
 # their asm lands at the same paths under asm/eu/ as under asm/us/; only the
 # PsyQ libraries and the functions behind INCLUDE_ASM stay asm.
-C_SRC := src/main/game3_2.c src/soundtst/soundtst.c
+C_SRC := src/soundtst/soundtst.c
 
-# game
-C_SRC += src/main/inn.c src/main/system.c src/main/memcard.c src/main/game3.c src/main/text_window.c src/main/pad.c src/main/graphics.c src/main/sound.c src/main/overlay.c
-C_SRC += src/main/data/matrices.c src/main/data/game_3.c src/main/data/game_bss.c
+# game: every module of the executable, and its data
+C_SRC += $(shell find src/main -name '*.c')
 
 # menus
 C_SRC += src/stitshop/stitshop.c src/stgdglab/stgdglab.c src/ststatus/ststatus.c
-# stgdglab's other objects
-C_SRC += $(addprefix src/stgdglab/, stgdglab_2.c stgdglab_3.c stgdglab_4.c stgdglab_5.c)
-# ststatus's other objects
-C_SRC += $(addprefix src/ststatus/, ststatus_2.c ststatus_3.c ststatus_4.c ststatus_5.c ststatus_6.c ststatus_7.c ststatus_8.c ststatus_9.c ststatus_10.c)
+# stitshop's modules, and its data
+C_SRC += $(addprefix src/stitshop/, trade.c item_list.c info.c shop.c equip.c data/stitshop.c)
+# stgdglab's modules
+C_SRC += $(addprefix src/stgdglab/, recipe_screen.c entry_panel.c slot_screen.c menu.c scroll_bar.c)
+C_SRC += $(addprefix src/stgdglab/, party_screen.c skill_panel.c entry_list.c lab.c)
+# ststatus's modules
+C_SRC += $(addprefix src/ststatus/, demo_screen.c equip_panel.c digivolve_panel.c status_screen.c item_screen.c item_list.c tech_screen.c sort_screen.c map_screen.c menu.c helpers.c)
 
 # cardgame
 C_SRC += src/cardgame/cardgame.c
@@ -61,19 +63,30 @@ C_SRC += $(addprefix src/fightstg/, fightstg_2.c fightstg_3.c fightstg_4.c fight
 
 # small overlays
 C_SRC += src/stgmcard/stgmcard.c src/stfgtrep/stfgtrep.c src/wfightmn/wfightmn.c src/wfightmn/wfightmn_2.c src/stcrdshp/stcrdshp.c src/stplnmet/stplnmet.c src/wfightts/wfightts.c
-# stcrdshp's other objects
-C_SRC += src/stcrdshp/stcrdshp_2.c src/stcrdshp/stcrdshp_3.c
+# stcrdshp's modules
+C_SRC += $(addprefix src/stcrdshp/, pack_open.c fader.c card_grid.c buy.c shop.c)
+# stgmcard's modules, and its data
+C_SRC += $(addprefix src/stgmcard/, info.c panel.c menu.c saves.c screen.c data/stgmcard.c)
+# stplnmet's modules, and its data
+C_SRC += $(addprefix src/stplnmet/, backdrop.c welcome.c name_entry.c confirm.c choice.c screen.c data/stplnmet.c)
 
 # overlays
 C_SRC += src/shocktst/shocktst.c src/cnty_sel/cnty_sel.c src/stcrdabm/stcrdabm.c
-C_SRC += src/stagslct/stagslct.c src/stdgname/stdgname.c src/stdgname/stdgname_2.c
-C_SRC += src/stdwtitl/stdwtitl.c src/stdwtitl/stdwtitl_2.c src/stdwtitl/data/movie.c
-C_SRC += src/fieldstg/fieldstg.c
+C_SRC += src/stagslct/stagslct.c src/stdgname/stdgname.c
+# stdgname's modules, and its data
+C_SRC += $(addprefix src/stdgname/, name_entry.c menu.c screen.c data/stdgname.c)
+C_SRC += src/stdwtitl/stdwtitl.c
+# stdwtitl's modules, and its data
+C_SRC += $(addprefix src/stdwtitl/, logo.c movie.c glint.c splash.c title_loader.c slides.c menu.c)
+C_SRC += $(addprefix src/stdwtitl/, edge_fade.c background.c title.c)
+C_SRC += $(addprefix src/stdwtitl/data/, stdwtitl.c title.c movie.c)
 C_SRC += src/stcrddek/stcrddek.c src/stgtrain/stgtrain.c src/fightstg/fightstg.c
-# fieldstg's other objects
-C_SRC += $(addprefix src/fieldstg/, fieldstg_2.c fieldstg_3.c fieldstg_4.c fieldstg_5.c)
-# stgtrain's other objects
-C_SRC += src/stgtrain/stgtrain_2.c src/stgtrain/stgtrain_3.c
+# stcrddek's modules, and its data
+C_SRC += $(addprefix src/stcrddek/, deck_cards.c editor.c name_entry.c scroll_bar.c screen.c data/stcrddek.c)
+# fieldstg's modules, and its data
+C_SRC += $(wildcard src/fieldstg/*.c) src/fieldstg/data/fieldstg.c
+# stgtrain's modules
+C_SRC += $(addprefix src/stgtrain/, sprite.c screen.c result.c session.c actor.c menu.c files.c)
 
 # The stages the USA version has, built from its C
 C_SRC += $(addprefix src/stages/, \

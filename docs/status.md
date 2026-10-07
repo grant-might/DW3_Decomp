@@ -14,7 +14,11 @@ matched C needs.
   `STDWTITL`, are Sony's code, not the game's: like other PSX decomps, the
   build takes them from the original as splat's disassembly and the progress
   leaves them out. The C decompiled of them earlier is in the history.
-- The 21 overlays are all C.
+- The 21 overlays are all C. The menu overlays have their own copies of the
+  same helpers (the screen fader, the panels' fades, the lerps, the scroll
+  bar, and the name entry's keyboard in STCRDDEK, STPLNMET and STDGNAME),
+  built from one file each in `src/menu_common/` that they include, named
+  with each overlay's prefix (`OVL_NAME`).
 - The stages are all C, the 238 USA ones and the 55 of the European version
   alone. Many stages share functions built from the same source, so one
   match often repeats across stages: those have the same name in every
@@ -94,7 +98,7 @@ README's badge counts them: fake matches, then the other kinds together.
 | Fake matches | 0 | a comment that starts with `/* fake match:` and says what is forced and why |
 | BEC forms | 1 | a comment that starts with `/* BEC form:` and names a function elsewhere with the same form |
 | Unused frame locals | 6 | `/* unused, but it is in the original stack frame */` |
-| Form-dependent matches | 184 | a comment that says the `match depends on` the form |
+| Form-dependent matches | 182 | a comment that says the `match depends on` the form |
 | Functions still in assembly | 0 | `INCLUDE_ASM` |
 
 - A fake match is the last resort: a form forced only for the code it makes,
@@ -102,34 +106,33 @@ README's badge counts them: fake matches, then the other kinds together.
   that exists only to shape the code. There are none so far.
 - A BEC form is a form the rules take nowhere else, allowed as a one-off
   exception because another matched decomp, built with the same GCC 2.8.1 at
-  `-O2`, has it. The one so far is STGDGLAB's `func_8008C234`, whose
-  `skillCount = 6` store is alone in a `do { } while (0)`: its loop notes keep
-  the store before the call's arguments through both schedulers, as that
-  decomp's stage update functions do in theirs. Its comment starts with
-  `/* BEC form:`.
+  `-O2`, has it. The one so far is STGDGLAB's `STGDGLAB_updateSkillPanel`,
+  whose `skillCount = 6` store is alone in a `do { } while (0)`: its loop
+  notes keep the store before the call's arguments through both schedulers,
+  as that decomp's stage update functions do in theirs. Its comment starts
+  with `/* BEC form:`.
 - An unused frame local is a local that the code never touches, kept because
   the original's stack frame has room for it: without it, the frame is
   smaller than the original's. One is in the game's `drawTalkBoxArrow`, one in STSTATUS's `STSTATUS_runStatusChoice`,
   one in FIGHTSTG's `func_8008CFFC` and three in WFIGHTTS.
 - A form-dependent match is C that matches in one of several equivalent
   forms only: an extra block, an `if` without braces, a copy of a variable, a
-  type, or one version's own form of a loop. The hundred and eighty-four so far are a copy
+  type, or one version's own form of a loop. The hundred and eighty-two so far are a copy
   of a variable in `drawTalkBoxArrow`, an unsigned compare in STGMCARD's
-  `func_80082E28`, a variable that holds two values in STCRDDEK's
+  `STGMCARD_updateInfo`, a variable that holds two values in STCRDDEK's
   `STCRDDEK_drawDeckCards`, a counter set before a call in
   `STCRDDEK_drawEditor`, the rows' y offset held in a variable in
-  `STCRDDEK_createScreenWindows`, a `u32` copy of a character in the keyboards of
-  STCRDDEK and STDGNAME (`STCRDDEK_updateKeyboard`, `STDGNAME_updateKeyboard`),
-  a `* 4` written as a statement of its own in FIELDSTG's `func_80091BC0`,
-  variables local to a case or a block in its `func_80086E64` and
-  `func_80091D3C`, an empty case in its `func_800870D4`, two variables for one
-  character and an `s16` in its `func_80084654`, calls in an `if`/`else`
-  and a `case 0` next to `default` in its `func_80084D0C`, the button's shift and mask as two statements in its `func_8008D710`, a gauge cell read and shifted as two statements in its `func_8008C59C`, an `s16` shadow offset in its `func_8008E7E0`, a distance written twice in its `func_8008B450`, the kind reused for the mode in its `func_80090450`, a loop with both of its tests at its top and steps added as a choice in its `func_8008F184`, the registry held in a variable in its `func_8008D4C4`, a counter for each loop in its `func_80085650`, the start position set with a `(Vec2){x, y}` constructor in its `func_80091124`, the leader read into a variable before the trail in its `func_8008DFE0`, the tile move written as an early exit in a `do`-`while (0)` with the move declared in it in its `func_800896C0`, the object's case written as an early exit, a `do`-`while (0)` with a `break`, in its `func_8008DB60` (its loop notes weigh the references and stop the schedulers), the file's pick and the frames' step written as early exits in `do`-`while (0)`s, a flag read twice, a width cast to `s16` and the flag cleared last in its `func_8008EC74`, the map's file check written as an early exit in a `do`-`while (0)` with the file declared in it in its `func_80091AA8`, the y offset written as `scrollY` less its tile's start, `x` holding the flip before the column and a counter shared by two loops in its `func_80085EEC`, a -1 held in a variable in STGTRAIN's `func_800874A0`, stats read through two inline functions in its `func_800867A0`, a variable for each loop and each cursor's last value in its `func_80087E34`, the column set in each branch of an `if` in its `func_80085AF8`, the magic number read into a variable before the image pointer is copied, and the image set before the source moves on, in its `func_8008B35C`, the position pointer set after two calls and a 1 stored as the result in its `func_80088CFC`,
-  stats read as `*(totals.stats + i)` in its `func_80083ADC`, `s16` copies
-  of two stats in its `func_80085E30`, a counter that
-  holds an icon too in its `func_800878C0`, a frame pointer that holds the
-  animation first in its `func_800828E8`, the same `u32` copy in STPLNMET's
-  `STPLNMET_updateKeyboard`, twenty-seven spots in STSTATUS and three in STCRDSHP (a
+  `STCRDDEK_createScreenWindows`, a `u32` copy of a character in the name entry's
+  keyboard (`updateKeyboard`, which STCRDDEK, STPLNMET and STDGNAME share),
+  a `* 4` written as a statement of its own in FIELDSTG's `FIELDSTG_getMapCell`,
+  variables local to a case or a block in its `FIELDSTG_stretchBannerBox` and
+  `FIELDSTG_isTileFree`, an empty case in its `FIELDSTG_updateBanner`, two variables for one
+  character and an `s16` in its `FIELDSTG_runEvent`, calls in an `if`/`else`
+  and a `case 0` next to `default` in its `FIELDSTG_playCutsceneAnim`, the button's shift and mask as two statements in its `FIELDSTG_controlFlight`, a gauge cell read and shifted as two statements in its `FIELDSTG_runGauge`, an `s16` shadow offset in its `FIELDSTG_drawActor`, a distance written twice in its `FIELDSTG_runLaunch`, the kind reused for the mode in its `FIELDSTG_createActor`, a loop with both of its tests at its top and steps added as a choice in its `FIELDSTG_runActorAction`, the registry held in a variable in its `FIELDSTG_findActorAt`, a counter for each loop in its `FIELDSTG_requestTiles`, the start position set with a `(Vec2){x, y}` constructor in its `FIELDSTG_setupField`, the leader read into a variable before the trail in its `FIELDSTG_drainTrail`, the tile move written as an early exit in a `do`-`while (0)` with the move declared in it in its `FIELDSTG_playBattleTransition`, the object's case written as an early exit, a `do`-`while (0)` with a `break`, in its `FIELDSTG_controlPlayer` (its loop notes weigh the references and stop the schedulers), the file's pick and the frames' step written as early exits in `do`-`while (0)`s, a flag read twice, a width cast to `s16` and the flag cleared last in its `FIELDSTG_animateActor`, the map's file check written as an early exit in a `do`-`while (0)` with the file declared in it in its `FIELDSTG_selectMap`, the y offset written as `scrollY` less its tile's start, `x` holding the flip before the column and a counter shared by two loops in its `FIELDSTG_pickViewTiles`, a -1 held in a variable in STGTRAIN's `STGTRAIN_updateResult`, stats read through two inline functions in its `STGTRAIN_runTraining`, a variable for each loop and each cursor's last value in its `STGTRAIN_runSession`, the column set in each branch of an `if` in its `STGTRAIN_raiseResistance`, the magic number read into a variable before the image pointer is copied, and the image set before the source moves on, in its `STGTRAIN_loadSet`, the position pointer set after two calls and a 1 stored as the result in its `STGTRAIN_updateActor`,
+  stats read as `*(totals.stats + i)` in its `STGTRAIN_showStatChanges`, `s16` copies
+  of two stats in its `STGTRAIN_applyTry`, a counter that
+  holds an icon too in its `STGTRAIN_drawSession`, a frame pointer that holds the
+  animation first in its `STGTRAIN_updateSprite`, twenty-seven spots in STSTATUS and three in STCRDSHP (a
   copy, a cast, a temporary, a pointer, a pointer sum, `for` initializers, a
   variable of its own for a loop or a case, a counter shared by three
   loops, a statement written in both

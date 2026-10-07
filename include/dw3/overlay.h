@@ -1,7 +1,7 @@
 #ifndef DW3_OVERLAY_H
 #define DW3_OVERLAY_H
 
-/* The game modes' overlays and the task that runs them (overlay.c) */
+/* The game modes' overlays and the task that runs them (system/overlay.c) */
 
 #include "common.h"
 #include "dw3/task.h"
@@ -49,7 +49,7 @@ Task *CNTY_SEL_start(void);
    linker: where the overlays and the stages load */
 extern u8 OVERLAY_VRAM[];
 extern u8 STAGE_VRAM[];
-/* the two areas the loader copies to, at those addresses (system.c) */
+/* the two areas the loader copies to, at those addresses (system/main.c) */
 extern void *const OVERLAY_ADDRESS;
 extern void *const SUB_OVERLAY_ADDRESS;
 

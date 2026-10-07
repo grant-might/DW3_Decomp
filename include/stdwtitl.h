@@ -22,6 +22,9 @@
 #include "game.h"
 #include <libpress.h>
 
+/* The name of this overlay's copy of a function of src/menu_common/ */
+#define OVL_NAME(name) STDWTITL_##name
+
 /* Draw layers of the screens */
 #define STDWTITL_SPLASH_LAYER 0x100
 #define STDWTITL_TITLE_LAYER 0x1000
@@ -48,8 +51,7 @@
 
 /* Sounds (SOUND.playSound) */
 #define STDWTITL_TITLE_SOUND_BANK 0x47
-#define STDWTITL_TITLE_MUSIC 0x611C0000
-#define SE_TITLE_OPTIONS 0x8004113E
+#define STDWTITL_TITLE_MUSIC MUSIC(STDWTITL_TITLE_SOUND_BANK, 0)
 
 /* The low byte of the game mode that shows the still screen, after the
    movies' */
@@ -253,31 +255,12 @@ typedef struct TitleImages {
     /* 0x4 */ s32 sprites; /* sprite bank */
 } TitleImages;
 
-/* A value going from one number to another, in 24.8 fixed point */
-typedef struct Tween {
-    /* 0x00 */ s32 duration;
-    /* 0x04 */ s32 unk4;
-    /* 0x08 */ s32 value;
-    /* 0x0C */ s32 fixed;
-    /* 0x10 */ s32 target;
-    /* 0x14 */ s32 step;
-    /* 0x18 */ s32 active;
-} Tween;
-
-/* A fade in or out, stepped once per frame */
-typedef struct Fade {
-    /* 0x0 */ s32 duration;
-    /* 0x4 */ s32 step;
-    /* 0x8 */ s32 level;
-    /* 0xC */ s32 active;
-} Fade;
-
 typedef struct TitleFuncs {
     /* 0x00 */ void (*loadImages)(void);
-    /* 0x04 */ void (*startFade)(Fade *fade, s32 fadeIn);
-    /* 0x08 */ s32 (*stepFade)(Fade *fade);
-    /* 0x0C */ void (*startTween)(Tween *tween, s32 from, s32 to, s32 duration);
-    /* 0x10 */ s32 (*stepTween)(Tween *tween);
+    /* 0x04 */ void (*startFade)(PanelAnim *fade, s32 fadeIn);
+    /* 0x08 */ s32 (*updateFade)(PanelAnim *fade);
+    /* 0x0C */ void (*startLerp)(MenuLerp *lerp, s32 from, s32 to, s32 duration);
+    /* 0x10 */ s32 (*updateLerp)(MenuLerp *lerp);
 } TitleFuncs;
 
 /* Executable symbols */
@@ -285,7 +268,8 @@ typedef struct TitleFuncs {
    game reads and clears its low byte */
 extern u_char StCdIntrFlag;
 
-/* STDWTITL data */
+/* STDWTITL's data, in its order: data/stdwtitl.c's, data/title.c's and
+   data/movie.c's */
 extern RECT STDWTITL_screenRect;
 extern s16 STDWTITL_logoFrames[2][13];
 extern s32 STDWTITL_movieWidth;
@@ -330,10 +314,15 @@ extern u32 STDWTITL_movieEndFrame;
 void STDWTITL_tickSplashLoader(Task *task, Task **splash);
 Task *STDWTITL_startSplashLoaderTask(void);
 void STDWTITL_tickScreen(Task *task, ScreenChildren *children);
+Task *STDWTITL_start(void);
+
+/* logo.c */
 void STDWTITL_drawLogo(LogoTask *task);
 void STDWTITL_tickLogo(LogoTask *task);
 void STDWTITL_showLogo(LogoTask *task);
 LogoTask *STDWTITL_startLogoTask(s32 skip);
+
+/* movie.c */
 void STDWTITL_clearVram(void);
 void STDWTITL_initDecEnv(DecEnv *dec, s16 x0, s16 y0, s16 x1, s16 y1);
 void STDWTITL_readStream(CdlLOC *loc);
@@ -346,6 +335,8 @@ void STDWTITL_tickMoviePlayer(MoviePlayerTask *task);
 MoviePlayerTask *STDWTITL_startMoviePlayerTask(s32 file, u32 endFrame);
 void STDWTITL_tickMovie(MovieTask *task, MoviePlayerTask **player);
 MovieTask *STDWTITL_startMovieTask(s32 movie);
+
+/* glint.c */
 void STDWTITL_drawGlintAlt(GlintTask *task);
 void STDWTITL_tickGlintAlt(GlintTask *task);
 void STDWTITL_showGlint(GlintTask *task);
@@ -353,12 +344,18 @@ GlintTask *STDWTITL_startGlintAltTask(s32 skip);
 void STDWTITL_drawGlint(GlintTask *task);
 void STDWTITL_tickGlint(GlintTask *task);
 GlintTask *STDWTITL_startGlintTask(s32 skip);
+
+/* splash.c */
 void STDWTITL_drawSplash(SplashTask *task);
 void STDWTITL_tickSplash(SplashTask *task);
 Task *STDWTITL_startSplashTask(void);
+
+/* title_loader.c */
 void STDWTITL_runTitleLoader(TitleLoaderTask *task, struct TitleTask **title);
 void STDWTITL_tickTitleLoader(TitleLoaderTask *task, struct TitleTask **title);
 TitleLoaderTask *STDWTITL_startTitleLoaderTask(void);
+
+/* slides.c */
 void STDWTITL_drawTitle1Alt(SlideTask *task);
 void STDWTITL_tickTitle1Alt(SlideTask *task);
 void STDWTITL_showTitle1(SlideTask *task);
@@ -373,6 +370,8 @@ SlideTask *STDWTITL_startTitle0AltTask(s32 skip);
 void STDWTITL_drawTitle0(SlideTask *task);
 void STDWTITL_tickTitle0(SlideTask *task);
 SlideTask *STDWTITL_startTitle0Task(s32 skip);
+
+/* menu.c */
 void STDWTITL_drawMenu(MenuTask *task);
 void STDWTITL_tickMenu(MenuTask *task);
 void STDWTITL_showMenu(MenuTask *task);
@@ -380,27 +379,31 @@ void STDWTITL_resetMenu(MenuTask *task);
 s32 STDWTITL_getMenuChoice(MenuTask *task);
 MenuTask *STDWTITL_startMenuTask(s16 skip);
 
-/* stdwtitl_2.c */
+/* edge_fade.c */
 s32 STDWTITL_getEdgeFadeLevel(s32 time);
 void STDWTITL_drawEdgeFade(s32 level);
 void STDWTITL_startEdgeFade(EdgeFadeTask *task);
 s32 STDWTITL_isEdgeFadeDone(EdgeFadeTask *task);
 void STDWTITL_tickEdgeFade(EdgeFadeTask *task);
 EdgeFadeTask *STDWTITL_startEdgeFadeTask(void);
+
+/* background.c */
 s32 STDWTITL_stepLoopingAnimation(AnimState *anim, AnimFrame *frames, s32 depth);
 void STDWTITL_drawBackground(BackgroundTask *task);
 void STDWTITL_drawBackgroundSprites(BackgroundTask *task);
 void STDWTITL_tickBackground(BackgroundTask *task);
 void STDWTITL_animateBackground(BackgroundTask *task);
 BackgroundTask *STDWTITL_startBackgroundTask(s32 skip);
+
+/* title.c */
 s32 STDWTITL_leaveTitle(TitleTask *task, TitleChildren *children);
 s32 STDWTITL_stepTitle(TitleTask *task, TitleChildren *children);
 void STDWTITL_tickTitle(TitleTask *task, TitleChildren *children);
 TitleTask *STDWTITL_startTitleTask(Task *parent);
 void STDWTITL_loadTitleImages(void);
-void STDWTITL_startFade(Fade *fade, s32 fadeIn);
-s32 STDWTITL_stepFade(Fade *fade);
-void STDWTITL_startTween(Tween *tween, s32 from, s32 to, s32 duration);
-s32 STDWTITL_stepTween(Tween *tween);
+void STDWTITL_startFade(PanelAnim *fade, s32 fadeIn);
+s32 STDWTITL_updateFade(PanelAnim *fade);
+void STDWTITL_startLerp(MenuLerp *lerp, s32 from, s32 to, s32 frames);
+s32 STDWTITL_updateLerp(MenuLerp *lerp);
 
 #endif /* STDWTITL_H */

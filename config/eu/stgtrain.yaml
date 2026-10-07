@@ -50,14 +50,22 @@ segments:
     subalign: 4
     subsegments:
       # us's modules, each with its rodata, data and bss (tools/split_version.py)
-      - [0x0, .rodata, stgtrain]
-      - [0xD4, .rodata, stgtrain_2]
-      - [0x1A0, .rodata, stgtrain_3]
-      - [0x3A8, c, stgtrain]
-      - [0x350C, c, stgtrain_2]
-      - [0x5564, c, stgtrain_3]
-      # each object's data
-      - [0x9574, .data, stgtrain]
-      - [0x9654, .data, stgtrain_2]
-      - [0x9828, .data, stgtrain_3]
+      # each module's rodata: the ones with jump tables or strings
+      - [0x0, .rodata, screen]
+      - [0xD4, .rodata, result]
+      - [0x1A0, .rodata, session]
+      - [0x270, .rodata, menu]
+      # the modules (src/stgtrain/), in the order they link
+      - [0x3A8, c, sprite]
+      - [0xC80, c, stgtrain]
+      - [0xE3C, c, screen]
+      - [0x350C, c, result]
+      - [0x5564, c, session]
+      - [0x6B08, c, actor]
+      - [0x76A4, c, menu]
+      - [0x8BF4, c, files]
+      # each module's data
+      - [0x9574, .data, screen]
+      - [0x9654, .data, result]
+      - [0x9828, .data, files]
   - [0xA658]

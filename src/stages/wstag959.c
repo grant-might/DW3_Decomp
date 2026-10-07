@@ -5,25 +5,22 @@
 #include "common/start_stage.inc.c"
 
 void setupStage(void) {
-    D_800990B4.textFile = LANGUAGE + 0xFD;
-    D_800990B4.mapFile = 0x1C0;
-    D_800990B4.sheetEntry = 0x92D0000;
-    D_800990B4.objects = stageObjects;
-    D_800990B4.slots = stageSlots;
-    D_800990B4.imageFile = 0x92C;
-    D_800990B4.start = (Vec2){0x15100, 0x18800};
-    D_800990B4.images.actors = stageImages;
-    D_800990B4.soundBank = 7;
-    D_800990B4.music = 0x601C0000;
-    D_800990B4.startDir = 0;
-    D_800990B4.actors = stageActors;
-    D_8009A70C.setFile(0, 0x92D0001);
-    D_8009A70C.setFile(7, 0x92D0002);
-    D_8009A70C.unk50(0);
+    FIELDSTG_state.textFile = LANGUAGE + 0xFD;
+    FIELDSTG_state.mapFile = 0x1C0;
+    FIELDSTG_state.sheetEntry = 0x92D0000;
+    FIELDSTG_state.objects = stageObjects;
+    FIELDSTG_state.slots = stageSlots;
+    FIELDSTG_state.imageFile = 0x92C;
+    FIELDSTG_state.start = (Vec2){0x15100, 0x18800};
+    FIELDSTG_state.images.actors = stageImages;
+    FIELDSTG_state.soundBank = 7;
+    FIELDSTG_state.music = MUSIC(7, 0);
+    FIELDSTG_state.startDir = 0;
+    FIELDSTG_state.actors = stageActors;
+    FIELDSTG_map.setFile(0, 0x92D0001);
+    FIELDSTG_map.setFile(7, 0x92D0002);
+    FIELDSTG_map.setFirstMap(0);
 }
-
-extern FieldTalk D_800A5FE0[];
-extern FieldActorEntry D_800A5FF8;
 
 ActorImage stageImages[] = {
     { 0x200, 0x100, 0x21C, 0x1A6, 0x70, 0xA6, 0x230, 0x1FE },
@@ -34,13 +31,13 @@ ActorImage stageImages[] = {
     { 0x200, 0x100, 0x200, 0x1BC, 0, 0xBC, 0x230, 0x1FD },
     { 0x140, 0x100, 0x162, 0x100, 0x88, 0, 0x150, 0x1FF },
 };
-FieldTalk D_800A5FE0[] = {
+FieldTalk actor0Talks[] = {
     { NULL, NULL, 0x7F },
     { NULL, NULL, 0 },
 };
-FieldActorEntry D_800A5FF8 = { NULL, D_800A5FE0, 0x3E, 4, 256, 455, 1 };
+FieldActorEntry actor0 = { NULL, actor0Talks, 0x3E, 4, 256, 455, 1 };
 FieldActorEntry *stageActors[] = {
-    &D_800A5FF8,
+    &actor0,
     NULL,
 };
 StageTile stageObjects[] = {
@@ -49,8 +46,8 @@ StageTile stageObjects[] = {
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 StageSlot stageSlots[] = {
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 1, 0x29C, 0x350, 0x230, 7, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 1, 0x29C, 0x350, 0x230, 7, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 void (*stageFuncs[])(void) = {
     setupStage,

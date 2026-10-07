@@ -32,13 +32,13 @@ s32 CARDGAME_checkComputerCondition(CardBattle *battle, CardScreen *screen, s32 
         }
         break;
     case 0x83:
-        if (battle->record.entryCount != 0) {
+        if (battle->record.playCount != 0) {
             result = 1;
         }
         break;
     case 0x84:
-        if (battle->record.entryCount != 0) {
-            card = battle->record.entries[battle->record.entryCount - 1].unk0;
+        if (battle->record.playCount != 0) {
+            card = battle->record.plays[battle->record.playCount - 1].card;
             initCardDrawer(&drawer);
             drawer.setCard(battle->cards[card] + 1);
             if (drawer.card->color == 6) {
@@ -171,8 +171,8 @@ s32 CARDGAME_scoreHand(CardBattle *battle, s32 side, s32 mask) {
     }
     j = 0;
     i = (mask >> entries[0].slot) & 1;
-    sum6 = battle->players[side].slots[entries[0].slot].unk6;
-    sum8 = battle->players[side].slots[entries[0].slot].unk8;
+    sum6 = battle->players[side].slots[entries[0].slot].ap;
+    sum8 = battle->players[side].slots[entries[0].slot].hp;
     for (skip = 0; i < count - 1; i++, skip = 0) {
         drawer.setCard(entries[i].card + 1);
         if ((mask >> entries[i + 1].slot) & 1) {
@@ -183,13 +183,13 @@ s32 CARDGAME_scoreHand(CardBattle *battle, s32 side, s32 mask) {
         }
         if (drawer.card->unkA != 0 && entries[i].card == entries[i + 1 + skip].card) {
             j++;
-            sum6 += battle->players[side].slots[entries[i + skip].slot].unk6;
-            sum8 += battle->players[side].slots[entries[i + skip].slot].unk8;
+            sum6 += battle->players[side].slots[entries[i + skip].slot].ap;
+            sum8 += battle->players[side].slots[entries[i + skip].slot].hp;
         } else if (j < 2) {
             j = 0;
             if (i + 1 + skip < count) {
-                sum6 = battle->players[side].slots[entries[i + 1 + skip].slot].unk6;
-                sum8 = battle->players[side].slots[entries[i + 1 + skip].slot].unk8;
+                sum6 = battle->players[side].slots[entries[i + 1 + skip].slot].ap;
+                sum8 = battle->players[side].slots[entries[i + 1 + skip].slot].hp;
             } else {
                 sum6 = 0;
                 sum8 = 0;
@@ -198,8 +198,8 @@ s32 CARDGAME_scoreHand(CardBattle *battle, s32 side, s32 mask) {
             total6 += sum6;
             total8 += sum8;
             if (i + 1 + skip < count) {
-                sum6 = battle->players[side].slots[entries[i + 1 + skip].slot].unk6;
-                sum8 = battle->players[side].slots[entries[i + 1 + skip].slot].unk8;
+                sum6 = battle->players[side].slots[entries[i + 1 + skip].slot].ap;
+                sum8 = battle->players[side].slots[entries[i + 1 + skip].slot].hp;
             } else {
                 sum6 = 0;
                 sum8 = 0;
@@ -226,14 +226,14 @@ s32 CARDGAME_scoreHand(CardBattle *battle, s32 side, s32 mask) {
     }
     for (i = 0; i < count; i++) {
         if (!((mask >> i) & 1)) {
-            rest6 += battle->players[side].slots[i].unk6;
-            rest8 += battle->players[side].slots[i].unk8;
+            rest6 += battle->players[side].slots[i].ap;
+            rest8 += battle->players[side].slots[i].hp;
         }
     }
     return rest6 + rest8 + total6 + total8;
 }
 
-/* Keeps the flag (unk446) only on side's flagged slot that CARDGAME_scoreHand
+/* Keeps the flag (effectStep.eligible) only on side's flagged slot that CARDGAME_scoreHand
    rates lowest */
 void CARDGAME_keepLowestSlot(CardBattle *battle, s32 side) {
     s32 best = 0xFFF;
@@ -243,9 +243,9 @@ void CARDGAME_keepLowestSlot(CardBattle *battle, s32 side) {
     s32 value;
 
     if (side == 1) {
-        flags = &battle->unk446[6];
+        flags = &battle->effectStep.eligible[6];
     } else {
-        flags = battle->unk446;
+        flags = battle->effectStep.eligible;
     }
     for (i = 0; i < battle->players[side].slotCount; i++) {
         if (flags[i] != 0) {
@@ -262,7 +262,7 @@ void CARDGAME_keepLowestSlot(CardBattle *battle, s32 side) {
     }
 }
 
-/* The next record entry targets side's first flagged slot (unk6); whether
+/* The next play targets (target) side's first flagged slot; whether
    there is one */
 s32 CARDGAME_targetFlaggedSlot(CardBattle *battle, s32 side) {
     s32 found = 0;
@@ -270,14 +270,14 @@ s32 CARDGAME_targetFlaggedSlot(CardBattle *battle, s32 side) {
     s32 i;
 
     if (side == 1) {
-        flags = &battle->unk446[6];
+        flags = &battle->effectStep.eligible[6];
     } else {
-        flags = battle->unk446;
+        flags = battle->effectStep.eligible;
     }
     for (i = 0; i < battle->players[side].slotCount; i++) {
         if (flags[i] != 0) {
             found = 1;
-            battle->record.entries[battle->record.entryCount].unk6 = battle->players[side].slots[i].order;
+            battle->record.plays[battle->record.playCount].target = battle->players[side].slots[i].order;
             break;
         }
     }
@@ -291,9 +291,9 @@ s32 CARDGAME_targetColor3Slot(CardBattle *battle, s32 side) {
     s32 i;
 
     initCardDrawer(&drawer);
-    flags = battle->unk446;
+    flags = battle->effectStep.eligible;
     if (side == 1) {
-        flags = &battle->unk446[6];
+        flags = &battle->effectStep.eligible[6];
     }
     for (i = 0; i < battle->players[side].slotCount; i++) {
         if (flags[i] != 0) {
@@ -313,9 +313,9 @@ s32 CARDGAME_targetColor4Slot(CardBattle *battle, s32 side) {
     s32 i;
 
     initCardDrawer(&drawer);
-    flags = battle->unk446;
+    flags = battle->effectStep.eligible;
     if (side == 1) {
-        flags = &battle->unk446[6];
+        flags = &battle->effectStep.eligible[6];
     }
     for (i = 0; i < battle->players[side].slotCount; i++) {
         if (flags[i] != 0) {
@@ -328,17 +328,17 @@ s32 CARDGAME_targetColor4Slot(CardBattle *battle, s32 side) {
     return CARDGAME_targetFlaggedSlot(battle, side);
 }
 
-/* Whether side's slot index is flagged and its unk8 is at most value */
+/* Whether side's slot index is flagged and its hp is at most value */
 s32 CARDGAME_isSlotWithin(CardBattle *battle, s32 side, s32 index, s32 value) {
     s32 result = 0;
 
-    if (*(index + battle->unk446) != 0) {
-        result = value >= battle->players[side].slots[index].unk8;
+    if (*(index + battle->effectStep.eligible) != 0) {
+        result = value >= battle->players[side].slots[index].hp;
     }
     return result;
 }
 
-/* Unflags side's slots whose unk8 is over value; when none is left, 1 (and
+/* Unflags side's slots whose hp is over value; when none is left, 1 (and
    the last one flagged again, unless keep) */
 s32 CARDGAME_unflagSlotsOver(CardBattle *battle, s32 side, s32 value, s32 keep) {
     s32 result = 0;
@@ -348,14 +348,14 @@ s32 CARDGAME_unflagSlotsOver(CardBattle *battle, s32 side, s32 value, s32 keep) 
     s32 any;
 
     if (side == 1) {
-        flags = &battle->unk446[6];
+        flags = &battle->effectStep.eligible[6];
     } else {
-        flags = battle->unk446;
+        flags = battle->effectStep.eligible;
     }
     for (i = 0; i < battle->players[side].slotCount; i++) {
         if (flags[i] != 0) {
             last = i;
-            if (value < battle->players[side].slots[i].unk8) {
+            if (value < battle->players[side].slots[i].hp) {
                 flags[i] = 0;
             }
         }
@@ -382,7 +382,7 @@ s32 CARDGAME_pickLowestOpponentCard(CardBattle *battle) {
     CardDrawer drawer;
     s32 lowest = 500;
     s32 best = lowest;
-    s8 *flags = battle->unk446;
+    s8 *flags = battle->effectStep.eligible;
     s32 found;
     s32 i;
 
@@ -399,7 +399,7 @@ s32 CARDGAME_pickLowestOpponentCard(CardBattle *battle) {
         }
     }
     if (found == 1) {
-        battle->record.entries[battle->record.entryCount].unk6 = battle->sides[1].pile.hand[best];
+        battle->record.plays[battle->record.playCount].target = battle->sides[1].pile.hand[best];
     }
     return found;
 }
@@ -497,7 +497,7 @@ s32 CARDGAME_pickComputerTarget(CardBattle *battle, CardScreen *screen, s32 id) 
     case 0x3A:
     case 0x3B:
         if (battle->players[1].slotCount != 0) {
-            battle->record.entries[battle->record.entryCount].unk6 = battle->players[1].slots[0].order;
+            battle->record.plays[battle->record.playCount].target = battle->players[1].slots[0].order;
             done = 1;
         }
         break;
@@ -508,7 +508,7 @@ s32 CARDGAME_pickComputerTarget(CardBattle *battle, CardScreen *screen, s32 id) 
     return done;
 }
 
-/* Compares two cards by the rule of the current record entry; returns 1 if the second one wins */
+/* Compares two cards by the rule of the current play; returns 1 if the second one wins */
 s32 CARDGAME_compareCards(CardBattle *battle, s32 id1, s32 id2, s32 flip) {
     s32 index = 0;
     s32 result = 0;
@@ -523,16 +523,16 @@ s32 CARDGAME_compareCards(CardBattle *battle, s32 id1, s32 id2, s32 flip) {
         value = CARDGAME_getCardLimit(battle, id1);
         bonus = CARDGAME_getCardBonus(battle, id2);
     }
-    switch (battle->record.entries[battle->record.entryCount - 1].unk5) {
+    switch (battle->record.plays[battle->record.playCount - 1].targetKind) {
     case 0:
         for (i = 0; i < 12; i++) {
             if (i < 6) {
-                if (battle->record.entries[battle->record.entryCount - 1].unk6 == battle->players[0].slots[i].order) {
+                if (battle->record.plays[battle->record.playCount - 1].target == battle->players[0].slots[i].order) {
                     index = i;
                     break;
                 }
             } else {
-                if (battle->record.entries[battle->record.entryCount - 1].unk6 == battle->players[1].slots[i - 6].order) {
+                if (battle->record.plays[battle->record.playCount - 1].target == battle->players[1].slots[i - 6].order) {
                     index = i - 6;
                     break;
                 }
@@ -541,12 +541,12 @@ s32 CARDGAME_compareCards(CardBattle *battle, s32 id1, s32 id2, s32 flip) {
         if (flip == 0) {
             if (CARDGAME_isSlotWithin(battle, 0, index, value)) {
                 result = 1;
-                battle->record.entries[battle->record.entryCount].unk6 = battle->players[0].slots[index].order;
+                battle->record.plays[battle->record.playCount].target = battle->players[0].slots[index].order;
             }
         } else {
             if (CARDGAME_isSlotWithin(battle, 1, index, value) && !CARDGAME_isSlotWithin(battle, 1, index, value - bonus)) {
                 result = 1;
-                battle->record.entries[battle->record.entryCount].unk6 = battle->players[1].slots[index].order;
+                battle->record.plays[battle->record.playCount].target = battle->players[1].slots[index].order;
             }
         }
         break;
@@ -593,20 +593,20 @@ s32 CARDGAME_compareCards(CardBattle *battle, s32 id1, s32 id2, s32 flip) {
     return result;
 }
 
-/* The index of the first card of the opponent's hand of unk35C kind (its
+/* The index of the first card of the opponent's hand of opponentPlans kind (its
    count when none) */
 s32 CARDGAME_findOpponentHandKind(CardBattle *battle, s32 kind) {
     s32 i;
 
     for (i = 0; i < battle->sides[1].pile.handCount; i++) {
-        if (battle->unk35C[battle->sides[1].pile.hand[i] - 40].unk0 == kind) {
+        if (battle->opponentPlans[battle->sides[1].pile.hand[i] - 40].kind == kind) {
             break;
         }
     }
     return i;
 }
 
-/* Picks the computer's next card, flagging it in unk46F; returns 1 if one was found */
+/* Picks the computer's next card, flagging it in effectStep.marked; returns 1 if one was found */
 s32 CARDGAME_pickComputerCard(CardBattle *battle, CardScreen *screen) {
     CardDrawer drawer;
     s32 found = 0;
@@ -624,10 +624,10 @@ s32 CARDGAME_pickComputerCard(CardBattle *battle, CardScreen *screen) {
     s32 i;
 
     for (i = 0; i < battle->sides[1].pile.handCount; i++) {
-        battle->unk46F[i] = 0;
+        battle->effectStep.marked[i] = 0;
     }
-    if (battle->record.entryCount == 0) {
-        if (battle->unk2F8 == 5) {
+    if (battle->record.playCount == 0) {
+        if (battle->phase == CARD_PHASE_PLAYS_BEFORE) {
             start = CARDGAME_findOpponentHandKind(battle, 1);
             kind = 1;
         } else {
@@ -635,16 +635,16 @@ s32 CARDGAME_pickComputerCard(CardBattle *battle, CardScreen *screen) {
             playerScore = CARDGAME_scoreHand(battle, 0, 0);
             computerScore = CARDGAME_scoreHand(battle, 1, 0);
             kind = 3;
-            if ((battle->unk305 & 1) || playerScore < computerScore) {
+            if ((battle->keptCount & 1) || playerScore < computerScore) {
                 return 0;
             }
         }
         for (i = start; i < battle->sides[1].pile.handCount; i++) {
             index = battle->sides[1].pile.hand[i];
-            if (battle->unk35C[index - 40].unk0 == kind && CARDGAME_canPlayCardKind(battle, index)) {
+            if (battle->opponentPlans[index - 40].kind == kind && CARDGAME_canPlayCardKind(battle, index)) {
                 card = battle->cards[index];
                 if (CARDGAME_checkComputerCondition(battle, screen, CARDGAME_getEffectField(card, 0, 0)) && CARDGAME_pickComputerTarget(battle, screen, card)) {
-                    battle->unk46F[i] = 1;
+                    battle->effectStep.marked[i] = 1;
                     found = 1;
                     break;
                 }
@@ -652,8 +652,8 @@ s32 CARDGAME_pickComputerCard(CardBattle *battle, CardScreen *screen) {
         }
     } else {
         listed = 0;
-        for (i = 0; battle->unk400[i] != 0xFF; i++) {
-            if (battle->unk400[i] == battle->cards[battle->record.entries[battle->record.entryCount - 1].unk0]) {
+        for (i = 0; battle->counterCards[i] != 0xFF; i++) {
+            if (battle->counterCards[i] == battle->cards[battle->record.plays[battle->record.playCount - 1].card]) {
                 listed = 1;
                 break;
             }
@@ -664,7 +664,7 @@ s32 CARDGAME_pickComputerCard(CardBattle *battle, CardScreen *screen) {
                 if (CARDGAME_canPlayCardKind(battle, index)) {
                     card = battle->cards[index];
                     if (CARDGAME_checkComputerCondition(battle, screen, CARDGAME_getEffectField(card, 0, 0)) && CARDGAME_pickComputerTarget(battle, screen, card)) {
-                        battle->unk46F[i] = 1;
+                        battle->effectStep.marked[i] = 1;
                         found = 1;
                         break;
                     }
@@ -673,7 +673,7 @@ s32 CARDGAME_pickComputerCard(CardBattle *battle, CardScreen *screen) {
         }
         if (found == 0) {
             initCardDrawer(&drawer);
-            prev = battle->record.entries[battle->record.entryCount - 1].unk0;
+            prev = battle->record.plays[battle->record.playCount - 1].card;
             drawer.setCard(battle->cards[prev] + 1);
             prevCard = drawer.card;
             if (prevCard->kind == 3 || prevCard->kind == 9) {
@@ -681,7 +681,7 @@ s32 CARDGAME_pickComputerCard(CardBattle *battle, CardScreen *screen) {
                 kind = 3;
                 for (i = start; i < battle->sides[1].pile.handCount; i++) {
                     index = battle->sides[1].pile.hand[i];
-                    if ((battle->unk35C[index - 40].unk0 == kind || battle->unk35C[index - 40].unk0 == 4) && battle->unk35C[index - 40].unk1 != 0) {
+                    if ((battle->opponentPlans[index - 40].kind == kind || battle->opponentPlans[index - 40].kind == 4) && battle->opponentPlans[index - 40].flagged != 0) {
                         drawer.setCard(battle->cards[index] + 1);
                         header = drawer.card;
                         if (prevCard->kind == 3) {
@@ -696,7 +696,7 @@ s32 CARDGAME_pickComputerCard(CardBattle *battle, CardScreen *screen) {
                             flip = 1;
                         }
                         if (CARDGAME_canPlayCardKind(battle, index) && CARDGAME_checkComputerCondition(battle, screen, CARDGAME_getEffectField(battle->cards[index], 0, 0)) && CARDGAME_compareCards(battle, prev, index, flip)) {
-                            battle->unk46F[i] = 1;
+                            battle->effectStep.marked[i] = 1;
                             found = 1;
                             break;
                         }

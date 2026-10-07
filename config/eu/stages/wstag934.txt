@@ -6,9 +6,20 @@ startTween = 0x800A64B8; // type:func
 updateTween = 0x800A654C; // type:func
 stageFuncs = 0x800A6870; // size:0x4
 
-// named by their use (D_800990B4, the field state, in setupStage)
+// named by their use (FIELDSTG_state, the field state, in setupStage)
 stageObjects = 0x800A66FC;
 stageSlots = 0x800A67F8;
 stageImages = 0x800A65CC;
 stageActors = 0x800A66F0;
 stageColor = 0x800A5DF8;
+
+// named by their place in the stage's tables (tools/name_stage_data.py)
+actor1Talk0Conditions = 0x800A664C;
+actor1Talk0Actions = 0x800A6654;
+actor1Talk1Conditions = 0x800A665C;
+actor1Talk1Actions = 0x800A6668;
+actor1Talk2Conditions = 0x800A6674;
+actor0Talks = 0x800A6680;
+actor1Talks = 0x800A6698;
+actor0 = 0x800A66C8;
+actor1 = 0x800A66DC;

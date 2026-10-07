@@ -49,7 +49,15 @@ segments:
     align: 4
     subalign: 4
     subsegments:
-      - [0x0, .rodata, stgmcard]
+      # each module's rodata: the ones with jump tables or strings
+      - [0x0, .rodata, menu]
+      # the modules (src/stgmcard/), in the order they link
       - [0x20, c, stgmcard]
-      - [0x5274, .data, stgmcard]
+      - [0x408, c, info]
+      - [0xEE0, c, panel]
+      - [0x1414, c, menu]
+      - [0x1D50, c, saves]
+      - [0x4A14, c, screen]
+      # STGMCARD's data, all of it in one file
+      - [0x5274, .data, data/stgmcard]
   - [0x5B3C]

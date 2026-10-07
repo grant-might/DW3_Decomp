@@ -1,6 +1,7 @@
+/* The movie player's data (movie.c), linked after libpress's data */
+
 #include "stdwtitl.h"
 
-/* The movie player's (stdwtitl.c), linked after libpress's data */
 DecEnv STDWTITL_decEnv = {0};
 u_long *STDWTITL_ringBuffer = NULL;
 u_short *STDWTITL_vlcTable = NULL;

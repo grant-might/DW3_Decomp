@@ -7,6 +7,9 @@
 
 #include "game.h"
 
+/* The name of this overlay's copy of a function of src/menu_common/ */
+#define OVL_NAME(name) STCRDSHP_##name
+
 /* A card pack: the item and the six lists of 16 cards its slots draw from */
 typedef struct CardPack {
     /* 0x00 */ s32 item;
@@ -190,8 +193,8 @@ typedef struct CardShopFuncs {
     /* 0x1C */ s16 (*getPrice)(s32 card);
 } CardShopFuncs;
 
-/* STCRDSHP's data, in its order: the first object's, the second's and the
-   third's */
+/* STCRDSHP's data, in its order: the pack screen's, the buy screen's and the
+   shop's */
 extern s32 STCRDSHP_slotCards[123][16]; /* the cards each slot of a pack draws from */
 extern s32 STCRDSHP_slotCards123[];
 extern s32 STCRDSHP_slotCards124[86][16];
@@ -204,18 +207,61 @@ extern s16 STCRDSHP_shopCards[24][8]; /* the cards each shop sells */
 extern CardPrice STCRDSHP_prices[];
 extern CardShopStock STCRDSHP_stocks[];
 
-CardShopStock *STCRDSHP_getStock(s32 shop);
-s16 STCRDSHP_getPrice(s32 card);
+/* pack_open.c */
+void STCRDSHP_createPackOpenWindows(CardPackOpen *open, CardPackOpenWindows *win);
+void STCRDSHP_showPackPage(CardPackOpen *open, CardPackOpenWindows *win, s32 show);
+void STCRDSHP_showPack(CardPackOpen *open, CardPackOpenWindows *win, s32 show);
+void STCRDSHP_showPackCard(CardPackOpen *open, CardPackOpenWindows *win, s32 show);
+void STCRDSHP_drawPackOpen(CardPackOpen *open);
+void STCRDSHP_listPacks(CardPackOpen *open);
+void STCRDSHP_runPackOpen(CardPackOpen *open, CardPackOpenWindows *win);
+void STCRDSHP_updatePackOpen(CardPackOpen *open, void *win);
+CardPackOpen *STCRDSHP_createPackOpen(CardShop *shop);
+
+/* fader.c */
+void STCRDSHP_startFader(ScreenFade *task, s32 fadeIn, s32 duration);
+void STCRDSHP_drawFader(ScreenFade *task);
+void STCRDSHP_updateFader(ScreenFade *task);
+ScreenFade *STCRDSHP_createFader(void);
+
+/* card_grid.c */
+void STCRDSHP_loadIcons(CardPackGrid *grid);
+void STCRDSHP_setCards(CardPackGrid *grid, s32 *cards);
+void STCRDSHP_hideCards(CardPackGrid *grid);
+void STCRDSHP_drawCards(CardPackGrid *grid, s32 previous);
+void STCRDSHP_drawTurningSlots(CardPackGrid *grid);
+void STCRDSHP_updateHiding(CardPackGrid *grid);
+void STCRDSHP_updateGrid(CardPackGrid *grid);
+CardPackGrid *STCRDSHP_createGrid(Task *owner, s32 *cards);
+
+/* buy.c */
+void STCRDSHP_createBuyWindows(CardShopBuy *buy, CardShopBuyWindows *win);
+void STCRDSHP_showBuyCard(CardShopBuy *buy, CardShopBuyWindows *win, s32 show);
+void STCRDSHP_drawBuy(CardShopBuy *buy);
+void STCRDSHP_runBuy(CardShopBuy *buy, CardShopBuyWindows *win);
+void STCRDSHP_updateBuy(CardShopBuy *buy, CardShopBuyWindows *win);
+CardShopBuy *STCRDSHP_createBuy(CardShop *shop, s32 shopId);
+
+/* stcrdshp.c */
+void STCRDSHP_updateScene(Task *task, Task **children);
+Task *STCRDSHP_start(void);
+
+/* shop.c */
+void STCRDSHP_createShopWindows(CardShop *shop, CardShopWindows *win);
+void STCRDSHP_showTitle(CardShop *shop, CardShopWindows *win, s32 show);
+void STCRDSHP_showOptions(CardShop *shop, CardShopWindows *win, s32 show);
+void STCRDSHP_drawShop(CardShop *shop);
+void STCRDSHP_runShop(CardShop *shop, CardShopWindows *win);
+void STCRDSHP_showMoney(CardShop *shop);
+void STCRDSHP_updateShop(CardShop *shop, CardShopWindows *win);
+CardShop *STCRDSHP_createShop(void);
 void STCRDSHP_loadFiles(void);
 s32 STCRDSHP_filesLoading(void);
 void STCRDSHP_startFade(PanelAnim *fade, s32 fadeIn);
 s32 STCRDSHP_updateFade(PanelAnim *fade);
 void STCRDSHP_startLerp(MenuLerp *lerp, s32 from, s32 to, s32 frames);
 s32 STCRDSHP_updateLerp(MenuLerp *lerp);
-ScreenFade *STCRDSHP_createFader(void);
-CardShop *STCRDSHP_createShop(void);
-CardPackOpen *STCRDSHP_createPackOpen(CardShop *shop); /* opens a pack */
-CardShopBuy *STCRDSHP_createBuy(CardShop *shop, s32 shopId); /* buys cards */
-CardPackGrid *STCRDSHP_createGrid(Task *owner, s32 *cards);
+CardShopStock *STCRDSHP_getStock(s32 shop);
+s16 STCRDSHP_getPrice(s32 card);
 
 #endif

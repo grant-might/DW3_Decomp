@@ -4,9 +4,13 @@
 /* STITSHOP.PRO: the item shop. The game mode's argument picks the shop
    (STITSHOP_shops, a list of the items it sells); the player buys items
    for the money, sells them, and equips what was bought on a partner.
-   Its strings are in file 0x72. */
+   Its strings are in file 0x72. Its modules are in src/stitshop/, and the
+   functions below are by module, in the order they link. */
 
 #include "game.h"
+
+/* The name of this overlay's copy of a function of src/menu_common/ */
+#define OVL_NAME(name) STITSHOP_##name
 
 /* The shop's sprite sheet; the next file is its texture archive */
 #if VERSION_US
@@ -210,17 +214,6 @@ typedef struct ShopSellWindows {
     /* 0x34 */ TextWindow *message;
 } ShopSellWindows;
 
-/* Moves a value towards a target in fixed point */
-typedef struct ShopLerp {
-    /* 0x00 */ s32 duration;
-    /* 0x04 */ s32 unk4;
-    /* 0x08 */ s32 value;
-    /* 0x0C */ s32 fixed; /* value << 8 */
-    /* 0x10 */ s32 target;
-    /* 0x14 */ s32 step;
-    /* 0x18 */ s32 active;
-} ShopLerp;
-
 /* A shop: the items it sells */
 typedef struct ShopList {
     /* 0x0 */ s32 count;
@@ -234,8 +227,8 @@ typedef struct ItemShopFuncs {
     /* 0x08 */ s32 (*filesLoading)(void);
     /* 0x0C */ void (*startFade)(PanelAnim *fade, s32 fadeIn);
     /* 0x10 */ s32 (*updateFade)(PanelAnim *fade);
-    /* 0x14 */ void (*startLerp)(ShopLerp *lerp, s32 from, s32 to, s32 frames);
-    /* 0x18 */ s32 (*updateLerp)(ShopLerp *lerp);
+    /* 0x14 */ void (*startLerp)(MenuLerp *lerp, s32 from, s32 to, s32 frames);
+    /* 0x18 */ s32 (*updateLerp)(MenuLerp *lerp);
     /* 0x1C */ s16 *(*getShopItems)(s32 shop);
     /* 0x20 */ s32 (*canEquip)(s32 partner, s32 item);
     /* 0x24 */ s32 (*compareEquip)(s32 partner, s32 item);
@@ -252,30 +245,88 @@ typedef struct ShopEquipSet {
     s16 items[6];
 } ShopEquipSet;
 
-typedef union ShopItemData {
-    struct {
-        /* 0x0 */ s16 unk0;
-        /* 0x2 */ s16 unk2[2];
-        /* 0x6 */ u16 amounts[2];
-        /* 0xA */ s16 atk;
-        /* 0xC */ u8 stats[2];
-    } weapon;
-    struct {
-        /* 0x0 */ s16 unk0;
-        /* 0x2 */ s16 unk2[2];
-        /* 0x6 */ u16 amounts[2];
-        /* 0xA */ u8 stats[2];
-        /* 0xC */ s16 def;
-    } armor;
-    struct {
-        /* 0x0 */ s16 unk0;
-        /* 0x2 */ s16 unk2[2];
-        /* 0x6 */ u16 amount;
-        /* 0x8 */ u8 stat;
-    } acc;
-} ShopItemData;
+/* stitshop.c */
+void STITSHOP_updateScene(Task *task, Task **children);
+Task *STITSHOP_start(void);
+void STITSHOP_startFader(ScreenFade *task, s32 fadeIn, s32 duration);
+void STITSHOP_drawFader(ScreenFade *task);
+void STITSHOP_updateFader(ScreenFade *task);
+ScreenFade *STITSHOP_createFader(void);
 
-/* STITSHOP's data, in its order */
+/* trade.c */
+void STITSHOP_createBuyWindows(ShopBuy *buy, ShopBuyWindows *win);
+void STITSHOP_showQuantity(ShopBuy *buy, ShopBuyWindows *win, s32 show);
+void STITSHOP_showBuyTotal(ShopBuy *buy, ShopBuyWindows *win, s32 show);
+void STITSHOP_drawBuy(ShopBuy *buy, ShopBuyWindows *win);
+void STITSHOP_runBuy(ShopBuy *buy, ShopBuyWindows *win);
+void STITSHOP_updateBuy(ShopBuy *buy, ShopBuyWindows *win);
+void STITSHOP_showBuyItem(ShopBuy *buy, s32 item, s32 quantity);
+ShopBuy *STITSHOP_createBuy(ItemShop *shop);
+void STITSHOP_createSellWindows(ShopSell *sell, ShopSellWindows *win);
+void STITSHOP_drawSell(ShopSell *sell, ShopSellWindows *win);
+void STITSHOP_runSell(ShopSell *sell, ShopSellWindows *win);
+void STITSHOP_updateSell(ShopSell *sell, ShopSellWindows *win);
+void STITSHOP_showSellItem(ShopSell *sell, s32 item, s32 quantity);
+ShopSell *STITSHOP_createSell(ItemShop *shop);
+
+/* item_list.c */
+void STITSHOP_createItemListWindows(ShopItemList *list, ShopItemListWindows *win);
+void STITSHOP_showItemPage(ShopItemList *list, ShopItemListWindows *win, s32 show);
+void STITSHOP_drawItemList(ShopItemList *list);
+void STITSHOP_runItemList(ShopItemList *list, ShopItemListWindows *win);
+void STITSHOP_updateItemList(ShopItemList *list, ShopItemListWindows *win);
+void STITSHOP_freezeListCursor(ShopItemList *list, s32 frozen);
+void STITSHOP_showListCursor(ShopItemList *list, s32 visible);
+void STITSHOP_startItemList(ShopItemList *list);
+void STITSHOP_closeItemList(ShopItemList *list);
+s32 STITSHOP_getSelectedItem(ShopItemList *list);
+void STITSHOP_refreshItemList(ShopItemList *list);
+void STITSHOP_listSellable(ShopItemList *list);
+ShopItemList *STITSHOP_createItemList(ShopDialog *dialog, s32 type, s32 selling);
+
+/* info.c */
+void STITSHOP_computeStats(s32 partner, s16 *out);
+void STITSHOP_addStat(s16 *p, s32 stat, s32 delta);
+void STITSHOP_showStat(ShopInfo *info, TextWindow *win, ShopStatRow *row);
+void STITSHOP_colorStat(ShopInfo *info, TextWindow *win, ShopStatRow *row);
+void STITSHOP_showOtherChanges(ShopInfo *info, TextWindow **win, ShopStatRow *row);
+void STITSHOP_fillPartnerRows(ShopInfo *info, ShopInfoWindows *win, s32 member);
+void STITSHOP_createInfoWindows(ShopInfo *info, ShopInfoWindows *win);
+void STITSHOP_showItemRows(ShopInfo *info, ShopInfoWindows *win, s32 show);
+void STITSHOP_showItemDesc(ShopInfo *info, ShopInfoWindows *win, s32 show);
+void STITSHOP_showPartnerStats(ShopInfo *info, ShopInfoWindows *win, s32 show);
+void STITSHOP_drawStatsPage(ShopInfo *info, ShopInfoWindows *win);
+void STITSHOP_runBuyInfo(ShopInfo *info, ShopInfoWindows *win);
+void STITSHOP_runSellInfo(ShopInfo *info, ShopInfoWindows *win);
+void STITSHOP_updateInfo(ShopInfo *info, ShopInfoWindows *win);
+void STITSHOP_setInfoItem(ShopInfo *info, s32 item, s32 quantity);
+void STITSHOP_closeInfo(ShopInfo *info);
+void STITSHOP_setKindVisible(ShopInfo *info, s32 visible);
+void STITSHOP_turnInfoPage(ShopInfo *info);
+void STITSHOP_refreshPartner(ShopInfo *info, s32 member);
+ShopInfo *STITSHOP_createInfo(s32 selling, s32 item);
+
+/* shop.c */
+void STITSHOP_createShopWindows(ItemShop *shop, ItemShopWindows *win);
+void STITSHOP_drawShop(ItemShop *shop, ItemShopWindows *win);
+void STITSHOP_runShop(ItemShop *shop, ItemShopWindows *win);
+void STITSHOP_updateShop(ItemShop *shop, ItemShopWindows *win);
+void STITSHOP_showMoney(ItemShop *shop);
+ItemShop *STITSHOP_createShop(void);
+void STITSHOP_loadFiles(void);
+s32 STITSHOP_filesLoading(void);
+void STITSHOP_startFade(PanelAnim *fade, s32 fadeIn);
+s32 STITSHOP_updateFade(PanelAnim *fade);
+void STITSHOP_startLerp(MenuLerp *lerp, s32 from, s32 to, s32 frames);
+s32 STITSHOP_updateLerp(MenuLerp *lerp);
+
+/* equip.c */
+s16 *STITSHOP_getShopItems(s32 shop);
+s32 STITSHOP_canEquip(s32 partner, s32 item);
+s32 STITSHOP_compareEquip(s32 partner, s32 item);
+void STITSHOP_equip(s32 partner, s32 slot, s32 item, s32 fromBag);
+
+/* STITSHOP's data (data/stitshop.c), in its order */
 extern s32 STITSHOP_sellLists[]; /* the item list each kind of sale shows */
 extern Vec2 STITSHOP_changePos[];
 extern s32 STITSHOP_stats[]; /* the stats the info shows */

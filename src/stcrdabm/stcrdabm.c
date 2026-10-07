@@ -1,12 +1,5 @@
 #include "stcrdabm.h"
 
-void STCRDABM_loadFiles(void);
-s32 STCRDABM_filesLoading(void);
-void STCRDABM_startFade(PanelAnim *fade, s32 fadeIn);
-s32 STCRDABM_updateFade(PanelAnim *fade);
-void STCRDABM_startLerp(CardAlbumLerp *lerp, s32 from, s32 to, s32 frames);
-s32 STCRDABM_updateLerp(CardAlbumLerp *lerp);
-
 /* The cursor's CLUT row on each frame of its blink */
 s32 STCRDABM_cursorBlink[6] = {0, 1, 2, 3, 2, 1};
 
@@ -15,82 +8,14 @@ CardAlbumFuncs STCRDABM_funcs = {
     STCRDABM_updateFade, STCRDABM_startLerp, STCRDABM_updateLerp,
 };
 
-void STCRDABM_drawFader(CardAlbumFader *fader);
-void STCRDABM_drawCards(CardAlbumGrid *grid, s32 previous);
-s32 STCRDABM_pageHasCards(CardAlbumGrid *grid);
-void STCRDABM_showCardInfo(CardAlbum *album, CardAlbumWindows *win, s32 show);
-void STCRDABM_drawAlbum(CardAlbum *album);
+#include "../menu_common/start_fader.inc.c"
+#include "../menu_common/draw_fader.inc.c"
+#include "../menu_common/update_fader.inc.c"
+#define FADER_DEPTH 0
+#include "../menu_common/create_fader.inc.c"
 
-void STCRDABM_startFader(CardAlbumFader *fader, s32 fadeIn, s32 frames) {
-    fader->setState(fader, 1);
-    fader->substate = 1;
-    fader->fadeIn = fadeIn;
-    if (fadeIn == 0) {
-        fader->level = 0;
-        fader->levelStep = 0xFF00 / frames;
-    } else {
-        fader->level = 0xFF00;
-        fader->levelStep = -(0xFF00 / frames);
-    }
-}
-
-void STCRDABM_drawFader(CardAlbumFader *fader) {
-    Layer *layer = GFX.funcs.getLayer(fader->layer);
-    u_long *ot = (u_long *)layer->getOtEntry(layer, fader->depth);
-    POLY_F4 *poly = GFX.funcs.getPrim();
-    DR_TPAGE *mode;
-
-    setlen(poly, 5);
-    poly->code = 0x2A;
-    poly->r0 = poly->g0 = poly->b0 = fader->level >> 8;
-    poly->x0 = poly->x2 = 0;
-    poly->x1 = poly->x3 = 320;
-    poly->y0 = poly->y1 = 0;
-    poly->y2 = poly->y3 = 256;
-    addPrim(ot, poly);
-    mode = (DR_TPAGE *)(poly + 1);
-    setlen(mode, 1);
-    mode->code[0] = 0xE1000245;
-    addPrim(ot, mode);
-    GFX.funcs.setPrim(mode + 1);
-}
-
-void STCRDABM_updateFader(CardAlbumFader *fader) {
-    switch (fader->state) {
-    case 0:
-    default:
-        fader->nextState(fader);
-        break;
-    case 1:
-        if (fader->substate == 0) {
-            break;
-        }
-        fader->level += fader->levelStep;
-        if (fader->fadeIn == 0) {
-            if (fader->level > 0xFF00) {
-                fader->level = 0xFF00;
-                fader->state = 2;
-            }
-        } else if (fader->level < 0) {
-            fader->level = 0;
-            fader->state = 2;
-        }
-    case 2:
-        STCRDABM_drawFader(fader);
-    case 3:
-        break;
-    }
-}
-
-CardAlbumFader *STCRDABM_createFader(void) {
-    CardAlbumFader *fader = createTask(STCRDABM_updateFader, sizeof(CardAlbumFader), 0);
-
-    fader->start = STCRDABM_startFader;
-    fader->layer = 0x1000;
-    fader->depth = 0;
-    return fader;
-}
-
+/* Loads the images of the grid's page of cards, from grid->first, into VRAM's 6x2 grid
+   of card images */
 void STCRDABM_loadIcons(CardAlbumGrid *grid) {
     CardDrawer icon;
     s32 card;
@@ -110,18 +35,23 @@ void STCRDABM_loadIcons(CardAlbumGrid *grid) {
     }
 }
 
+/* Turns the grid to the page whose first card is `first` (grid->setPage) */
 void STCRDABM_setPage(CardAlbumGrid *grid, s32 first) {
     grid->prevFirst = grid->first;
     grid->first = first;
     grid->turned = 0;
     grid->frame = 0;
-    grid->setState(grid, 2);
+    grid->setState(grid, TASK_DONE);
 }
 
+/* Makes the grid hide its cards one by one (grid->hide, which nothing calls) */
 void STCRDABM_hideCards(CardAlbumGrid *grid) {
     grid->setSubstate(grid, 1);
 }
 
+/* Draws the page's cards, or the page being turned when previous != 0: a seen card's
+   image, the sprite of its color and its AP and HP (sprite 0x1D instead for the other
+   kinds), else an empty slot */
 void STCRDABM_drawCards(CardAlbumGrid *grid, s32 previous) {
     SpriteDrawer sprite;
     CardDrawer icon;
@@ -200,6 +130,7 @@ void STCRDABM_drawCards(CardAlbumGrid *grid, s32 previous) {
     }
 }
 
+/* Draws the slots turned so far over the cards, flashing the ones with a seen card */
 void STCRDABM_drawTurningSlots(CardAlbumGrid *grid) {
     SpriteDrawer sprite;
     s32 i;
@@ -223,6 +154,7 @@ void STCRDABM_drawTurningSlots(CardAlbumGrid *grid) {
     }
 }
 
+/* 1 when the grid's page holds a seen card (or runs past the last card) */
 s32 STCRDABM_pageHasCards(CardAlbumGrid *grid) {
     s32 card;
     s32 i;
@@ -236,6 +168,7 @@ s32 STCRDABM_pageHasCards(CardAlbumGrid *grid) {
     return 0;
 }
 
+/* Hides the grid's cards one every 2 frames after grid->hide, then stops drawing it */
 void STCRDABM_updateHiding(CardAlbumGrid *grid) {
     switch (grid->substate) {
     case 0:
@@ -257,19 +190,22 @@ void STCRDABM_updateHiding(CardAlbumGrid *grid) {
     }
 }
 
+/* The card grid's task: draws the page's cards; on a page turn, turns its 12 slots one
+   every 2 frames over the old cards, then loads and shows the new ones, with a sound
+   when the page has cards */
 void STCRDABM_updateGrid(CardAlbumGrid *grid) {
     switch (grid->state) {
-    case 0:
+    case TASK_INIT:
     default:
         grid->nextState(grid);
         grid->first = 1;
         STCRDABM_setPage(grid, 1);
         break;
-    case 1:
+    case TASK_RUN:
         STCRDABM_updateHiding(grid);
         STCRDABM_drawCards(grid, 0);
         break;
-    case 2:
+    case TASK_DONE:
         switch (grid->substate) {
         case 0:
         default:
@@ -311,54 +247,57 @@ void STCRDABM_updateGrid(CardAlbumGrid *grid) {
             STCRDABM_drawCards(grid, 0);
         }
         break;
-    case 3:
+    case TASK_KILL:
         break;
     }
 }
 
+/* Creates the album's card grid (task), on the top layer */
 CardAlbumGrid *STCRDABM_createGrid(CardAlbum *album) {
     CardAlbumGrid *grid = createTask(STCRDABM_updateGrid, sizeof(CardAlbumGrid), 0);
 
     grid->setPage = STCRDABM_setPage;
     grid->hide = STCRDABM_hideCards;
-    grid->layer = 0x1000;
+    grid->layer = SCREEN_LAYER;
     grid->depth = 6;
     grid->album = album;
     return grid;
 }
 
-Task *STCRDABM_createAlbum(void);
-
+/* The mode's root task: sets up the display and a black layer, then creates the album */
 void STCRDABM_updateScene(Task *task, Task **items) {
     RECT rect;
     Layer *res;
 
     switch (task->state) {
-    case 0:
+    case TASK_INIT:
     default:
         GFX.funcs.reset();
         GFX.funcs.allocPrimBuffers(0xF000);
-        GFX.funcs.setDisplayMode(0x140, 0xF0, 0, 0);
+        GFX.funcs.setDisplayMode(SCREEN_WIDTH, SCREEN_HEIGHT, 0, 0);
         rect.x = 0;
         rect.y = 0;
         rect.w = 0x140;
         rect.h = 0xF0;
-        res = GFX.funcs.createLayer(&rect, 3, 0x1000);
+        res = GFX.funcs.createLayer(&rect, 3, SCREEN_LAYER);
         res->setBgColor(res, 0, 0, 0);
         items[0] = STCRDABM_createAlbum();
         task->nextState(task);
         break;
-    case 1:
-    case 2:
-    case 3:
+    case TASK_RUN:
+    case TASK_DONE:
+    case TASK_KILL:
         break;
     }
 }
 
+/* The mode's entry point (MODE_ENTRY_POINTS): starts the root task */
 Task *STCRDABM_start(void) {
     return createTask(STCRDABM_updateScene, sizeof(Task), 4);
 }
 
+/* Creates the album's text windows (the page's and the selected card's), in front of
+   the album */
 void STCRDABM_createWindows(CardAlbum *album, CardAlbumWindows *win) {
     TextWindow **items;
     s32 i;
@@ -385,6 +324,8 @@ void STCRDABM_createWindows(CardAlbum *album, CardAlbumWindows *win) {
     }
 }
 
+/* Shows the title, help and page number and, while the album takes input, the previous
+   and next page hints where there is such a page; hides them all when show is 0 */
 void STCRDABM_showPageInfo(CardAlbum *album, CardAlbumWindows *win, s32 show) {
     if (show != 0) {
         win->title->setString(win->title, FILE_CACHE.load(TEXT_FILE(TEXT_CARD_ALBUM)), 1);
@@ -477,6 +418,9 @@ void STCRDABM_showCardInfo(CardAlbum *album, CardAlbumWindows *win, s32 show) {
     }
 }
 
+/* Draws the album: the scrolling background, its panels as they open, the blinking
+   previous and next page sprites and the cursor while it takes input, and the panels of
+   the card's details */
 void STCRDABM_drawAlbum(CardAlbum *album) {
     SpriteDrawer sprite;
     CardDrawer icon;
@@ -495,17 +439,17 @@ void STCRDABM_drawAlbum(CardAlbum *album) {
     sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 8, album->frame, album->frame);
     sprite.setLayerId(album->layer, album->depth - 2);
     if (album->fade.level != 0) {
-        if (album->fade.level != 0x1000) {
-            sprite.setScale(album->fade.level, 0x1000, 0x1000);
+        if (album->fade.level != ONE) {
+            sprite.setScale(album->fade.level, ONE, ONE);
             sprite.setPivot(0, 0x20);
         }
         sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 9, 0, 0x15);
-        if (album->fade.level != 0x1000) {
+        if (album->fade.level != ONE) {
             sprite.setPivot(0x140, 0x20);
         }
         sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xF, 0xC8, 0x15);
-        if (album->fade.level != 0x1000) {
-            sprite.setScale(album->fade.level, album->fade.level, 0x1000);
+        if (album->fade.level != ONE) {
+            sprite.setScale(album->fade.level, album->fade.level, ONE);
             sprite.setPivot(0x3A, 0xA5);
         }
         sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xE, 0x22, 0x9A);
@@ -540,8 +484,8 @@ void STCRDABM_drawAlbum(CardAlbum *album) {
     if (album->infoFade.level != 0) {
         initCardDrawer(&icon);
         icon.setCard(album->card);
-        if (album->infoFade.level != 0x1000) {
-            sprite.setScale(album->infoFade.level, 0x1000, 0x1000);
+        if (album->infoFade.level != ONE) {
+            sprite.setScale(album->infoFade.level, ONE, ONE);
             sprite.setPivot(0x140, 0xA8);
         }
         kind = icon.getKind();
@@ -554,16 +498,16 @@ void STCRDABM_drawAlbum(CardAlbum *album) {
         }
         sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), frame, 0x103, 0x9F);
         sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xD, 0xFC, 0x9D);
-        if (album->infoFade.level != 0x1000) {
+        if (album->infoFade.level != ONE) {
             sprite.setPivot(0x140, 0xA8);
         }
         sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xA, 0x82, 0x9D);
-        if (album->infoFade.level != 0x1000) {
+        if (album->infoFade.level != ONE) {
             sprite.setPivot(0x140, 0xD0);
         }
         sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0x10, 0x103, 0xC5);
         sprite.draw(FILE_CACHE.getEntry(STCRDABM_SPRITES), 0xD, 0xFC, 0xC3);
-        if (album->infoFade.level != 0x1000) {
+        if (album->infoFade.level != ONE) {
             sprite.setPivot(0x140, 0xC6);
         }
         if (kind != 0) {
@@ -577,6 +521,7 @@ void STCRDABM_drawAlbum(CardAlbum *album) {
     }
 }
 
+/* Notes which slots of the current page hold a seen card, and whether any does */
 void STCRDABM_findPageCards(CardAlbum *album) {
     s32 i;
     s32 card;
@@ -594,6 +539,9 @@ void STCRDABM_findPageCards(CardAlbum *album) {
     }
 }
 
+/* The album's steps: opens it, then turns pages with L1 and R1, moves the cursor
+   between the seen cards and shows the selected one's details; Triangle fades the
+   screen out to leave */
 void STCRDABM_runAlbum(CardAlbum *album, CardAlbumWindows *win) {
     s32 prev;
     s32 slot;
@@ -758,15 +706,17 @@ void STCRDABM_runAlbum(CardAlbum *album, CardAlbumWindows *win) {
         break;
     case 53:
         if (win->grid == NULL) {
-            album->setState(album, 3);
+            album->setState(album, TASK_KILL);
         }
         break;
     }
 }
 
+/* The album's task: loads the files and creates its windows, then runs and draws it;
+   once the screen has faded out, goes back to the previous mode */
 void STCRDABM_updateAlbum(CardAlbum *album, CardAlbumWindows *win) {
     switch (album->state) {
-    case 0:
+    case TASK_INIT:
     default:
         switch (album->substate) {
         case 0:
@@ -786,26 +736,29 @@ void STCRDABM_updateAlbum(CardAlbum *album, CardAlbumWindows *win) {
             break;
         }
         break;
-    case 1:
+    case TASK_RUN:
         STCRDABM_runAlbum(album, win);
         STCRDABM_drawAlbum(album);
         break;
-    case 2:
+    case TASK_DONE:
         break;
-    case 3:
+    case TASK_KILL:
         GAME.funcs.requestMode(GAME.funcs.getPrevMode(), 0);
         break;
     }
 }
 
+/* Creates the album (task), on the top layer */
 Task *STCRDABM_createAlbum(void) {
     CardAlbum *album = createTask(STCRDABM_updateAlbum, sizeof(CardAlbum), sizeof(CardAlbumWindows));
 
-    album->layer = 0x1000;
+    album->layer = SCREEN_LAYER;
     album->depth = 7;
     return (Task *)album;
 }
 
+/* Loads the album's images and requests the card data and the card names, effects and
+   album strings */
 void STCRDABM_loadFiles(void) {
     TimLoader loader;
 
@@ -822,6 +775,7 @@ void STCRDABM_loadFiles(void) {
     FILE_CACHE.request(TEXT_FILE(TEXT_CARD_ALBUM));
 }
 
+/* Whether the card data or the strings are still loading */
 s32 STCRDABM_filesLoading(void) {
     if (FILE_CACHE.isLoading(STCRDABM_FILE_DATA) != 0) {
         return 1;
@@ -847,65 +801,7 @@ s32 STCRDABM_filesLoading(void) {
     return FILE_CACHE.isLoading(TEXT_FILE(TEXT_CARD_ALBUM)) != 0;
 }
 
-void STCRDABM_startFade(PanelAnim *fade, s32 fadeIn) {
-    fade->active = 1;
-    if (fadeIn != 0) {
-        SOUND.playSound(SOUND_MENU_OPEN);
-        fade->level = 0;
-        fade->step = 0x1000 / fade->duration;
-    } else {
-        SOUND.playSound(SOUND_MENU_CLOSE);
-        fade->level = 0x1000;
-        fade->step = -((0x1000 / fade->duration) * 2);
-    }
-}
-
-s32 STCRDABM_updateFade(PanelAnim *fade) {
-    if (fade->active == 0) {
-        return 1;
-    }
-    fade->level += fade->step;
-    if (fade->step > 0) {
-        if (fade->level > 0x1000) {
-            fade->level = 0x1000;
-            fade->active = 0;
-            return 1;
-        }
-    } else if (fade->level < 0) {
-        fade->level = 0;
-        fade->active = 0;
-        return 1;
-    }
-    return 0;
-}
-
-void STCRDABM_startLerp(CardAlbumLerp *lerp, s32 from, s32 to, s32 frames) {
-    if (from != to) {
-        lerp->duration = frames;
-        lerp->fixed = from << 8;
-        lerp->value = from;
-        lerp->target = to;
-        lerp->active = 1;
-        lerp->step = ((to - from) << 8) / lerp->duration;
-    }
-}
-
-s32 STCRDABM_updateLerp(CardAlbumLerp *lerp) {
-    if (lerp->active == 0) {
-        return 1;
-    }
-    lerp->fixed += lerp->step;
-    lerp->value = lerp->fixed >> 8;
-    if (lerp->step > 0) {
-        if (lerp->target < lerp->value) {
-            lerp->value = lerp->target;
-            lerp->active = 0;
-            return 1;
-        }
-    } else if (lerp->value < lerp->target) {
-        lerp->value = lerp->target;
-        lerp->active = 0;
-        return 1;
-    }
-    return 0;
-}
+#include "../menu_common/start_fade.inc.c"
+#include "../menu_common/update_fade.inc.c"
+#include "../menu_common/start_lerp.inc.c"
+#include "../menu_common/update_lerp.inc.c"

@@ -4,7 +4,7 @@
 maspsx writes a static variable of a -G8 unit as `.comm X,size` (Makefile:
 SDATA_LIMIT), so that it resolves to its definition in src/main/data, and
 leaves its alignment to the assembler, which takes it from the size: 8 for
-system.c's 8-byte BOOT_IMAGE_RECT. The definitions are only word-aligned,
+system/main.c's 8-byte BOOT_IMAGE_RECT. The definitions are only word-aligned,
 as the original linker laid them (the European BOOT_IMAGE_RECT is at
 0x8005CCB4), and ld warns about the difference. This writes
 `.comm X,size,4` for a common larger than a word; the bytes of the object

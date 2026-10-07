@@ -49,14 +49,19 @@ segments:
     align: 4
     subalign: 4
     subsegments:
-      - [0x0, .rodata, stcrdshp]
-      - [0xF4, .rodata, stcrdshp_2]
-      - [0x1C4, .rodata, stcrdshp_3]
-      - [0x35C, c, stcrdshp]
-      - [0x3354, c, stcrdshp_2]
-      - [0x4E5C, c, stcrdshp_3]
-      # each object's data
-      - [0x6480, .data, stcrdshp]
-      - [0x9D14, .data, stcrdshp_2]
-      - [0x9D2C, .data, stcrdshp_3]
+      # each module's rodata: the ones with jump tables or strings
+      - [0x0, .rodata, pack_open]
+      - [0xF4, .rodata, buy]
+      - [0x1C4, .rodata, shop]
+      # the modules (src/stcrdshp/), in the order they link
+      - [0x35C, c, pack_open]
+      - [0x2694, c, fader]
+      - [0x2958, c, card_grid]
+      - [0x3354, c, buy]
+      - [0x4E5C, c, stcrdshp]
+      - [0x4F80, c, shop]
+      # each module's data
+      - [0x6480, .data, pack_open]
+      - [0x9D14, .data, buy]
+      - [0x9D2C, .data, shop]
   - [0xA104]

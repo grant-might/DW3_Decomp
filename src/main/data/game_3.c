@@ -1,9 +1,11 @@
 #include "common.h"
+#include "dw3/heap.h"
 
 extern s32 getDigimon[];
 
+MemBlock *HEAP_START = HEAP_BASE;
+
 #if VERSION_US
-s32 HEAP_START = 0x800AA800;
 s32 ITEM_EFFECT_2B = 0x1F40103;
 s32 ITEM_EFFECT_2C = 0x7D00103;
 s32 ITEM_EFFECT_2D = 0x13880103;
@@ -91,7 +93,6 @@ s32 GET_DIGIMON[] = {
     (s32)getDigimon, 2199,
 };
 #elif VERSION_EU
-s32 HEAP_START = 0x800AB800;
 s32 ITEM_EFFECT_2B = 0x1F40103;
 s32 ITEM_EFFECT_2C = 0x7D00103;
 s32 ITEM_EFFECT_2D = 0x13880103;
@@ -190,7 +191,7 @@ u8 STR_ALL_FILES[] = {
     0x2A, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
     0x00, 0x00, 0x00, 0x00, 0x80, 0x80, 0x80, 0x00,
 };
-/* text_window.c's CURSOR_FRAMES */
+/* text/cursor.c's CURSOR_FRAMES */
 char CURSOR_TEXT_3[4] = "\x81\x88";
 char CURSOR_TEXT_2[4] = "\x81\x87";
 char CURSOR_TEXT_1[4] = "\x81\x86";

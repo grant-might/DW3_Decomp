@@ -4,7 +4,12 @@
 /*
  * The on-screen keyboard that the overlays use to type a name (STCRDDEK's
  * deck names, for example). The name is kept as maxLength full-width
- * Shift-JIS characters, padded with spaces.
+ * Shift-JIS characters, padded with spaces. STCRDDEK, STPLNMET and STDGNAME
+ * each have a copy of its code, from src/menu_common/name_entry/; the
+ * overlay's header defines, before including this one,
+ * NAME_ENTRY_HAS_UNK98 and NAME_ENTRY_HAS_HIDE (see NameEntry), and
+ * NAME_ENTRY_SPRITES and NAME_ENTRY_FILE_KEYBOARD, its sprite bank and its
+ * archive of the keyboard's images.
  */
 
 #include "game.h"
@@ -17,14 +22,6 @@
 #define NAME_KEY_LEFT 0x64 /* row 6: moves the cursor */
 #define NAME_KEY_RIGHT 0x65
 #define NAME_KEY_END 0x67 /* row 6, column 13: where Start goes */
-
-/* A linear tween of a scale, 0 to 0x1000 */
-typedef struct NameTween {
-    /* 0x0 */ s32 duration;
-    /* 0x4 */ s32 step;
-    /* 0x8 */ s32 value;
-    /* 0xC */ s32 active;
-} NameTween;
 
 /*
  * The Japanese keyboard (three pages) is for language 0 of the European
@@ -85,22 +82,31 @@ typedef struct NameEntryWindows {
     /* 0x30 */ TextWindow *message;
 } NameEntryWindows;
 
-/* STDGNAME's NameTask without its unused 0x98 */
+/*
+ * A name entry: the keyboard, the name typed so far and the panels that
+ * open and close. STDGNAME's has a word more at 0x98, which moves what
+ * follows by 4, and STPLNMET's a hide method before close: the including
+ * overlay says so with NAME_ENTRY_HAS_UNK98 and NAME_ENTRY_HAS_HIDE (0 or
+ * 1). The offsets are STCRDDEK's.
+ */
 typedef struct NameEntry {
     TASK_HEADER(NameEntry);
     /* 0x50 */ s32 mode;
     /* 0x54 */ s32 layer;
     /* 0x58 */ s32 depth;
-    /* 0x5C */ s32 imageX; /* where the keyboard's images go in VRAM */
-    /* 0x60 */ s32 imageY;
+    /* 0x5C */ s32 vramX; /* where the keyboard's images go in VRAM */
+    /* 0x60 */ s32 vramY;
     /* 0x64 */ s32 partner; /* -1: none */
     /* 0x68 */ s32 partnerFrame;
     /* 0x6C */ s32 partnerTime;
     /* 0x70 */ s32 clutRow;
     /* 0x74 */ s32 clutTime;
-    /* 0x78 */ u16 text[12];
+    /* 0x78 */ u16 name[12];
     /* 0x90 */ s32 cursor;
     /* 0x94 */ s32 maxLength;
+#if NAME_ENTRY_HAS_UNK98
+    /* 0x98 */ s32 unk98;
+#endif
     /* 0x98 */ s32 column;
     /* 0x9C */ s32 row;
     /* 0xA0 */ s32 keyFrame;
@@ -110,11 +116,14 @@ typedef struct NameEntry {
     /* 0xB0 */ s32 arrowFrame;
     /* 0xB4 */ s32 arrowTime;
     /* 0xB8 */ s32 unkB8;
-    /* 0xBC */ NameTween unkBC;
-    /* 0xCC */ NameTween keyboardScale;
-    /* 0xDC */ NameTween messageScale;
-    /* 0xEC */ void (*getText)(struct NameEntry *entry, char *dst);
-    /* 0xF0 */ void (*close)(struct NameEntry *entry);
+    /* 0xBC */ PanelAnim unkBC;
+    /* 0xCC */ PanelAnim keyboardScale;
+    /* 0xDC */ PanelAnim messageScale;
+    /* 0xEC */ void (*getName)(struct NameEntry *task, char *out);
+#if NAME_ENTRY_HAS_HIDE
+    /* 0xF0 */ void (*hide)(struct NameEntry *task, s32 hide);
+#endif
+    /* 0xF0 */ void (*close)(struct NameEntry *task);
 } NameEntry;
 
 #endif /* NAME_ENTRY_H */

@@ -1,7 +1,6 @@
 #include "common.h"
 #include "stage.h"
 extern AnimFrame *D_800A67B4[];
-void func_800A6110();
 extern s8 D_800A67C0[];
 extern s8 D_800A67C4[];
 
@@ -10,7 +9,7 @@ void updateStage(StageTask *task, void **children) {
     switch (task->state) {
     case TASK_INIT:
     default:
-        if (FLAGS_00.checkCondition(0x40CD, 0)) {
+        if (FLAGS_00.checkCondition(FLAG(0x40, 0xCD), 0)) {
             children[0] = FIELDSTG_startEvent(0x640);
         }
         task->nextState(task);
@@ -27,50 +26,30 @@ void updateStage(StageTask *task, void **children) {
 
 /* Applies flag actions 0x40CD and 0x7053 */
 void func_800A5EC0(void) {
-    FLAGS_00.applyAction(0x40CD, 1);
-    FLAGS_00.applyAction(0x7053, 1);
+    FLAGS_00.applyAction(FLAG(0x40, 0xCD), 1);
+    FLAGS_00.applyAction(SPECIAL(0x53), 1);
 }
 
 void setupStage(void) {
-    D_800990B4.textFile = LANGUAGE + 0xFD;
-    D_800990B4.mapFile = 0x19E;
-    D_800990B4.sheetEntry = 0x8E90000;
-    D_800990B4.objects = stageObjects;
-    D_800990B4.slots = stageSlots;
-    D_800990B4.imageFile = 0x8E8;
-    D_800990B4.start = (Vec2){0xFD00, 0x17700};
-    D_800990B4.images.actors = stageImages;
-    D_800990B4.soundBank = 0x33;
-    D_800990B4.music = 0x60CC0000;
-    D_800990B4.actors = stageActors;
-    D_800990B4.startDir = 0;
-    D_800990B4.events = stageEvents;
-    D_8009A70C.setFile(0, 0x8E90001);
-    D_8009A70C.setFile(7, 0x8E90002);
-    D_8009A70C.unk50(0);
+    FIELDSTG_state.textFile = LANGUAGE + 0xFD;
+    FIELDSTG_state.mapFile = 0x19E;
+    FIELDSTG_state.sheetEntry = 0x8E90000;
+    FIELDSTG_state.objects = stageObjects;
+    FIELDSTG_state.slots = stageSlots;
+    FIELDSTG_state.imageFile = 0x8E8;
+    FIELDSTG_state.start = (Vec2){0xFD00, 0x17700};
+    FIELDSTG_state.images.actors = stageImages;
+    FIELDSTG_state.soundBank = 0x33;
+    FIELDSTG_state.music = MUSIC(0x33, 0);
+    FIELDSTG_state.actors = stageActors;
+    FIELDSTG_state.startDir = 0;
+    FIELDSTG_state.events = stageEvents;
+    FIELDSTG_map.setFile(0, 0x8E90001);
+    FIELDSTG_map.setFile(7, 0x8E90002);
+    FIELDSTG_map.setFirstMap(0);
 }
 
-s32 stepAnimationOnce(StageTileAnim *obj, AnimFrame *frames, s32 depth) {
-    AnimFrame *frame = &frames[obj->anim.index];
-    s32 dt = GFX.funcs.getFrameTime();
-
-    if (dt > 4) {
-        dt = 4;
-    }
-    if (depth == 0) {
-        obj->anim.timer -= dt;
-    }
-    if (obj->anim.timer <= 0) {
-        frame++;
-        obj->anim.index++;
-        obj->anim.timer += frame->duration;
-        if (frame->frame == 0xFF) {
-            return 0xFF;
-        }
-        stepAnimationOnce(obj, frames, depth + 1);
-    }
-    return frame->frame;
-}
+#include "common/step_animation_once.inc.c"
 
 void func_800A60D8(StageTileEffect *task) {
     s32 i;
@@ -106,7 +85,7 @@ void func_800A6110(StageTileEffect *task) {
             switch (task->step) {
             case 0:
                 i = 0;
-                for (rec = D_800990B4.objects; rec->unk2 != 0; rec++) {
+                for (rec = FIELDSTG_state.objects; rec->unk2 != 0; rec++) {
                     if (rec->anim >= 1 && rec->anim <= 3) {
                         task->anims[i].tile = rec;
                         rec->x = task->x;
@@ -115,7 +94,7 @@ void func_800A6110(StageTileEffect *task) {
                         i++;
                     }
                 }
-                SOUND.playSound(0xCC0001);
+                SOUND.playSound(SOUND_LOGINEF);
                 task->nextStep(task);
             case 1:
                 done = 0;
@@ -165,15 +144,7 @@ void *func_800A639C(s32 id) {
     return task;
 }
 
-void func_800A5EC0();
-extern u16 D_800A6474[];
-extern FieldTalk D_800A645C[];
-extern FieldActorEntry D_800A647C;
-extern FieldActorEntry D_800A6490;
-extern s16 D_800A65E4[];
-extern AnimFrame D_800A6710[];
-extern AnimFrame D_800A6774[];
-extern AnimFrame D_800A6724[];
+extern s16 script1600[];
 
 ActorImage stageImages[] = {
     { 0x200, 0x100, 0x21C, 0x1A6, 0x70, 0xA6, 0x230, 0x1FE },
@@ -185,16 +156,16 @@ ActorImage stageImages[] = {
     { 0x140, 0x100, 0x14A, 0x1B8, 0x28, 0xB8, 0x170, 0x1FE },
     { 0x140, 0x100, 0x170, 0x1B0, 0xC0, 0xB0, 0x160, 0x1FD },
 };
-FieldTalk D_800A645C[] = {
+FieldTalk actor1Talks[] = {
     { NULL, NULL, 0x26 },
     { NULL, NULL, 0 },
 };
-u16 D_800A6474[] = { 0x40CD, 0, 0xFFFF };
-FieldActorEntry D_800A647C = { D_800A6474, NULL, 1, 4, 0, 0, 1 };
-FieldActorEntry D_800A6490 = { NULL, D_800A645C, 0xD, 5, 265, 397, 3 };
+u16 actor0Conditions[] = { FLAG(0x40, 0xCD), 0, CODES_END };
+FieldActorEntry actor0 = { actor0Conditions, NULL, 1, 4, 0, 0, 1 };
+FieldActorEntry actor1 = { NULL, actor1Talks, 0xD, 5, 265, 397, 3 };
 FieldActorEntry *stageActors[] = {
-    &D_800A647C,
-    &D_800A6490,
+    &actor0,
+    &actor1,
     NULL,
 };
 StageTile stageObjects[] = {
@@ -212,18 +183,18 @@ StageTile stageObjects[] = {
     { 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 StageSlot stageSlots[] = {
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 1, 0x273, 0x2DA, 0x17E, 1, 0, 0, 0 },
-    { { { 0xFFFF, 0 }, { 0xFFFF, 0 } }, 0, 0, 0, 0, 0, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 1, 0x273, 0x2DA, 0x17E, 1, 0, 0, 0 },
+    { { { CODES_END, 0 }, { CODES_END, 0 } }, 0, 0, 0, 0, 0, 0, 0, 0 },
 };
 void (*stageFuncs[])(void) = {
     setupStage,
 };
 #define EVENT_TEXT_FILE 0x158
 FieldEvent stageEvents[] = {
-    { 1600, D_800A65E4, EVENT_TEXT(0), NULL, func_800A5EC0 },
+    { 1600, script1600, EVENT_TEXT(0), NULL, func_800A5EC0 },
     { -1, NULL, 0, NULL, NULL },
 };
-s16 D_800A65E4[] = {
+s16 script1600[] = {
     0x601, 1, 0x11E, 0x127,
     0x100, 1, 0, 0,
     0x101, 1, 1, 0,

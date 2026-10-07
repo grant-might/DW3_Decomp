@@ -2,9 +2,9 @@
 
 // The handler of the stages' events 9000, which starts a battle: named so
 // that splat writes the stages' pointers to it as relocations, as GCC does
-func_8008B258 = 0x8008B258; // type:func
+FIELDSTG_startEventBattle5 = 0x8008B258; // type:func
 
-// FIELDSTG's data (fieldstg.c), in its order
+// FIELDSTG's data (data/fieldstg.c), in its order
 FIELDSTG_enemies = 0x800920A8; // size:0x1938
 FIELDSTG_encounters = 0x800939E0; // size:0x24A4
 FIELDSTG_liftShake = 0x80095E84; // size:0x14
@@ -87,7 +87,7 @@ FIELDSTG_tweenStart = 0x80098B70; // size:0x4
 FIELDSTG_tweenUpdate = 0x80098B74; // size:0x4
 FIELDSTG_events = 0x80098B78; // size:0x53C
 // The field's state, one struct that the data splits in pieces
-D_800990B4 = 0x800990B4; // size:0x80
+FIELDSTG_state = 0x800990B4; // size:0x80
 // Entries of the field's files (the high half is a file number),
 // read by FIELDSTG_getFileEntry
 FIELDSTG_fileEntries = 0x80099134; // size:0x624
@@ -101,7 +101,7 @@ FIELDSTG_battleFuncs = 0x8009A6EC; // size:0x8
 FIELDSTG_battleRates = 0x8009A6F4; // size:0x18
 // The field's map and the functions that read it, one struct that the data
 // splits in pieces (FieldMap, include/field_map.h, which the stages share)
-D_8009A70C = 0x8009A70C; // size:0x5C
+FIELDSTG_map = 0x8009A70C; // size:0x5C
 FIELDSTG_boxFrame = 0x8009A768; // size:0x4
 FIELDSTG_dirVectors = 0x8009A76C; // size:0x1C0
 FIELDSTG_mirrorDirs = 0x8009A92C; // size:0x8
@@ -251,6 +251,98 @@ FIELDSTG_startEventBattle = 0x80091A4C; // type:func
 FIELDSTG_startAreaBattle = 0x80091854; // type:func
 FIELDSTG_leaveFieldAfter = 0x8008AE18; // type:func
 FIELDSTG_closeField = 0x80089D28; // type:func
+// named by their use, in their order (tools/renames/fieldstg.txt)
+FIELDSTG_updateCommandTask = 0x80082F1C; // type:func
+FIELDSTG_handleFieldCommand = 0x80082F84; // type:func
+FIELDSTG_startCommandTask = 0x80083470; // type:func
+FIELDSTG_setEventPose = 0x80084558; // type:func
+FIELDSTG_findOldestStream = 0x800855E0; // type:func
+FIELDSTG_requestTiles = 0x80085650; // type:func
+FIELDSTG_drawCoverBlock = 0x800857DC; // type:func
+FIELDSTG_findStream = 0x80085A00; // type:func
+FIELDSTG_drawMapTiles = 0x80085A78; // type:func
+FIELDSTG_pickViewTiles = 0x80085EEC; // type:func
+FIELDSTG_drawCover = 0x80086460; // type:func
+FIELDSTG_touchStream = 0x800864E8; // type:func
+FIELDSTG_seekStream = 0x80086518; // type:func
+FIELDSTG_isStreamLoaded = 0x800865A0; // type:func
+FIELDSTG_drawStream = 0x800865AC; // type:func
+FIELDSTG_setStreamSource = 0x80086858; // type:func
+FIELDSTG_loadStreamSprites = 0x800868AC; // type:func
+FIELDSTG_clearStreamSlot = 0x80086A3C; // type:func
+FIELDSTG_getStreamSlot = 0x80086A48; // type:func
+FIELDSTG_getStreamFrame = 0x80086A54; // type:func
+FIELDSTG_updateStream = 0x80086A60; // type:func
+FIELDSTG_createStream = 0x80086B54; // type:func
+FIELDSTG_updateRoot = 0x80086C4C; // type:func
+FIELDSTG_showAreaName = 0x80086D20; // type:func
+FIELDSTG_keepsFileCache = 0x8008A0F4; // type:func
+FIELDSTG_updateField = 0x8008A154; // type:func
+FIELDSTG_createField = 0x8008ADE8; // type:func
+FIELDSTG_leaveField = 0x8008AEB4; // type:func
+FIELDSTG_startListedEvent = 0x8008B2C4; // type:func
+FIELDSTG_openInn = 0x8008B320; // type:func
+FIELDSTG_startWarp = 0x8008B398; // type:func
+FIELDSTG_searchEventSpot = 0x8008C23C; // type:func
+FIELDSTG_checkFlightProbe = 0x8008D0C0; // type:func
+FIELDSTG_checkFlightProbes = 0x8008D2A0; // type:func
+FIELDSTG_talkToActorAt = 0x8008D580; // type:func
+FIELDSTG_endChoice0Answer0 = 0x80090864; // type:func
+FIELDSTG_endChoice0Answer1 = 0x800908C4; // type:func
+FIELDSTG_endChoice1Answer0 = 0x800908F0; // type:func
+FIELDSTG_endChoice1Answer1 = 0x80090950; // type:func
+FIELDSTG_endChoice2Answer0 = 0x8009097C; // type:func
+FIELDSTG_endChoice2Answer1 = 0x800909DC; // type:func
+FIELDSTG_endChoice3Answer0 = 0x80090A08; // type:func
+FIELDSTG_endChoice3Answer1 = 0x80090A68; // type:func
+FIELDSTG_endChoice4Answer0 = 0x80090A94; // type:func
+FIELDSTG_endChoice4Answer1 = 0x80090AF4; // type:func
+FIELDSTG_endChoice5Answer0 = 0x80090B20; // type:func
+FIELDSTG_endChoice5Answer1 = 0x80090B80; // type:func
+FIELDSTG_endChoice6Answer0 = 0x80090BAC; // type:func
+FIELDSTG_endChoice6Answer1 = 0x80090C0C; // type:func
+FIELDSTG_endChoice7Answer0 = 0x80090C38; // type:func
+FIELDSTG_endChoice7Answer1 = 0x80090C98; // type:func
+FIELDSTG_endChoice8Answer0 = 0x80090CC4; // type:func
+FIELDSTG_endChoice8Answer1 = 0x80090D24; // type:func
+FIELDSTG_endChoice9Answer0 = 0x80090D50; // type:func
+FIELDSTG_endChoice9Answer1 = 0x80090DB0; // type:func
+FIELDSTG_endChoice10Answer0 = 0x80090DDC; // type:func
+FIELDSTG_endChoice10Answer1 = 0x80090E3C; // type:func
+FIELDSTG_endChoice11Answer0 = 0x80090E68; // type:func
+FIELDSTG_endChoice11Answer1 = 0x80090EC8; // type:func
+FIELDSTG_endChoice12Answer0 = 0x80090EF4; // type:func
+FIELDSTG_endChoice12Answer1 = 0x80090F54; // type:func
+FIELDSTG_endChoice13Answer0 = 0x80090F80; // type:func
+FIELDSTG_endChoice13Answer1 = 0x80090FE0; // type:func
+FIELDSTG_endChoice14Answer0 = 0x8009100C; // type:func
+FIELDSTG_endChoice14Answer1 = 0x8009106C; // type:func
+FIELDSTG_endChoice15Answer0 = 0x80091098; // type:func
+FIELDSTG_endChoice15Answer1 = 0x800910F8; // type:func
+FIELDSTG_startTween = 0x80091298; // type:func
+FIELDSTG_updateTween = 0x8009132C; // type:func
+FIELDSTG_resetScriptTimer = 0x800914C0; // type:func
+FIELDSTG_waitScriptTime = 0x80091520; // type:func
+FIELDSTG_waitAnimDone = 0x800915B0; // type:func
+FIELDSTG_waitWalkDone = 0x800915FC; // type:func
+FIELDSTG_toScreenPos = 0x80091648; // type:func
+FIELDSTG_clearScriptFlag = 0x800916B4; // type:func
+FIELDSTG_findScriptCommand = 0x800916E8; // type:func
+FIELDSTG_createScriptCommand = 0x80091730; // type:func
+FIELDSTG_handleScriptCommand = 0x80091774; // type:func
+FIELDSTG_rollBattleSteps = 0x800917D8; // type:func
+FIELDSTG_countBattleSteps = 0x80091910; // type:func
+FIELDSTG_selectMap = 0x80091AA8; // type:func
+FIELDSTG_setMapFile = 0x80091B78; // type:func
+FIELDSTG_setFirstMap = 0x80091B90; // type:func
+FIELDSTG_setMap = 0x80091BB4; // type:func
+FIELDSTG_getMapCell = 0x80091BC0; // type:func
+FIELDSTG_getWalkStep = 0x80091F4C; // type:func
+FIELDSTG_getFlyStep = 0x8009204C; // type:func
+
+// the rodata the C names
+FIELDSTG_noOffset = 0x80082624;
+FIELDSTG_startColor = 0x80082E88;
 
 // the mode's entry point (MODE_ENTRY_POINTS)
 FIELDSTG_start = 0x80086CF4; // type:func

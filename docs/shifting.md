@@ -52,6 +52,7 @@ relocation (`tools/padcheck.py`):
 # every %hi/%lo pair), each checked against the build
 make VERSION=eu padcheck
 ```
+`make PAD=0x10004 smoke` boots a padding build in DuckStation, on your machine only ([CONTRIBUTING.md](../CONTRIBUTING.md#shifting)).
 
 ## inputcheck
 

@@ -1,15 +1,15 @@
 # Declaration problems a modern GCC finds in the C (tools/lint.py --update):
 # the file, the function, the warning and its message, one per line
-src/main/graphics.c: initSpriteDrawer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(s16,  s16,  s16)' {aka 'void (*)(short int,  short int,  short int)'}
-src/main/graphics.c: newLayer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(LayerView *, s16,  s16)' {aka 'void (*)(LayerView *, short int,  short int)'}
-src/main/graphics.c: newLayer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(LayerView *, s16,  s16)' {aka 'void (*)(LayerView *, short int,  short int)'}
-src/main/graphics.c: newLayer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(LayerView *, s16,  s16)' {aka 'void (*)(LayerView *, short int,  short int)'}
-src/main/graphics.c: newLayer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(LayerView *, u8,  u8,  u8)' {aka 'void (*)(LayerView *, unsigned char,  unsigned char,  unsigned char)'}
-src/main/system.c: cdCheckSector: [incompatible-pointer-types] passing argument 1 of 'CdPosToInt' from incompatible pointer type
-src/main/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 's32 (*)()' {aka 'int (*)()'} from incompatible pointer type 'u8 (*)(TextWindow *)' {aka 'unsigned char (*)(TextWindow *)'}
-src/main/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 's32 (*)()' {aka 'int (*)()'} from incompatible pointer type 'u8 (*)(TextWindow *)' {aka 'unsigned char (*)(TextWindow *)'}
-src/main/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, s16,  s16)' {aka 'void (*)(TextWindow *, short int,  short int)'}
-src/main/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, u8)' {aka 'void (*)(TextWindow *, unsigned char)'}
-src/main/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, u8)' {aka 'void (*)(TextWindow *, unsigned char)'}
-src/main/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, u8)' {aka 'void (*)(TextWindow *, unsigned char)'}
-src/main/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, u8)' {aka 'void (*)(TextWindow *, unsigned char)'}
+src/main/file/cd_reader.c: cdCheckSector: [incompatible-pointer-types] passing argument 1 of 'CdPosToInt' from incompatible pointer type
+src/main/gfx/layer.c: newLayer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(LayerView *, s16,  s16)' {aka 'void (*)(LayerView *, short int,  short int)'}
+src/main/gfx/layer.c: newLayer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(LayerView *, s16,  s16)' {aka 'void (*)(LayerView *, short int,  short int)'}
+src/main/gfx/layer.c: newLayer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(LayerView *, s16,  s16)' {aka 'void (*)(LayerView *, short int,  short int)'}
+src/main/gfx/layer.c: newLayer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(LayerView *, u8,  u8,  u8)' {aka 'void (*)(LayerView *, unsigned char,  unsigned char,  unsigned char)'}
+src/main/gfx/sprite_drawer.c: initSpriteDrawer: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(s16,  s16,  s16)' {aka 'void (*)(short int,  short int,  short int)'}
+src/main/text/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 's32 (*)()' {aka 'int (*)()'} from incompatible pointer type 'u8 (*)(TextWindow *)' {aka 'unsigned char (*)(TextWindow *)'}
+src/main/text/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 's32 (*)()' {aka 'int (*)()'} from incompatible pointer type 'u8 (*)(TextWindow *)' {aka 'unsigned char (*)(TextWindow *)'}
+src/main/text/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, s16,  s16)' {aka 'void (*)(TextWindow *, short int,  short int)'}
+src/main/text/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, u8)' {aka 'void (*)(TextWindow *, unsigned char)'}
+src/main/text/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, u8)' {aka 'void (*)(TextWindow *, unsigned char)'}
+src/main/text/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, u8)' {aka 'void (*)(TextWindow *, unsigned char)'}
+src/main/text/text_window.c: createTextWindow: [incompatible-pointer-types] assignment to 'void (*)()' from incompatible pointer type 'void (*)(TextWindow *, u8)' {aka 'void (*)(TextWindow *, unsigned char)'}

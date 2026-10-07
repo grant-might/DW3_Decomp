@@ -1,6 +1,5 @@
 #include "common.h"
 #include "stage.h"
-void func_800A4E9C();
 extern StageRiserFrame *D_800A564C[];
 
 /* Steps a mover's looping animation, its last frame setting how far it moves */
@@ -42,7 +41,7 @@ void func_800A4E9C(StageRisers *task) {
     default:
         i = 0;
         j = 0;
-        for (rec = D_800990B4.objects; rec->unk2 != 0; rec++) {
+        for (rec = FIELDSTG_state.objects; rec->unk2 != 0; rec++) {
             switch (rec->anim) {
             case 0:
                 break;
@@ -153,7 +152,7 @@ void func_800A5140(void *arg, s32 event) {
                     task->risers[i].active = 1;
                 }
             }
-            SOUND.playSound(0xEC0001);
+            SOUND.playSound(SOUND_FLOOR_DN);
         }
     }
 }
@@ -192,30 +191,23 @@ void updateStage(StageTask *task, void **children) {
 #define STAGE_FILE 0x63D
 #endif
 void setupStage(void) {
-    D_800990B4.textFile = STAGE_TEXT;
-    D_800990B4.mapFile = STAGE_FILE - 1;
-    D_800990B4.sheetEntry = STAGE_FILE << 16;
-    D_800990B4.objects = stageObjects;
-    D_800990B4.imageFile = STAGE_FILE - 2;
-    D_800990B4.start = (Vec2){0x9F00, 0x8500};
-    D_800990B4.images.actors = stageImages;
-    D_800990B4.soundBank = 0x3B;
-    D_800990B4.music = 0x60EC0000;
-    D_800990B4.actors = stageActors;
-    D_800990B4.startDir = 0;
-    D_800990B4.events = stageEvents;
-    D_8009A70C.setFile(0, STAGE_FILE << 16 | 1);
-    D_8009A70C.unk50(0);
+    FIELDSTG_state.textFile = STAGE_TEXT;
+    FIELDSTG_state.mapFile = STAGE_FILE - 1;
+    FIELDSTG_state.sheetEntry = STAGE_FILE << 16;
+    FIELDSTG_state.objects = stageObjects;
+    FIELDSTG_state.imageFile = STAGE_FILE - 2;
+    FIELDSTG_state.start = (Vec2){0x9F00, 0x8500};
+    FIELDSTG_state.images.actors = stageImages;
+    FIELDSTG_state.soundBank = 0x3B;
+    FIELDSTG_state.music = MUSIC(0x3B, 0);
+    FIELDSTG_state.actors = stageActors;
+    FIELDSTG_state.startDir = 0;
+    FIELDSTG_state.events = stageEvents;
+    FIELDSTG_map.setFile(0, STAGE_FILE << 16 | 1);
+    FIELDSTG_map.setFirstMap(0);
 }
 
-extern StageRiserFrame D_800A5618[];
-extern StageRiserFrame D_800A5628[];
-extern StageRiserFrame D_800A5638[];
-extern u16 D_800A56E8[];
-extern FieldActorEntry D_800A56F4;
-extern s16 D_800A5438[];
-
-s16 D_800A5438[] = {
+s16 script412[] = {
     0x601, 1, 0xA2, 0x7A,
     0x100, 1, 0x104, 0xBA,
     0x101, 1, 1, 3,
@@ -337,10 +329,10 @@ ActorImage stageImages[] = {
     { 0x200, 0x100, 0x200, 0x1BC, 0, 0xBC, 0x230, 0x1FD },
     { 0x140, 0x100, 0x176, 0x164, 0xD8, 0x64, 0x150, 0x1FF },
 };
-u16 D_800A56E8[] = { 0x600F, 1, 0x401C, 0, 0xFFFF };
-FieldActorEntry D_800A56F4 = { D_800A56E8, NULL, 1, 4, 0, 0, 0 };
+u16 actor0Conditions[] = { PROGRESS(0xF), 1, FLAG(0x40, 0x1C), 0, CODES_END };
+FieldActorEntry actor0 = { actor0Conditions, NULL, 1, 4, 0, 0, 0 };
 FieldActorEntry *stageActors[] = {
-    &D_800A56F4,
+    &actor0,
     NULL,
 };
 StageTile stageObjects[] = {
@@ -367,6 +359,6 @@ void (*stageFuncs[])(void) = {
     setupStage,
 };
 FieldEvent stageEvents[] = {
-    { 412, D_800A5438, EVENT_TEXT(2), NULL, NULL },
+    { 412, script412, EVENT_TEXT(2), NULL, NULL },
     { -1, NULL, 0, NULL, NULL },
 };

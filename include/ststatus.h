@@ -9,6 +9,9 @@
 
 #include "game.h"
 
+/* The name of this overlay's copy of a function of src/menu_common/ */
+#define OVL_NAME(name) STSTATUS_##name
+
 /* The menu's sprite sheet; the next file is its texture archive */
 #if VERSION_US
 #define FILE_STATUS_SPRITES 0x3F4
@@ -119,7 +122,7 @@ typedef struct StatsScreen {
     /* 0x05C */ s32 count; /* party members */
     /* 0x060 */ s32 frames[3]; /* of the partners' portraits */
     /* 0x06C */ s32 frameTime;
-    /* 0x070 */ s32 unk70;
+    /* 0x070 */ s32 unk70; /* only cleared, when the equipment panel closes */
     /* 0x074 */ s32 option; /* the options' cursor */
     /* 0x078 */ s32 cursorShown;
     /* 0x07C */ s32 member; /* in the party */
@@ -151,17 +154,6 @@ typedef struct StatsScreenWindows {
     /* 0x10C */ void *panel; /* STSTATUS_createDigivolvePanel's or STSTATUS_createEquipPanel's, while open */
 } StatsScreenWindows;
 
-/* Moves a value towards a target in fixed point */
-typedef struct StatusLerp {
-    /* 0x00 */ s32 duration;
-    /* 0x04 */ s32 unk4;
-    /* 0x08 */ s32 value;
-    /* 0x0C */ s32 fixed; /* value << 8 */
-    /* 0x10 */ s32 target;
-    /* 0x14 */ s32 step;
-    /* 0x18 */ s32 active;
-} StatusLerp;
-
 /* A panel of the fifth screen (STSTATUS_createDigivolvePanel) */
 typedef struct DigivolvePanel {
     TASK_HEADER(DigivolvePanel);
@@ -177,7 +169,7 @@ typedef struct DigivolvePanel {
     /* 0x74 */ s16 slots[4]; /* getPartnerSlots */
     /* 0x7C */ s32 slotCount; /* the slots holding an entry (4 on) */
     /* 0x80 */ s32 listShown;
-    /* 0x84 */ StatusLerp scroll; /* its value is added to the list's y */
+    /* 0x84 */ MenuLerp scroll; /* its value is added to the list's y */
     /* 0xA0 */ s32 blink; /* the help arrow */
     /* 0xA4 */ s32 blinkFrame;
     /* 0xA8 */ s32 time;
@@ -282,8 +274,8 @@ typedef struct StatusFuncs {
     /* 0x04 */ s32 (*filesLoading)(void);
     /* 0x08 */ void (*startFade)(PanelAnim *fade, s32 fadeIn);
     /* 0x0C */ s32 (*updateFade)(PanelAnim *fade);
-    /* 0x10 */ void (*startLerp)(StatusLerp *lerp, s32 from, s32 to, s32 frames);
-    /* 0x14 */ s32 (*updateLerp)(StatusLerp *lerp);
+    /* 0x10 */ void (*startLerp)(MenuLerp *lerp, s32 from, s32 to, s32 frames);
+    /* 0x14 */ s32 (*updateLerp)(MenuLerp *lerp);
     /* 0x18 */ s32 *(*getList)(s32 list, s32 index);
     /* 0x1C */ s32 (*listItems)(s32 list, u16 *out); /* 6, 7: special lists; returns the count */
     /* 0x20 */ s32 (*canEquip)(s32 partner, s32 slot, s32 item);
@@ -467,60 +459,152 @@ typedef struct StatusData {
     /* 0x668 */ StatusFuncs funcs;
 } StatusData;
 
-/* The functions and data the overlay's objects share */
-Task *STSTATUS_createItemScreen(FieldMenuScreen *menu, s32 extra);
-Task *STSTATUS_createSortScreen(FieldMenuScreen *menu, s32 extra);
-Task *STSTATUS_createMapScreen(FieldMenuScreen *menu, s32 extra);
-Task *STSTATUS_createTechScreen(FieldMenuScreen *menu, s32 extra);
-Task *STSTATUS_createStatusScreen(FieldMenuScreen *menu, s32 extra);
-Task *STSTATUS_createDemoScreen(FieldMenuScreen *menu, s32 extra);
+/* ststatus.c */
+void STSTATUS_updateScene(Task *task, Task **children);
+Task *STSTATUS_start(void);
+void STSTATUS_createCardWindows(PartyScreen *screen, PartyScreenWindows *windows);
+void STSTATUS_showCardPage(PartyScreen *screen, PartyScreenWindows *windows, s32 member, s32 show);
+void STSTATUS_showCardChoices(PartyScreen *screen, PartyScreenWindows *windows, s32 show);
+void STSTATUS_drawCardScreen(PartyScreen *screen);
+void STSTATUS_runCardScreen(PartyScreen *screen, PartyScreenWindows *windows);
+void STSTATUS_updateCardScreen(PartyScreen *screen, PartyScreenWindows *windows);
 Task *STSTATUS_createCardScreen(FieldMenuScreen *menu, s32 extra);
+void STSTATUS_startFader(ScreenFade *task, s32 fadeIn, s32 duration);
+void STSTATUS_drawFader(ScreenFade *task);
+void STSTATUS_updateFader(ScreenFade *task);
+ScreenFade *STSTATUS_createFader(void);
+
+/* demo_screen.c */
+void STSTATUS_createDemoWindows(PartyScreen *screen, PartyScreenWindows *windows);
+void STSTATUS_showDemoPage(PartyScreen *screen, PartyScreenWindows *windows, s32 member, s32 show);
+void STSTATUS_showDemoChoices(PartyScreen *screen, PartyScreenWindows *windows, s32 show);
+void STSTATUS_drawDemoScreen(PartyScreen *screen);
+void STSTATUS_runDemoScreen(PartyScreen *screen, PartyScreenWindows *windows);
+void STSTATUS_updateDemoScreen(PartyScreen *screen, PartyScreenWindows *windows);
+Task *STSTATUS_createDemoScreen(FieldMenuScreen *menu, s32 extra);
+
+/* equip_panel.c */
+void STSTATUS_createEquipWindows(EquipPanel *panel, EquipPanelWindows *windows);
+void STSTATUS_showEquipment(EquipPanel *panel, EquipPanelWindows *windows, s32 show);
+void STSTATUS_showEquipItem(EquipPanel *panel, EquipPanelWindows *windows, s32 item);
+void STSTATUS_showEquipList(EquipPanel *panel, EquipPanelWindows *windows, s32 show);
+void STSTATUS_showSlotItem(EquipPanel *panel, EquipPanelWindows *windows, s32 show);
+void STSTATUS_drawEquipPanel(EquipPanel *panel);
+void STSTATUS_runEquipPanel(EquipPanel *panel, EquipPanelWindows *windows);
+void STSTATUS_updateEquipPanel(EquipPanel *panel, EquipPanelWindows *windows);
+EquipPanel *STSTATUS_createEquipPanel(StatsScreen *screen);
+
+/* digivolve_panel.c */
+void STSTATUS_createDigivolveWindows(DigivolvePanel *panel, DigivolvePanelWindows *windows);
+void STSTATUS_showDigivolveSlots(DigivolvePanel *panel, DigivolvePanelWindows *windows, s32 show);
+void STSTATUS_showDigivolveChoices(DigivolvePanel *panel, DigivolvePanelWindows *windows, s32 show);
+void STSTATUS_showDigivolveStats(DigivolvePanel *panel, DigivolvePanelWindows *windows, s32 show);
+void STSTATUS_scrollTechList(DigivolvePanel *panel, DigivolvePanelWindows *windows);
+void STSTATUS_showTechCost(DigivolvePanel *panel, DigivolvePanelWindows *windows, s32 show);
+void STSTATUS_drawDigivolvePanel(DigivolvePanel *panel);
+void STSTATUS_runDigivolvePanel(DigivolvePanel *panel, DigivolvePanelWindows *windows);
+void STSTATUS_updateDigivolvePanel(DigivolvePanel *panel, DigivolvePanelWindows *windows);
+DigivolvePanel *STSTATUS_createDigivolvePanel(StatsScreen *screen);
+
+/* status_screen.c */
+void STSTATUS_createStatusWindows(StatsScreen *screen, StatsScreenWindows *windows);
+void STSTATUS_showStatusPage(StatsScreen *screen, StatsScreenWindows *windows, s32 member, s32 show);
+void STSTATUS_showChosenPage(StatsScreen *screen, StatsScreenWindows *windows, s32 member, s32 show);
+void STSTATUS_showStatusChoices(StatsScreen *screen, StatsScreenWindows *windows, s32 show);
+void STSTATUS_showPartnerSlots(StatsScreen *screen, StatsScreenWindows *windows, s32 show);
+void STSTATUS_showPartnerEquipment(StatsScreen *screen, StatsScreenWindows *windows, s32 show);
+void STSTATUS_showPartnerStats(StatsScreen *screen, StatsScreenWindows *windows, s32 show);
+void STSTATUS_previewStats(StatsScreen *screen, s32 slot, s32 item);
+void STSTATUS_drawStatusScreen(StatsScreen *screen);
+void STSTATUS_runStatusChoice(StatsScreen *screen, StatsScreenWindows *windows);
+void STSTATUS_runStatusScreen(StatsScreen *screen, StatsScreenWindows *windows);
+void STSTATUS_updateStatusScreen(StatsScreen *screen, StatsScreenWindows *windows);
+Task *STSTATUS_createStatusScreen(FieldMenuScreen *menu, s32 extra);
+
+/* item_screen.c */
+void STSTATUS_createItemWindows(ItemScreen *screen, ItemScreenWindows *windows);
+void STSTATUS_showItemPage(ItemScreen *screen, ItemScreenWindows *windows, s32 member, s32 show);
+void STSTATUS_showMoney(ItemScreen *screen, ItemScreenWindows *windows, s32 show);
+void STSTATUS_showItemLists(ItemScreen *screen, ItemScreenWindows *windows, s32 show);
+void STSTATUS_showChosenItem(ItemScreen *screen, s32 show);
+void STSTATUS_showItemHelp(ItemScreen *screen, s32 mode);
+void STSTATUS_fadeItemInfo(ItemScreen *screen, s32 show);
+s32 STSTATUS_itemInfoFaded(ItemScreen *screen);
+void STSTATUS_useItem(ItemScreen *screen, ItemScreenWindows *windows);
+void STSTATUS_drawItemScreen(ItemScreen *screen);
+void STSTATUS_runItemScreen(ItemScreen *screen, ItemScreenWindows *windows);
+void STSTATUS_updateItemScreen(ItemScreen *screen, ItemScreenWindows *windows);
+Task *STSTATUS_createItemScreen(FieldMenuScreen *menu, s32 extra);
+
+/* item_list.c */
+void STSTATUS_createItemListWindows(ItemList *panel, ItemListWindows *windows);
+void STSTATUS_showItemListPage(ItemList *panel, ItemListWindows *windows, s32 show);
+void STSTATUS_refreshItemList(ItemList *panel, ItemListWindows *windows);
+s32 STSTATUS_moveItemListCursor(ItemList *panel, ItemListWindows *windows);
+void STSTATUS_runItemList(ItemList *panel, ItemListWindows *windows);
+void STSTATUS_drawItemList(ItemList *panel);
+void STSTATUS_updateItemList(ItemList *panel, ItemListWindows *windows);
+ItemList *STSTATUS_createItemList(ItemScreen *screen, s32 list, s32 item);
+
+/* tech_screen.c */
 void STSTATUS_fillItemList(ItemList *panel);
-FieldMenuScreen *STSTATUS_createMenu(void);
+s32 STSTATUS_listFieldTechs(TechScreen *screen, s32 member);
+s32 STSTATUS_getChosenTech(TechScreen *screen);
+s32 STSTATUS_getTechHealing(s32 partner, s32 tech);
+s32 STSTATUS_useTech(TechScreen *screen, TechScreenWindows *windows, s32 failSound);
+void STSTATUS_createTechWindows(TechScreen *screen, TechScreenWindows *windows);
+void STSTATUS_showTechPage(TechScreen *screen, TechScreenWindows *windows, s32 member, s32 show);
+void STSTATUS_showTechList(TechScreen *screen, TechScreenWindows *windows, s32 show);
+void STSTATUS_showChosenTech(TechScreen *screen, TechScreenWindows *windows, s32 show);
+void STSTATUS_drawTechScreen(TechScreen *screen);
+void STSTATUS_runTechScreen(TechScreen *screen, TechScreenWindows *windows);
+void STSTATUS_updateTechScreen(TechScreen *screen, TechScreenWindows *windows);
+Task *STSTATUS_createTechScreen(FieldMenuScreen *menu, s32 extra);
+
+/* sort_screen.c */
+void STSTATUS_createSortWindows(SortScreen *screen, SortScreenWindows *windows);
+void STSTATUS_showSortPage(SortScreen *screen, SortScreenWindows *windows, s32 member, s32 show);
+void STSTATUS_drawSortScreen(SortScreen *screen);
+void STSTATUS_runSortScreen(SortScreen *screen, SortScreenWindows *windows);
+void STSTATUS_updateSortScreen(SortScreen *screen, SortScreenWindows *windows);
+Task *STSTATUS_createSortScreen(FieldMenuScreen *menu, s32 extra);
+
+/* map_screen.c */
+void STSTATUS_showMapArea(StatusMapScreen *screen, TextWindow **windows);
+void STSTATUS_moveMapCursor(StatusMapScreen *screen, s32 dx, s32 dy);
+void STSTATUS_runMapScreen(StatusMapScreen *screen, TextWindow **windows);
+void STSTATUS_drawMapScreen(StatusMapScreen *screen);
+void STSTATUS_updateMapScreen(StatusMapScreen *screen, TextWindow **windows);
+Task *STSTATUS_createMapScreen(FieldMenuScreen *menu, s32 extra);
+
+/* menu.c */
+void STSTATUS_setScrollBarX(ScrollBar *bar, s32 x, s32 width);
+void STSTATUS_setScrollBarRange(ScrollBar *bar, s32 top, s32 bottom);
+void STSTATUS_setScrollBarCount(ScrollBar *bar, s32 pageSize, s32 count);
+void STSTATUS_setScrollBarPos(ScrollBar *bar, s32 pos);
+void STSTATUS_updateScrollBar(ScrollBar *bar);
+ScrollBar *STSTATUS_createScrollBar(void);
+void STSTATUS_runScreens(FieldMenuScreen *menu, FieldMenuScreenChildren *children);
+void STSTATUS_drawBlink(FieldMenuScreen *menu);
 void STSTATUS_updateMenu(FieldMenuScreen *menu, FieldMenuScreenChildren *children);
+FieldMenuScreen *STSTATUS_createMenu(void);
 void STSTATUS_loadFiles(void);
 s32 STSTATUS_filesLoading(void);
 void STSTATUS_startFade(PanelAnim *fade, s32 fadeIn);
 s32 STSTATUS_updateFade(PanelAnim *fade);
-void STSTATUS_startLerp(StatusLerp *lerp, s32 from, s32 to, s32 frames);
-s32 STSTATUS_updateLerp(StatusLerp *lerp);
+void STSTATUS_startLerp(MenuLerp *lerp, s32 from, s32 to, s32 frames);
+s32 STSTATUS_updateLerp(MenuLerp *lerp);
+
+/* helpers.c */
 s32 *STSTATUS_getTowns(s32 list, s32 index);
 s32 STSTATUS_listItems(s32 list, u16 *out);
-ScrollBar *STSTATUS_createScrollBar(void);
+s32 STSTATUS_listEquipItems(u16 *out);
+s32 STSTATUS_listItemsOfKind(s32 kind, u16 *out);
 s32 STSTATUS_canEquip(s32 partner, s32 slot, s32 item);
 void STSTATUS_equip(s32 partner, s32 slot, s32 item);
 s32 STSTATUS_isLateGame(void);
 s32 STSTATUS_getArea(void);
 void STSTATUS_getVisitedAreas(s32 *out);
-
-void STSTATUS_updateCardScreen(PartyScreen *screen, PartyScreenWindows *windows);
-void STSTATUS_updateDemoScreen(PartyScreen *screen, PartyScreenWindows *windows);
-void STSTATUS_updateItemScreen(ItemScreen *screen, ItemScreenWindows *windows);
-void STSTATUS_updateTechScreen(TechScreen *screen, TechScreenWindows *windows);
-void STSTATUS_updateSortScreen(SortScreen *screen, SortScreenWindows *windows);
-void STSTATUS_updateStatusScreen(StatsScreen *screen, StatsScreenWindows *windows);
-void STSTATUS_updateDigivolvePanel(DigivolvePanel *panel, DigivolvePanelWindows *windows);
-void STSTATUS_updateEquipPanel(EquipPanel *panel, EquipPanelWindows *windows);
-void STSTATUS_updateItemList(ItemList *panel, ItemListWindows *windows);
-void STSTATUS_startFader(ScreenFade *task, s32 fadeIn, s32 duration);
-void STSTATUS_updateFader(ScreenFade *task);
-void STSTATUS_previewStats(StatsScreen *screen, s32 slot, s32 item);
-void STSTATUS_showChosenItem(ItemScreen *screen, s32 arg);
-void STSTATUS_showItemHelp(ItemScreen *screen, s32 mode);
-void STSTATUS_fadeItemInfo(ItemScreen *screen, s32 show);
-s32 STSTATUS_itemInfoFaded(ItemScreen *screen);
-ScreenFade *STSTATUS_createFader(void);
-EquipPanel *STSTATUS_createEquipPanel(StatsScreen *screen);
-DigivolvePanel *STSTATUS_createDigivolvePanel(StatsScreen *screen);
-ItemList *STSTATUS_createItemList(ItemScreen *screen, s32 list, s32 item);
-void STSTATUS_drawFader(ScreenFade *task);
-void STSTATUS_createEquipWindows(EquipPanel *panel, EquipPanelWindows *windows);
-void STSTATUS_runEquipPanel(EquipPanel *panel, EquipPanelWindows *windows);
-void STSTATUS_drawEquipPanel(EquipPanel *panel);
-s32 STSTATUS_listEquipItems(u16 *out);
-void STSTATUS_drawCardScreen(PartyScreen *screen);
-void STSTATUS_drawDemoScreen(PartyScreen *screen);
-s32 STSTATUS_listItemsOfKind(s32 list, u16 *out);
 
 /* A partner's equipment, copied as a whole */
 typedef struct StatusEquip {
@@ -542,7 +626,7 @@ typedef struct StatusStatItem {
 } StatusStatItem;
 
 /* STSTATUS's data, in its order: each object's tables, then the last one's
-   (ststatus_10.c), which all the objects read */
+   (helpers.c), which all the objects read */
 extern s32 STSTATUS_pageStats[]; /* the stats a page shows (one table a screen) */
 extern s32 STSTATUS_pageStats2[];
 extern s32 STSTATUS_slotStrings[]; /* the strings of the empty equipment slots */

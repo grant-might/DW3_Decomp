@@ -1,14 +1,15 @@
 #ifndef DW3_TEXT_H
 #define DW3_TEXT_H
 
-/* Text windows, the font and the message boxes (text_window.c) */
+/* Text windows, the cursor, the message and talk boxes, the font and the
+   text helpers (text/) */
 
 #include "common.h"
 #include <sys/types.h>
 #include <libgte.h>
 #include <libgpu.h>
 #include "dw3/task.h"
-#include "dw3/graphics.h"
+#include "dw3/gfx.h"
 
 /*
  * A menu cursor: a text window showing one of the CURSOR_FRAMES glyphs.
@@ -21,7 +22,7 @@ typedef struct Cursor {
     /* 0x54 */ s32 depth;
     /* 0x58 */ s32 x;
     /* 0x5C */ s32 y;
-    /* 0x60 */ s32 palette;
+    /* 0x60 */ s32 palette; /* PALETTE_*, its text window's */
     /* 0x64 */ s32 visible;
     /* 0x68 */ s32 dirty;
     /* 0x6C */ s32 frame;
@@ -88,27 +89,12 @@ typedef struct TalkBoxFrame {
     /* 0x5C */ u8 showArrow;
 } TalkBoxFrame;
 
-/*
- * Expands "RLEN" data (a run-length encoding: a byte n < 0x80 copies n
- * bytes, n | 0x80 repeats the next byte n times, 0 ends), all at once
- * (run) or chunkSize bytes a frame (start, then substate 1 until done).
- */
-typedef struct Decompressor {
-    TASK_HEADER(Decompressor);
-    /* 0x50 */ s32 *data;
-    /* 0x54 */ s32 *begin;
-    /* 0x58 */ s32 compressed;
-    /* 0x5C */ s32 size;
-    /* 0x60 */ s32 bufferSize;
-    /* 0x64 */ void *buffer;
-    /* 0x68 */ s32 *src;
-    /* 0x6C */ void *dst;
-    /* 0x70 */ s32 chunkSize;
-    /* 0x74 */ void *(*run)();
-    /* 0x78 */ void *(*getData)();
-    /* 0x7C */ void (*start)();
-    /* 0x80 */ void (*free)();
-} Decompressor;
+/* Text helpers (initTextTools) */
+typedef struct TextTools {
+    /* 0x0 */ char *(*getString)(); /* (table, index) */
+    /* 0x4 */ s32 (*measure)(); /* (TextBuffer *, style, spacing) */
+    /* 0x8 */ void (*convert)(); /* (dst, src, mode): font codes <-> Shift-JIS */
+} TextTools;
 
 typedef struct TextBuffer {
     /* 0x0 */ u8 *data;
@@ -117,6 +103,20 @@ typedef struct TextBuffer {
     /* 0x8 */ s16 pos;
     /* 0xA */ s16 sjis; /* two bytes per character; else font codes */
 } TextBuffer;
+
+/*
+ * The text windows' palettes (TextWindow.palette, setPalette): rows of the
+ * font's CLUTs, named by the colour of the letters (white letters with a
+ * grey shade in PALETTE_WHITE, the default)
+ */
+#define PALETTE_WHITE 0
+#define PALETTE_BLUE 1 /* a light blue: what is highlighted or current */
+#define PALETTE_DARK_BLUE 2
+#define PALETTE_YELLOW 3
+#define PALETTE_GREEN 4
+#define PALETTE_RED 5
+#define PALETTE_PURPLE 6
+#define PALETTE_GREY 7 /* what is unavailable */
 
 /*
  * A text window (createTextWindow): up to six text buffers (0 is shown, 1-5
@@ -130,7 +130,7 @@ typedef struct TextBuffer {
  */
 typedef struct TextWindow {
     TASK_HEADER(TextWindow);
-    /* 0x50 */ u8 *style;
+    /* 0x50 */ struct TextStyle *style;
     /* 0x54 */ s32 layerId;
     /* 0x58 */ s32 depth;
     /* 0x5C */ TextBuffer text[6];
@@ -149,7 +149,7 @@ typedef struct TextWindow {
     /* 0xBC */ s16 alignWidth;
     /* 0xBE */ u8 blend;
     /* 0xBF */ u8 lines;
-    /* 0xC0 */ u8 palette;
+    /* 0xC0 */ u8 palette; /* PALETTE_* */
     /* 0xC1 */ u8 visible;
     /* 0xC2 */ u8 fixedSpacing;
     /* 0xC3 */ u8 finished;
@@ -214,7 +214,7 @@ typedef struct TalkBoxLayout {
  * 3 a missing character, 4 the end.
  */
 typedef struct Font {
-    /* 0x0 */ u8 *styles; /* TextStyle[4], style 0 unused */
+    /* 0x0 */ struct TextStyle *styles; /* [4], style 0 unused */
     /* 0x4 */ s32 *codeLengths;
     /* 0x8 */ void (*load)();
     /* 0xC */ s16 (*decode)(); /* (text, sjis, style) */
@@ -231,8 +231,8 @@ typedef struct TextStyle {
     /* 0x00 */ u8 blend; /* 0xFF: opaque */
     /* 0x01 */ s8 lineHeight;
     /* 0x02 */ u8 unk2[2];
-    /* 0x04 */ s32 glyphs; /* Glyph[] */
-    /* 0x08 */ s32 icons; /* Glyph[] */
+    /* 0x04 */ struct Glyph *glyphs;
+    /* 0x08 */ struct Glyph *icons;
     /* 0x0C */ GlyphMap *sjisMap;
     /* 0x10 */ GlyphMap *iconMap;
     /* 0x14 */ s16 glyphCount;
@@ -256,7 +256,7 @@ typedef struct Glyph {
 
 /* Drawing state shared with the control-code handlers */
 typedef struct TextDraw {
-    /* 0x00 */ void *prim;
+    /* 0x00 */ PrimPtr prim;
     /* 0x04 */ Layer *layer;
     /* 0x08 */ u_long *ot;
     /* 0x0C */ Glyph *glyph;
@@ -283,7 +283,7 @@ typedef struct ZoomBox {
     /* 0x5A */ s16 h;
     /* 0x5C */ s16 speed;
     /* 0x5E */ u8 unk5E[2];
-    /* 0x60 */ s32 zoom; /* 0-0x1000 */
+    /* 0x60 */ s32 zoom; /* 0-ONE */
     /* 0x64 */ s32 layerId;
     /* 0x68 */ s32 unk68;
     /* 0x6C */ u16 offsetX;
@@ -298,31 +298,30 @@ typedef struct ZoomBox {
 
 void drawMessageBoxFrame(struct MessageBoxFrame *task);
 void drawMessageBoxArrow(struct MessageBoxFrame *task);
-void setTextBuffer(struct TextWindow *obj, struct TextBuffer *buf, char *text);
+void setTextBuffer(struct TextWindow *obj, struct TextBuffer *buf, const char *text);
 void textWindowSetSubString(struct TextWindow *obj, char *text, s32 id, s32 index);
 void drawZoomBox(ZoomBox *task);
 void drawTalkBoxArrow(struct TalkBoxFrame *task);
 void drawTalkBoxFrame(struct TalkBoxFrame *task);
-void textWindowSetText(TextWindow *obj, char *text);
+void textWindowSetText(TextWindow *obj, const char *text);
 void formatNumber(u8 *buf, s32 value);
 void textWindowSetTypeDelay(TextWindow *, s32);
-void *decompressorRun(Decompressor *task, s32 *data);
-void decompressorStep(Decompressor *task);
 void textWindowShowPage(TextWindow *obj);
 void textWindowDraw(struct TextWindow *obj);
 Cursor *createCursor(s16 layerId, s32 depth, s16 x, s16 y);
-Decompressor *createDecompressor(void);
 void updateMessageBox(struct MessageBoxFrame *task, struct MessageBox *data);
 s32 processTextChar(TextWindow *obj, TextBuffer *text, TextDraw *wait, s16 *pos);
 void updateZoomBox(struct ZoomBox *task);
 TextWindow *createTextWindow(s16 id, s16 type, s16 x, s16 y);
-void decompressorStart(Decompressor *task, s32 *data, s32 arg2);
-void *decompressorGetData(Decompressor *task);
-void updateDecompressor(Decompressor *task);
 void updateMessageBoxFrame(struct MessageBoxFrame *task);
 void updateTalkBoxFrame(TalkBoxFrame *task);
 Task *createMessageBox(s32 layerId, s32 strings, s32 index);
 TalkBox *createTalkBox(s32 id, s16 x, s16 y, s32 file, s32 index, u32 type);
+void bindTextTools(TextTools *obj);
+char *getString(s32 *table, s32 index);
+s32 measureText();
+void initTextTools(TextTools *obj);
+void convertText(void *buf, void *text, s32 mode);
 
 extern const char STR_NULL_MESSAGE[];
 extern const char STR_BAD_DIGIT_BUFFER[];
@@ -335,9 +334,10 @@ extern char CURSOR_TEXT_3[];
 extern char *CURSOR_FRAMES[];
 extern s32 TEXT_WAIT_BUTTONS[];
 extern Font FONT;
+extern s32 (*TEXT_CODE_HANDLERS[])(); /* (obj, text, wait): most handlers take only the first two */
 extern GlyphMap FONT_GLYPH_MAP[];
 extern GlyphMap FONT_ICON_MAP[];
-extern Glyph FONT_GLYPHS_1[]; /* the three font sizes' glyphs and icons (graphics.c) */
+extern Glyph FONT_GLYPHS_1[]; /* the three font sizes' glyphs and icons (text_tools.c) */
 extern Glyph FONT_ICONS_1[];
 extern Glyph FONT_GLYPHS_2[];
 extern Glyph FONT_ICONS_2[];

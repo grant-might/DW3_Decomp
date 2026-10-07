@@ -43,3 +43,23 @@ BUILD_DIR = ROOT / "build" / VERSION
 EXPECTED_DIR = ROOT / "expected" / VERSION
 # the prebuilt compiler and tools (tools/dl_deps.sh), as the Makefile's BIN_DIR
 BIN_DIR = Path(os.environ.get("BIN_DIR") or ROOT / "bin")
+
+
+def stage_entries(version: str = VERSION) -> list:
+    """The words of each line of config/<version>/stages.txt, without its
+    comments: a stage's name, then the offsets of its code if it has any."""
+    path = ROOT / "config" / version / "stages.txt"
+    if not path.exists():
+        return []
+    lines = (line.split("#", 1)[0].split() for line in path.read_text().splitlines())
+    return [words for words in lines if words]
+
+
+def overlay_parents() -> dict:
+    """{overlay: the overlay it loads on top of}, as the Makefile's
+    OVL_PARENT_<name>, and "<stage>": every stage's (FIELDSTG)."""
+    make = (ROOT / "Makefile").read_text()
+    out = dict(re.findall(r"^OVL_PARENT_(\w+)\s*:=\s*(\w+)", make, re.M))
+    m = re.search(r"OVL_PARENT_\$\(s\)\s*:=\s*(\w+)", make)
+    out["<stage>"] = m[1] if m else "fieldstg"
+    return out

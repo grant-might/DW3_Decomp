@@ -50,7 +50,16 @@ segments:
     subalign: 4
     subsegments:
       # us's modules, each with its rodata, data and bss (tools/split_version.py)
-      - [0x0, .rodata, stplnmet]
+      # each module's rodata: the ones with jump tables or strings
+      - [0x0, .rodata, name_entry]
+      # the modules (src/stplnmet/), in the order they link
       - [0x2A8, c, stplnmet]
-      - [0x5934, .data, stplnmet]
+      - [0x494, c, backdrop]
+      - [0xAC4, c, welcome]
+      - [0x10C0, c, name_entry]
+      - [0x321C, c, confirm]
+      - [0x4310, c, choice]
+      - [0x4E64, c, screen]
+      # STPLNMET's data, all of it in one file
+      - [0x5934, .data, data/stplnmet]
   - [0x6F0C]

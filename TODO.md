@@ -4,8 +4,8 @@ Both versions build byte for byte, and everything the game itself is built
 from is matched C: the executable's game code and data, the 21 overlays, and
 all 293 stages - the 238 the USA version has and the 55 the European version
 has of its own. No function is still assembly (`INCLUDE_ASM` appears nowhere
-under `src/`), and there are no fake matches: the 191 hacks the badge counts
-are 184 form-dependent matches, 6 unused frame locals and one BEC form, each
+under `src/`), and there are no fake matches: the 189 hacks the badge counts
+are 182 form-dependent matches, 6 unused frame locals and one BEC form, each
 with a comment saying what is forced (see
 `docs/status.md#fake-matches-and-hacks`). The PsyQ 4.7 libraries, and
 `libpress` in `STDWTITL`, are Sony's code rather than the game's: the build
@@ -84,8 +84,8 @@ own.
     both versions.
   - `STGDGLAB_moveRecipeCursor`, the recipe screen's cursor step.
     European only (a `version-only` name) and C.
-  - `FIGHTSTG`'s `func_8008F5D4`, `func_800A15A8`, `func_800A1FE0` and
-    `func_800A246C`. European only (splat's names) and C.
+  - `FIGHTSTG`'s `func_8008F5D4`, `func_800A1FE0` and `func_800A246C`
+    (splat's names) and `FIGHTSTG_rollCounter`. European only and C.
 - [x] The stages: 233 of the USA version's 238 are 8 bytes longer in the
   European version because each one's setup function adds the language
   (`LANGUAGE`, which `CNTY_SEL` sets) to the text file it loads; the
@@ -94,17 +94,17 @@ own.
   versions, its functions with the USA names
   (`config/eu/stages/<stage>.txt`): all 1,590 of the European stages'
   functions are C.
-- [x] The setup functions (the one that fills `D_800990B4` and loads the
+- [x] The setup functions (the one that fills `FIELDSTG_state` and loads the
   stage's text file) are C in both versions, from one C. The European
   scheduling needed the stores up to `0x1C` and the one to `0x44` to stay
   before the others while the constants rise to the top. The start
   position does it: written as a constructor, `unk2C = (Vec2){x, y}`, it
   makes GCC's `store_constructor` clobber the whole field (a `BLKmode`
-  `MEM`, which conflicts with every access to `D_800990B4`) before its two
+  `MEM`, which conflicts with every access to `FIELDSTG_state`) before its two
   stores, so the stores stay on their side of it and the constants don't.
   It gives the USA order too. The text file is `STAGE_TEXT`, the file and
   archive numbers `STAGE_FILE` and `STAGE_ARCHIVE`, the stage's own
-  defines; `unk7C` (`FIELDSTG`'s `func_80091490`) finds a record of a list
+  defines; `unk7C` (`FIELDSTG`'s `FIELDSTG_findBattles`) finds a record of a list
   of 0x1C-byte records by its id.
 - [x] The 8 functions that read `GAME` fields 8 bytes later in the European
   version (`countdown`, `unk26DC`, `unk26E8`) are C in both: `WSTAG745`/
@@ -126,25 +126,24 @@ own.
 - [x] The game code is all C: `spriteDrawerDraw` and `convertText`
   (`graphics.c`) were the last.
 - [x] The executable's rodata is all C. `OVERLAY_ADDRESS` and
-  `SUB_OVERLAY_ADDRESS` (`system.c`) are `const` pointers in `.rodata`,
-  read with `lui`/`lw` although `system.c` is built with `-G8`: the game's
-  code is built with `-membedded-data`, which puts a small `const` in
-  `.rodata` and changes nothing else. `text_window.c`'s strings and tables
-  are C.
-- [x] The executable's data is C. `inn.c`, `pad.c`, `text_window.c`,
-  `memcard.c`, `system.c` (the field menu's tables, `DIGIMON_DATA`, the
-  items, the techniques, `CD_READER`, `FILE_CACHE` and the file table),
-  `game3.c` (`GAME`, `FLAGS_00` and the game's tables), `game3_2.c`
-  (`HEAP` and `TASK_REGISTRY`), `sound.c` (the banks' files and `SOUND`),
-  `overlay.c` (the mode tables and `OVERLAY_LOADER`) and `graphics.c` (`GFX`, the font's maps and glyphs,
-  `GFX_STARTED`) hold their own; the rest is in `src/main/data/`:
-  `matrices.c`, the other modules' small data in `game_3.c` and the
-  `.bss` in `game_bss.c`.
+  `SUB_OVERLAY_ADDRESS` (`system/main.c`) are `const` pointers in
+  `.rodata`, read with `lui`/`lw` although the module is built with `-G8`:
+  the game's code is built with `-membedded-data`, which puts a small
+  `const` in `.rodata` and changes nothing else. The text windows' strings
+  and tables are C.
+- [x] The executable's data is C. Each module holds its own (the field
+  menu's tables, `DIGIMON_DATA`, the items, the techniques, `CD_READER`,
+  `FILE_CACHE` and the file table, `GAME`, `FLAGS_00` and the game's
+  tables, `HEAP`, `TASK_REGISTRY`, `PAD`, `RANDOM`, the text windows',
+  the banks' files and `SOUND`, the mode tables and `OVERLAY_LOADER`,
+  `GFX`, the font's maps and glyphs, `GFX_STARTED`); the rest is in
+  `src/main/data/`: `matrices.c`, the other modules' small data in
+  `game_3.c` and the `.bss` in `game_bss.c`.
 - [ ] Move that data next to the code that uses it: `src/main/data/` is where
   the report keeps what has not moved yet.
   - The usable items' effects (`ITEM_EFFECT_2B`..., 4 bytes each) are
-    system.c's small data, in `game_3.c` among the other modules' until
-    `.sdata` moves too.
+    the original `system`'s small data, in `game_3.c` among the other
+    modules' until `.sdata` moves too.
 - [x] `crt0` (`2MBYTE.OBJ`), PsyQ's startup, stays splat's disassembly (an
   `asm` segment, both versions). Its 8 bytes of `.bss`
   (`CRT0_SAVED_RA`) are in `data/game_bss.c`, which starts the `.bss`, so
@@ -164,11 +163,11 @@ compilers, are in the history.
   1,665 in the USA one (`STDWTITL`'s `libpress`, PsyQ, is splat's
   disassembly, out of the count).
 - [x] The overlays' last functions, each matched in a form `docs/status.md`
-  lists: FIELDSTG's `func_80091AA8` with its file check as an early exit in
+  lists: FIELDSTG's `FIELDSTG_selectMap` with its file check as an early exit in
   a `do`-`while (0)` with the file declared in it, FIGHTSTG's
   `func_8009C8EC` with a `const` pointer to the table of battle functions,
   STGDGLAB's `func_8008C234` with a BEC form (below), and FIELDSTG's
-  `func_80085EEC` with the y offset written as `scrollY` less its tile's
+  `FIELDSTG_pickViewTiles` with the y offset written as `scrollY` less its tile's
   start: the two reads of `scrollY` rank its load ahead of the x test in
   local-alloc, which was all that was left of its 24 diffs. The notes on
   what was tried before are in the history.
@@ -192,10 +191,11 @@ compilers, are in the history.
   `w_xj.c`, `w_dead.c`). A real conditional break can't be it: the
   original's case has no branch. Another matched decomp has the same block
   in its task-state init cases.
-  None of the three objects (`fieldstg_3.c`, `fightstg_6.c`,
-  `stgdglab_4.c`) builds with another compiler for the whole file
-  (`fightstg/r37/cc.sh`, results in `r37/cx/cc_*.txt`): GCC 2.7.2 (patched,
-  stock, with the second CSE pass), SN's 2.8.1, 2.95.2 and `-O1` leave
+  None of the three objects (`fieldstg_3.c`, now `event.c` to `start.c`
+  and `banner.c`'s first function, `fightstg_6.c` and `stgdglab_4.c`)
+  builds with another compiler for the whole file (`fightstg/r37/cc.sh`,
+  results in `r37/cx/cc_*.txt`): GCC 2.7.2 (patched, stock, with the
+  second CSE pass), SN's 2.8.1, 2.95.2 and `-O1` leave
   1 to 42 of each file's functions matching, and `-G8` loses 2 to 33.
   GCC 2.8.0 and the other `maspsx` versions (2.56, 2.79, 2.84) keep every
   other function but give the three the same diffs as 2.8.1.
@@ -271,7 +271,7 @@ compilers, are in the history.
   `s16` commands) and `unk4C` (`FieldActorEntry`, with their `FieldTalk`s
   and `u16` condition and action lists) are records now, all their types
   shared with FIELDSTG through `field_map.h` (its own stage,
-  `func_80091124`, has them as `FIELDSTG_mapObjects`, `FIELDSTG_slots`,
+  `FIELDSTG_setupField`, has them as `FIELDSTG_mapObjects`, `FIELDSTG_slots`,
   `FIELDSTG_images`, `FIELDSTG_events` and `FIELDSTG_actors`). Where the
   original's padding after a script isn't zeros (39 scripts), a top-level
   asm writes it. Where the same address holds different things in each

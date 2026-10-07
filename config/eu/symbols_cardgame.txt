@@ -13,13 +13,13 @@ jtbl_800834FC = 0x800834FC; // type:jtbl
 
 // names from the C of the modules this version builds (tools/version_symbols.py)
 CARDGAME_getEffectField = 0x80083E34; // type:func
-CARDGAME_scoreIfLastSide = 0x80083F48; // type:func
-CARDGAME_scoreIfFewInHand = 0x80083F84; // type:func
-CARDGAME_scoreIfManyInHand = 0x80083FC8; // type:func
-CARDGAME_scoreIfDeckLeft = 0x8008400C; // type:func
-CARDGAME_scoreIfSlotFree = 0x8008404C; // type:func
+CARDGAME_jumpIfLastSide = 0x80083F48; // type:func
+CARDGAME_jumpIfFewInHand = 0x80083F84; // type:func
+CARDGAME_jumpIfManyInHand = 0x80083FC8; // type:func
+CARDGAME_jumpIfDeckLeft = 0x8008400C; // type:func
+CARDGAME_jumpIfSlotFree = 0x8008404C; // type:func
 CARDGAME_countDown = 0x80084090; // type:func
-CARDGAME_setUnk440 = 0x800840D0; // type:func
+CARDGAME_chooseNextDraw = 0x800840D0; // type:func
 CARDGAME_markSlotsOfOrder = 0x800840F0; // type:func
 CARDGAME_markBestOpponentSlot = 0x80084188; // type:func
 CARDGAME_stepEffectColorValue = 0x8008423C; // type:func

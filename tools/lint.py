@@ -21,7 +21,8 @@ which an edit elsewhere in the file would make stale. The script exits with
 1 on anything it doesn't list, and warns about what it lists that is fixed
 (fails, with --strict). --update rewrites it. The list may only get shorter:
 --base fails on an entry that the list of the git revision REV doesn't have,
-as tools/shiftcheck.py does.
+as tools/shiftcheck.py does. It compares the entries without their file, so
+that a function moved to another file brings no new entry.
 """
 import argparse
 import collections
@@ -96,6 +97,11 @@ def entries(text):
     return collections.Counter(l for l in text.splitlines() if l and not l.startswith("#"))
 
 
+def without_file(counter):
+    """The entries as "function: [warning] message", whatever file has them."""
+    return collections.Counter(k.split(": ", 1)[1] for k in counter.elements())
+
+
 def main():
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("-v", "--version", default=os.environ.get("VERSION", "eu"))
@@ -128,7 +134,7 @@ def main():
                               capture_output=True, text=True)
         # a revision from before the list has nothing to compare
         if base.returncode == 0:
-            added = known - entries(base.stdout)
+            added = without_file(known) - without_file(entries(base.stdout))
     # only a check of every file knows what is fixed
     new = found - known
     gone = known - found if not args.files else collections.Counter()

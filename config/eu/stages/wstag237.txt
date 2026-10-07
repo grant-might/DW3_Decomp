@@ -1,11 +1,11 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
 func_800A4D48 = 0x800A5E84; // type:func
-D_800A4E44 = 0x800A5F88;
+script300 = 0x800A5F88;
 stageImages = 0x800A602C;
-D_800A4F58 = 0x800A609C;
-D_800A4F60 = 0x800A60A4;
-D_800A4F78 = 0x800A60BC;
-D_800A4F84 = 0x800A60C8;
+actor0Talk0Actions = 0x800A609C;
+actor0Talks = 0x800A60A4;
+actor0Conditions = 0x800A60BC;
+actor0 = 0x800A60C8;
 stageActors = 0x800A60DC;
 stageObjects = 0x800A60E4;
 stageSlots = 0x800A6198;

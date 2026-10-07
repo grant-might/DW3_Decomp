@@ -67,7 +67,7 @@ import Levenshtein
 from elftools.elf.elffile import ELFFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from version import ROOT  # noqa: E402
+from version import ROOT, overlay_parents, stage_entries  # noqa: E402
 
 # confidence thresholds (similarity of the opcode sequences)
 ADJ_SIM = 0.6           # with a neighbour, caller or callee paired
@@ -100,29 +100,14 @@ def settings(version: str) -> dict:
 def stages(version: str) -> list:
     """The stages of config/<version>/stages.txt that have code (a stage
     listed by name alone is a blob)."""
-    out = []
-    for line in (ROOT / "config" / version / "stages.txt").read_text().splitlines():
-        words = line.split("#", 1)[0].split()
-        if len(words) >= 3:
-            out.append(words[0].lower())
-    return out
+    return [words[0].lower() for words in stage_entries(version) if len(words) >= 3]
 
 
 def is_stage(binary: str) -> bool:
     return re.fullmatch(r"wstag\d+", binary) is not None
 
 
-def parents() -> dict:
-    """{overlay: the overlay it loads on top of}, as the Makefile's
-    OVL_PARENT_<name> (every stage's is FIELDSTG)."""
-    make = (ROOT / "Makefile").read_text()
-    out = dict(re.findall(r"^OVL_PARENT_(\w+)\s*:=\s*(\w+)", make, re.M))
-    m = re.search(r"OVL_PARENT_\$\(s\)\s*:=\s*(\w+)", make)
-    out["<stage>"] = m[1] if m else "fieldstg"
-    return out
-
-
-PARENTS = parents()
+PARENTS = overlay_parents()
 
 
 def chain(binary: str) -> list:

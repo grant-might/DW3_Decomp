@@ -23,76 +23,77 @@ s32 CARDGAME_getEffectField(s32 index, u32 field, s32 offset) {
         value = CARDGAME_cardEffects[index].playCondition;
         break;
     case 2:
-        value = CARDGAME_cardEffects[index].unk2;
+        value = CARDGAME_cardEffects[index].message;
         break;
     case 3:
         value = CARDGAME_cardEffects[index].target;
         break;
     case 4:
-        value = CARDGAME_cardEffects[index].texts[offset];
+        value = CARDGAME_cardEffects[index].script[offset];
         break;
     }
     return value;
 }
 
-/* The computer's score: adds score when the last card played was side value's */
-void CARDGAME_scoreIfLastSide(CardBattle *battle, CardScreen *screen, s32 value, s32 score) {
-    if (battle->record.entries[battle->record.entryCount - 1].unk4 == value) {
-        battle->aiScore += score;
+/* The effect script jumps offset steps (effectPos) when the last card played was side value's */
+void CARDGAME_jumpIfLastSide(CardBattle *battle, CardScreen *screen, s32 value, s32 offset) {
+    if (battle->record.plays[battle->record.playCount - 1].side == value) {
+        battle->effectPos += offset;
     }
 }
 
-/* The computer's score: adds score when side holds at most value cards */
-void CARDGAME_scoreIfFewInHand(CardBattle *battle, s32 side, s32 value, s32 score) {
+/* The effect script jumps offset steps (effectPos) when side holds at most value cards */
+void CARDGAME_jumpIfFewInHand(CardBattle *battle, s32 side, s32 value, s32 offset) {
     if (value >= battle->sides[side].pile.handCount) {
-        battle->aiScore += score;
+        battle->effectPos += offset;
     }
 }
 
-/* The computer's score: adds score when side holds more than value cards */
-void CARDGAME_scoreIfManyInHand(CardBattle *battle, s32 side, s32 value, s32 score) {
+/* The effect script jumps offset steps (effectPos) when side holds more than value cards */
+void CARDGAME_jumpIfManyInHand(CardBattle *battle, s32 side, s32 value, s32 offset) {
     if (value < battle->sides[side].pile.handCount) {
-        battle->aiScore += score;
+        battle->effectPos += offset;
     }
 }
 
-/* The computer's score: adds score when side's deck has cards left */
-void CARDGAME_scoreIfDeckLeft(CardBattle *battle, s32 side, s32 score) {
+/* The effect script jumps offset steps (effectPos) when side's deck has cards left */
+void CARDGAME_jumpIfDeckLeft(CardBattle *battle, s32 side, s32 offset) {
     if (battle->sides[side].pile.deckCount > 0) {
-        battle->aiScore += score;
+        battle->effectPos += offset;
     }
 }
 
-/* The computer's score: adds score when side has fewer than six cards out */
-void CARDGAME_scoreIfSlotFree(CardBattle *battle, s32 side, s32 score) {
+/* The effect script jumps offset steps (effectPos) when side has fewer than six cards out */
+void CARDGAME_jumpIfSlotFree(CardBattle *battle, s32 side, s32 offset) {
     if (battle->players[side].slotCount < 6) {
-        battle->aiScore += score;
+        battle->effectPos += offset;
     }
 }
 
-/* Counts unk424 down by the frame time; whether it ran out */
+/* Counts effectStep.time down by the frame time; whether it ran out */
 s32 CARDGAME_countDown(CardBattle *battle, CardScreen *screen) {
-    battle->unk424 -= GFX.funcs.getFrameTime();
-    return battle->unk424 <= 0;
+    battle->effectStep.time -= GFX.funcs.getFrameTime();
+    return battle->effectStep.time <= 0;
 }
 
-/* unk440 becomes the player's deck top (which 0) or unk41C */
-void CARDGAME_setUnk440(CardBattle *battle, CardScreen *screen, s32 which) {
+/* effectStep.choice becomes the card side which draws next: the player's deck
+   top, or the opponent's first card held back (reserveStart) */
+void CARDGAME_chooseNextDraw(CardBattle *battle, CardScreen *screen, s32 which) {
     if (which == 0) {
-        battle->unk440 = battle->sides[0].pile.deckTop;
+        battle->effectStep.choice = battle->sides[0].pile.deckTop;
     } else {
-        battle->unk440 = battle->unk41C;
+        battle->effectStep.choice = battle->reserveStart;
     }
 }
 
-/* Marks (unk46F) the slots whose order is the last card played's unk6 */
+/* Marks (effectStep.marked) the slots whose order is the last card played's target */
 void CARDGAME_markSlotsOfOrder(CardBattle *battle, CardScreen *screen) {
-    s32 entry = battle->record.entryCount - 1;
+    s32 entry = battle->record.playCount - 1;
     CardSlot *slot;
     s32 i;
 
     for (i = 0; i < 12; i++) {
-        battle->unk46F[i] = 0;
+        battle->effectStep.marked[i] = 0;
         if (i < 6) {
             if (i >= battle->players[0].slotCount) {
                 continue;
@@ -104,13 +105,13 @@ void CARDGAME_markSlotsOfOrder(CardBattle *battle, CardScreen *screen) {
             }
             slot = &battle->players[1].slots[i - 6];
         }
-        if (slot->order == battle->record.entries[entry].unk6) {
-            battle->unk46F[i] = 1;
+        if (slot->order == battle->record.plays[entry].target) {
+            battle->effectStep.marked[i] = 1;
         }
     }
 }
 
-/* Marks the opponent's slot that unk820 rates highest, and keeps it in unk440 */
+/* Marks the opponent's slot that scoreHand rates highest, and keeps it in effectStep.choice */
 void CARDGAME_markBestOpponentSlot(CardBattle *battle) {
     s32 best = 0;
     s32 bestIndex = 6;
@@ -118,15 +119,15 @@ void CARDGAME_markBestOpponentSlot(CardBattle *battle) {
     s32 i;
 
     for (i = 0; i < 12; i++) {
-        battle->unk46F[i] = 0;
+        battle->effectStep.marked[i] = 0;
         if (i >= 6) {
-            value = battle->unk820(battle, 1, 1 << (i - 6));
+            value = battle->scoreHand(battle, 1, 1 << (i - 6));
             if (best < value) {
                 best = value;
-                battle->unk46F[bestIndex] = 0;
+                battle->effectStep.marked[bestIndex] = 0;
                 bestIndex = i;
-                battle->unk440 = i;
-                battle->unk46F[i] = 1;
+                battle->effectStep.choice = i;
+                battle->effectStep.marked[i] = 1;
             }
         }
     }
@@ -139,7 +140,7 @@ s32 CARDGAME_stepEffectColorValue(CardBattle *battle, CardScreen *screen) {
     u8 b = 0;
     s32 state;
 
-    switch (battle->unk420) {
+    switch (battle->effectStep.id) {
     case 30:
     case 36:
         b = 0;
@@ -162,22 +163,22 @@ s32 CARDGAME_stepEffectColorValue(CardBattle *battle, CardScreen *screen) {
         b = 4;
         break;
     }
-    state = battle->unk420;
+    state = battle->effectStep.id;
     if (state >= 30) {
         if (state < 36) {
-            a = battle->record.entries[battle->record.entryCount - 1].unk4;
+            a = battle->record.plays[battle->record.playCount - 1].side;
         } else if (state < 41) {
-            a = battle->record.entries[battle->record.entryCount - 1].unk4 ^ 1;
+            a = battle->record.plays[battle->record.playCount - 1].side ^ 1;
         }
     }
     return CARDGAME_stepColorValue(battle, screen, a, b);
 }
 
-/* Starts the effect step battle->unk421 asks for, then runs the current one (battle->unk420) */
+/* Starts the effect step battle->effectStep.next asks for, then runs the current one (battle->effectStep.id) */
 void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     CardDrawer drawer;
-    s32 side = battle->record.entries[battle->record.entryCount - 1].unk4;
-    s32 nextSide = battle->record.entries[battle->record.entryCount].unk4;
+    s32 side = battle->record.plays[battle->record.playCount - 1].side;
+    s32 nextSide = battle->record.plays[battle->record.playCount].side;
     s32 other = side ^ 1;
     s32 count;
     s32 result;
@@ -185,10 +186,10 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     s32 j;
     s32 index;
 
-    if (battle->unk421 != 0) {
-        switch (battle->unk421) {
+    if (battle->effectStep.next != 0) {
+        switch (battle->effectStep.next) {
         case 1:
-            battle->unk424 = 45;
+            battle->effectStep.time = 45;
             break;
         case 18:
             CARDGAME_startPlayCard(battle, screen, 0);
@@ -318,7 +319,7 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
             CARDGAME_startSlotSweep(battle, screen);
             break;
         case 93:
-            battle->stepState = 1;
+            battle->effectStep.state = 1;
             break;
         case 90:
             CARDGAME_startTotals(battle, screen);
@@ -393,28 +394,28 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
             CARDGAME_moveMarkedSlots(battle, screen, 0xFF9D0000, 2);
             break;
         case 106:
-            battle->unk306 = 1;
-            battle->unk424 = 10;
+            battle->fade = 1;
+            battle->effectStep.time = 10;
             break;
         case 107:
-            battle->unk306 = 2;
-            battle->unk424 = 10;
+            battle->fade = 2;
+            battle->effectStep.time = 10;
             break;
         case 108:
-            battle->unk306 = 3;
-            battle->unk424 = 10;
+            battle->fade = 3;
+            battle->effectStep.time = 10;
             break;
         case 109:
-            battle->unk306 = 4;
-            battle->unk424 = 10;
+            battle->fade = 4;
+            battle->effectStep.time = 10;
             break;
         case 110:
-            battle->unk306 = 5;
-            battle->unk424 = 15;
+            battle->fade = 5;
+            battle->effectStep.time = 15;
             break;
         case 111:
-            battle->unk306 = 6;
-            battle->unk424 = 10;
+            battle->fade = 6;
+            battle->effectStep.time = 10;
             break;
         case 152:
             CARDGAME_startQuestion(battle, screen, 14);
@@ -432,13 +433,13 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
             CARDGAME_startHandPick(battle, screen, &battle->sides[0].pile);
             break;
         case 157:
-            battle->unk444 = 0;
+            battle->effectStep.count = 0;
             break;
         case 158:
             CARDGAME_startPanelsStep(battle, screen);
             break;
         case 153:
-            CARDGAME_startHandPick(battle, screen, &battle->sides[battle->record.unk19].pile);
+            CARDGAME_startHandPick(battle, screen, &battle->sides[battle->record.turnSide].pile);
             break;
         case 159:
         case 160:
@@ -577,148 +578,148 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
             CARDGAME_setupSideChoice(battle, screen, nextSide);
             break;
         }
-        battle->unk420 = battle->unk421;
-        battle->unk421 = 0;
+        battle->effectStep.id = battle->effectStep.next;
+        battle->effectStep.next = 0;
     }
 
-    switch (battle->unk420) {
+    switch (battle->effectStep.id) {
     case 0:
         break;
     case 1:
         if (CARDGAME_countDown(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 2:
-        battle->unk2F4 = 2;
-        battle->aiScore += 2;
+        battle->run = CARD_RUN_RESOLVE;
+        battle->effectPos += 2;
         break;
     case 3:
-        battle->unk4E2 = 2;
-        battle->unk2F4 = 2;
-        battle->unk4E4 = battle->aiScore;
+        battle->loopCount = 2;
+        battle->run = CARD_RUN_RESOLVE;
+        battle->loopStart = battle->effectPos;
         break;
     case 4:
-        battle->unk4E2 = 3;
-        battle->unk2F4 = 2;
-        battle->unk4E4 = battle->aiScore;
+        battle->loopCount = 3;
+        battle->run = CARD_RUN_RESOLVE;
+        battle->loopStart = battle->effectPos;
         break;
     case 5:
-        battle->unk4E2 = 5;
-        battle->unk2F4 = 2;
-        battle->unk4E4 = battle->aiScore;
+        battle->loopCount = 5;
+        battle->run = CARD_RUN_RESOLVE;
+        battle->loopStart = battle->effectPos;
         break;
     case 6:
-        if (--battle->unk4E2 > 0) {
-            battle->aiScore = battle->unk4E4;
+        if (--battle->loopCount > 0) {
+            battle->effectPos = battle->loopStart;
         }
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 7:
-        CARDGAME_scoreIfLastSide(battle, screen, 1, 1);
-        battle->unk2F4 = 2;
+        CARDGAME_jumpIfLastSide(battle, screen, 1, 1);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 8:
-        CARDGAME_scoreIfLastSide(battle, screen, 1, 2);
-        battle->unk2F4 = 2;
+        CARDGAME_jumpIfLastSide(battle, screen, 1, 2);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 15:
         initCardDrawer(&drawer);
         for (i = 0; i < battle->sides[other].pile.handCount; i++) {
             drawer.setCard(battle->cards[battle->sides[other].pile.hand[i]] + 1);
             if (drawer.card->color != 5) {
-                battle->aiScore -= 4;
+                battle->effectPos -= 4;
                 break;
             }
         }
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 9:
-        CARDGAME_scoreIfFewInHand(battle, side, 10, 9);
-        battle->unk2F4 = 2;
+        CARDGAME_jumpIfFewInHand(battle, side, 10, 9);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 10:
-        CARDGAME_scoreIfManyInHand(battle, side, 10, -9);
-        battle->unk2F4 = 2;
+        CARDGAME_jumpIfManyInHand(battle, side, 10, -9);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 11:
-        CARDGAME_scoreIfFewInHand(battle, side, 3, 9);
-        battle->unk2F4 = 2;
+        CARDGAME_jumpIfFewInHand(battle, side, 3, 9);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 12:
-        CARDGAME_scoreIfManyInHand(battle, side, 3, -9);
-        battle->unk2F4 = 2;
+        CARDGAME_jumpIfManyInHand(battle, side, 3, -9);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 16:
-        CARDGAME_scoreIfSlotFree(battle, side, 5);
-        battle->unk2F4 = 2;
+        CARDGAME_jumpIfSlotFree(battle, side, 5);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 13:
-        CARDGAME_scoreIfManyInHand(battle, side, 2, 4);
-        battle->unk2F4 = 2;
+        CARDGAME_jumpIfManyInHand(battle, side, 2, 4);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 14:
-        CARDGAME_scoreIfDeckLeft(battle, other, 2);
-        battle->unk2F4 = 2;
+        CARDGAME_jumpIfDeckLeft(battle, other, 2);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 17:
-        battle->record.entries[battle->record.entryCount - 1].unk4 ^= 1;
-        battle->unk2F4 = 2;
+        battle->record.plays[battle->record.playCount - 1].side ^= 1;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 18:
     case 19:
         if (CARDGAME_stepPlayCard(battle, screen)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 20:
         if (CARDGAME_stepStart(battle, screen)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 27:
         if (CARDGAME_stepSwap(battle, screen)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 21:
         if (CARDGAME_stepAttack(battle, screen, 0)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 22:
         if (CARDGAME_stepAttack(battle, screen, 1)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 23:
         if (CARDGAME_stepDiscardAllSlots(battle, screen, 0)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 24:
         if (CARDGAME_stepDiscardAllSlots(battle, screen, 1)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 25:
         if (CARDGAME_stepSlotTotal(battle, screen, 0)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 26:
         if (CARDGAME_stepSlotTotal(battle, screen, 1)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 28:
         if (CARDGAME_stepRoundEnd(battle, screen, 0)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 29:
         if (CARDGAME_stepRoundEnd(battle, screen, 1)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 30:
@@ -733,177 +734,177 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     case 39:
     case 40:
         if (CARDGAME_stepEffectColorValue(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 41:
         if (CARDGAME_drainColorValues(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 42:
         if (CARDGAME_keepLastCard(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 43:
     case 45:
         if (CARDGAME_stepClosePanels(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 44:
     case 46:
         if (CARDGAME_stepOpenPanels(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 47:
         if (side != 0) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         } else if (CARDGAME_waitMessage(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 48:
         if (CARDGAME_waitMessage(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 49:
         if (side != 0) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         } else if (CARDGAME_waitMessage(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 52:
         CARDGAME_markPileCardsByColor(battle, screen, side, 3, 0xFD);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 53:
         CARDGAME_markPileCardsByColor(battle, screen, side, 3, 0xFE);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 50:
         CARDGAME_markPileCardsByColor(battle, screen, side, 3, 0xFF);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 51:
         CARDGAME_markPileCardsByColor(battle, screen, other, 3, 0xFF);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 55:
         CARDGAME_markPileCardsByColor(battle, screen, side, 2, 0xFF);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 54:
         CARDGAME_markPileCardsByColor(battle, screen, other, 2, 0xFF);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 56:
         CARDGAME_markPileCardsByColor(battle, screen, other, 2, 0x81);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 57:
         CARDGAME_markPileCardsByColor(battle, screen, other, 2, 0xBF);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 58:
         CARDGAME_markPileCardsByColor(battle, screen, side, 4, 0xFF);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 59:
         CARDGAME_markSlotsByColor(battle, screen, side, 0x3FC);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 60:
         CARDGAME_markSlotsByColor(battle, screen, side, 0x2FC);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 61:
         CARDGAME_markSlotsByColor(battle, screen, side, 0x1FC);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 62:
         if (CARDGAME_discardPickedCard(battle, screen, other, 0)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 63:
         if (CARDGAME_discardPickedCard(battle, screen, side, 0)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 64:
         if (CARDGAME_discardPickedCard(battle, screen, other, 1)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 65:
         if (CARDGAME_discardPrevCard(battle, screen)) {
-            battle->unk4DD = 1;
-            battle->unk2F4 = 2;
+            battle->prevDiscarded = 1;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 66:
         if (CARDGAME_drawFromDeck(battle, screen, side, 3)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 67:
         if (CARDGAME_drawFromDeck(battle, screen, side, 4)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 68:
         if (CARDGAME_returnUsedCards(battle, screen, side)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 69:
     case 70:
     case 71:
         if (CARDGAME_markDrawnCards(battle, screen, side)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 72:
         if (CARDGAME_drawNewCards(battle, screen, side)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 73:
         if (CARDGAME_discardHand(battle, screen, side)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 74:
         for (j = 0; j < battle->sides[other].pile.handCount; j++) {
-            if (battle->unk446[j] != 0) {
-                battle->unk440 = j;
+            if (battle->effectStep.eligible[j] != 0) {
+                battle->effectStep.choice = j;
                 break;
             }
         }
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 75:
-        CARDGAME_setUnk440(battle, screen, other);
-        battle->unk2F4 = 2;
+        CARDGAME_chooseNextDraw(battle, screen, other);
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 76:
         if (CARDGAME_removeMarkedSlots(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 77:
         if (CARDGAME_stepSlotSweep(battle, screen, 0)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 78:
         if (CARDGAME_stepSlotSweep(battle, screen, 1)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 79:
@@ -915,43 +916,43 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     case 85:
     case 86:
         if (CARDGAME_moveSlotCard(battle, screen, side)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 87:
         if (CARDGAME_flipSlotCard(battle, screen, side)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 88:
         if (CARDGAME_waitFor(battle, screen, 36)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 89:
         if (CARDGAME_waitFor(battle, screen, 28)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 90:
         if (CARDGAME_stepTotals(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 91:
         CARDGAME_markSlotsOfOrder(battle, screen);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 92:
         CARDGAME_markTargetSlots(battle, screen);
-        battle->unk2F4 = 2;
+        battle->run = CARD_RUN_RESOLVE;
         break;
     case 93:
         result = CARDGAME_countSlotValues(battle, screen);
         if (result == 1) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         } else if (result == 2) {
-            battle->unk421 = 77;
+            battle->effectStep.next = 77;
         }
         break;
     case 94:
@@ -967,7 +968,7 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     case 104:
     case 105:
         if (CARDGAME_stepSlotStats(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 106:
@@ -977,7 +978,7 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     case 110:
     case 111:
         if (CARDGAME_countDown(battle, screen)) {
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 112:
@@ -997,15 +998,15 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     case 126:
         result = CARDGAME_stepPileChoice(battle, screen);
         if (result != -1) {
-            battle->record.unk1A = result;
-            battle->unk2F4 = 0;
+            battle->record.answer = result;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 127:
         result = CARDGAME_stepPileChoice(battle, screen);
         if (result != -1) {
-            battle->record.unk1A = result;
-            battle->unk2F4 = 0;
+            battle->record.answer = result;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 128:
@@ -1013,66 +1014,66 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     case 130:
         result = CARDGAME_stepPileChoice(battle, screen);
         if (result != -1) {
-            battle->record.unk1A = result;
-            battle->unk2F4 = 0;
+            battle->record.answer = result;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 131:
     case 132:
         result = CARDGAME_stepPreviousCardChoice(battle, screen);
         if (result != -1) {
-            battle->record.unk1A = result;
-            battle->unk2F4 = 0;
+            battle->record.answer = result;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 135:
         CARDGAME_markSlotsByColor(battle, screen, nextSide, 0x180);
-        battle->unk421 = 141;
+        battle->effectStep.next = 141;
         break;
     case 134:
         CARDGAME_markSlotsByColor(battle, screen, nextSide, 0x1BC);
-        battle->unk421 = 141;
+        battle->effectStep.next = 141;
         break;
     case 133:
         CARDGAME_markSlotsByColor(battle, screen, nextSide, 0x1FC);
-        battle->unk421 = 141;
+        battle->effectStep.next = 141;
         break;
     case 138:
         CARDGAME_markSlotsByColor(battle, screen, nextSide, 0x280);
-        battle->unk421 = 141;
+        battle->effectStep.next = 141;
         break;
     case 137:
         CARDGAME_markSlotsByColor(battle, screen, nextSide, 0x2BC);
-        battle->unk421 = 141;
+        battle->effectStep.next = 141;
         break;
     case 136:
         CARDGAME_markSlotsByColor(battle, screen, nextSide, 0x2FC);
-        battle->unk421 = 141;
+        battle->effectStep.next = 141;
         break;
     case 139:
         CARDGAME_markSlotsByColor(battle, screen, nextSide, 0x3FC);
-        battle->unk421 = 141;
+        battle->effectStep.next = 141;
         break;
     case 140:
         CARDGAME_markSlotsByColor(battle, screen, nextSide, 0x380);
-        battle->unk421 = 141;
+        battle->effectStep.next = 141;
         break;
     case 141:
         switch (CARDGAME_pickTableCard(battle, screen)) {
         case 1:
-            battle->record.unk1A = 0;
-            battle->unk2F4 = 0;
+            battle->record.answer = 0;
+            battle->run = CARD_RUN_PHASE;
             break;
         case 2:
-            index = battle->unk440;
+            index = battle->effectStep.choice;
             if (index < 6) {
-                battle->record.entries[battle->record.entryCount].unk6 = battle->players[0].slots[index].order;
+                battle->record.plays[battle->record.playCount].target = battle->players[0].slots[index].order;
             } else {
                 index -= 6;
-                battle->record.entries[battle->record.entryCount].unk6 = battle->players[1].slots[index].order;
+                battle->record.plays[battle->record.playCount].target = battle->players[1].slots[index].order;
             }
-            battle->record.unk1A = 1;
-            battle->unk2F4 = 0;
+            battle->record.answer = 1;
+            battle->run = CARD_RUN_PHASE;
             break;
         }
         break;
@@ -1081,46 +1082,46 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
         case 0:
             break;
         case 1:
-            battle->record.unk1A = 1;
-            battle->unk2F4 = 0;
+            battle->record.answer = 1;
+            battle->run = CARD_RUN_PHASE;
             break;
         case 2:
-            battle->record.unk1A = 0;
-            battle->unk2F4 = 0;
+            battle->record.answer = 0;
+            battle->run = CARD_RUN_PHASE;
             break;
         }
         break;
     case 153:
-        result = CARDGAME_stepChooseCards(battle, screen, &battle->sides[battle->record.unk19].pile);
+        result = CARDGAME_stepChooseCards(battle, screen, &battle->sides[battle->record.turnSide].pile);
         if (result != -1) {
-            battle->record.unk1A = result;
-            battle->unk2F4 = 0;
+            battle->record.answer = result;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 154:
         if (CARDGAME_stepChooseCards(battle, screen, &battle->sides[0].pile) != -1) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 157:
         if (CARDGAME_pickComputerCards(battle, screen)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 155:
     case 156:
         if (CARDGAME_stepChooseCards(battle, screen, &battle->sides[0].pile) != -1) {
-            battle->unk2F4 = 3;
+            battle->run = CARD_RUN_MENU;
         }
         break;
     case 168:
         if (CARDGAME_viewTable(battle, screen)) {
-            battle->unk2F4 = 3;
+            battle->run = CARD_RUN_MENU;
         }
         break;
     case 158:
         if (CARDGAME_stepTally(battle, screen)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 159:
@@ -1132,72 +1133,72 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     case 165:
     case 166:
         if (CARDGAME_stepMessage(battle, screen)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 167:
         if (CARDGAME_drawFirstPlayer(battle, screen)) {
-            battle->unk2F4 = 0;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 172:
         if (side == 0) {
             if (CARDGAME_chooseCard(battle, screen, 2)) {
-                battle->unk2F4 = 2;
+                battle->run = CARD_RUN_RESOLVE;
             }
         } else {
             CARDGAME_pickComputerDeckCard(battle, screen);
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 173:
         if (side == 0) {
             if (CARDGAME_chooseCard(battle, screen, 0)) {
-                battle->unk2F4 = 2;
+                battle->run = CARD_RUN_RESOLVE;
             }
         } else {
             CARDGAME_pickLowestPlayerCard(battle, screen);
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 169:
         if (side == 0) {
             if (CARDGAME_chooseCard(battle, screen, 0)) {
-                battle->unk2F4 = 2;
+                battle->run = CARD_RUN_RESOLVE;
             }
         } else {
             CARDGAME_pickBestPileCard(battle, screen, 1);
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 170:
         if (side == 0) {
             if (CARDGAME_chooseCard(battle, screen, 0)) {
-                battle->unk2F4 = 2;
+                battle->run = CARD_RUN_RESOLVE;
             }
         } else {
             CARDGAME_pickBestPileCard(battle, screen, 0);
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 171:
         if (side == 0) {
             if (CARDGAME_chooseCard(battle, screen, 0)) {
-                battle->unk2F4 = 2;
+                battle->run = CARD_RUN_RESOLVE;
             }
         } else {
             CARDGAME_pickBestPileCard(battle, screen, 1);
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 174:
         if (side == 0) {
             if (CARDGAME_pickTableCard(battle, screen)) {
-                battle->unk2F4 = 2;
+                battle->run = CARD_RUN_RESOLVE;
             }
         } else {
             CARDGAME_markBestOpponentSlot(battle);
-            battle->unk2F4 = 2;
+            battle->run = CARD_RUN_RESOLVE;
         }
         break;
     case 142:
@@ -1210,28 +1211,28 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
     case 149:
         result = CARDGAME_stepTargetSlots(battle, screen);
         if (result != -1) {
-            battle->record.unk1A = result;
-            battle->unk2F4 = 0;
+            battle->record.answer = result;
+            battle->run = CARD_RUN_PHASE;
         }
         break;
     case 150:
         CARDGAME_markPileCardsByColor(battle, screen, nextSide, 2, 0xFD);
-        battle->unk421 = 151;
+        battle->effectStep.next = 151;
         break;
     case 151:
         switch (CARDGAME_chooseCard(battle, screen, 1)) {
         case 1:
-            battle->record.unk1A = 0;
-            battle->unk2F4 = 0;
+            battle->record.answer = 0;
+            battle->run = CARD_RUN_PHASE;
             break;
         case 2:
             if (nextSide == 0) {
-                battle->record.entries[battle->record.entryCount].unk6 = battle->sides[0].pile.hand[battle->unk440];
+                battle->record.plays[battle->record.playCount].target = battle->sides[0].pile.hand[battle->effectStep.choice];
             } else {
-                battle->record.entries[battle->record.entryCount].unk6 = battle->sides[1].pile.hand[battle->unk440];
+                battle->record.plays[battle->record.playCount].target = battle->sides[1].pile.hand[battle->effectStep.choice];
             }
-            battle->record.unk1A = 1;
-            battle->unk2F4 = 0;
+            battle->record.answer = 1;
+            battle->run = CARD_RUN_PHASE;
             break;
         }
         break;
@@ -1239,7 +1240,7 @@ void CARDGAME_runEffectStep(CardBattle *battle, CardScreen *screen) {
 }
 
 /* The data: the cards' effects, this object's one table */
-CardTableEntry CARDGAME_cardEffects[60] = {
+CardEffect CARDGAME_cardEffects[60] = {
     { 0x91, 0x0A, 0x2F, 0x04, { 0x6A, 0x5C, 0x59, 0x4D, 0x4C } },
     { 0x70, 0x00, 0x00, 0x09, { 0x03, 0x10, 0x31, 0x3D, 0xAE, 0x4D, 0x4C, 0x4F, 0x06 } },
     { 0x8E, 0x0A, 0x2F, 0x01, { 0x5C, 0x5E } },

@@ -20,5 +20,5 @@ void drawStageEffect(StageEffect *task, void *arg, s32 idx) {
     drawer.setTexture(0x140, 0x100);
     drawer.setLayer(layer, depth);
     drawer.setClutRow(sprite->clutRow);
-    drawer.draw(FILE_CACHE.getEntry(D_800990B4.sheetEntry), sprite->frame, x, y);
+    drawer.draw(FILE_CACHE.getEntry(FIELDSTG_state.sheetEntry), sprite->frame, x, y);
 }
