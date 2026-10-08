@@ -185,3 +185,5 @@ three.
 
 The PsyQ functions are named after the
 [PsyQ 4.7 signatures](https://github.com/lab313ru/psx_psyq_signatures).
+
+Decomp credit to JuanDav
