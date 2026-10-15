@@ -18,7 +18,7 @@ every struct defined under include/ and src/:
 - `STRUCT.OLD` in a comment becomes `STRUCT.NEW` everywhere.
 
 --files limits the uses (not the definition) to the files that match one of
-the globs, relative to the repository (`src/cardgame/*.c`).
+the globs, relative to the repository (`src/cardgame/card_battle/*.c`).
 
 A spec file holds one rename per line, `STRUCT OLD NEW [--via REGEX]...
 [--files GLOB]...` (shell quoting), and comment lines that start with `#`;
@@ -142,18 +142,19 @@ def rename(texts, struct, old, new, vias, globs, dry):
     if not defs:
         sys.exit(f"struct {struct} isn't defined")
     have = members[struct]
-    if old not in have:
-        if new in have:
-            return 0  # done before
+    # renamed before (in a branch rebased onto this one, say): the
+    # definition is done, but uses written since may still say OLD
+    done = old not in have
+    if done and new not in have:
         sys.exit(f"{struct} has no field {old}")
-    if new in have:
+    if not done and new in have:
         sys.exit(f"{struct} already has a field {new}")
     shared = sorted(n for n, m in members.items() if n != struct and old in m)
     if shared and not vias:
         sys.exit(f"{old} is a field of {', '.join(shared)} too: give --via")
     changed = 0
 
-    for path, (start, end) in defs:
+    for path, (start, end) in [] if done else defs:
         text = texts[path]
         body = text[start:end]
         new_body = rename_in_body(body, old, new)

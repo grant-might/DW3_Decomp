@@ -1,13 +1,13 @@
 #!/usr/bin/env python3
 """Name, in another version (eu), the symbols a shared C file uses.
 
-    tools/version_symbols.py <version> src/<binary>/<module>.c ... [--write]
+    tools/version_symbols.py <version> src/<folder>/<module>.c ... [--write]
 
 A module that becomes C in a version links against the names its C uses:
 every function and datum it calls or reads must have its name in that
 version's symbol files, at that version's address. This reads them from the
-module's object (build/<version>/src/<module>.c.o, so build it first: make
-VERSION=<version> build/<version>/src/<module>.c.o, with the module a c
+module's object (build/<version>/src/<folder>/<module>.c.o, so build it
+first: make VERSION=<version> build/<version>/src/<folder>/<module>.c.o, with the module a c
 segment in the version's config and listed in its .mk) and from the
 original: each relocation of the object (a jal, a %hi/%lo pair, a pointer in
 its data) sits where the original has the same instruction or word, which
@@ -56,6 +56,7 @@ from elftools.elf.elffile import ELFFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from match_versions import ROOT, chain, is_stage  # noqa: E402
+from version import unit_path  # noqa: E402
 
 LINE = re.compile(r"^\s*(?:/\*.*\*/\s*)?([A-Za-z_][\w.]*)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\s*;\s*(?://(.*)|/\*(.*)\*/)?\s*$")
 AUTO_NAME = re.compile(r"^(?:[A-Z]+_)?(?:func|D|jtbl|jlabel)_[0-9A-F]{8}$")
@@ -88,12 +89,14 @@ def config_path(version: str, binary: str) -> Path:
 
 
 def source_module(source: str) -> tuple:
-    """(binary, module, object) of the C file SOURCE: src/main/menu/inn.c is
-    main's menu/inn, src/stages/wstag200.c the stage's wstag200."""
-    rel = Path(source).resolve().relative_to(ROOT / "src")
-    module = "/".join(rel.parts[1:])[: -len(".c")]
-    binary = rel.stem if rel.parts[0] == "stages" else rel.parts[0]
-    return binary, module, rel.with_suffix(".c.o")
+    """(binary, module, object) of the C file SOURCE: src/engine/menu/inn.c is
+    main's menu/inn, src/field/stages/central_sector/wstag200.c the stage
+    wstag200's central_sector/wstag200."""
+    path = Path(source).resolve()
+    binary, module = unit_path(path).split("/", 1)
+    if binary == "stages":
+        binary = path.stem
+    return binary, module, path.relative_to(ROOT / "src").with_suffix(".c.o")
 
 
 def read_names(path: Path) -> list:

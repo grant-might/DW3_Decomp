@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Writes a built executable and overlays into a copy of the disc image.
 
-    VERSION=<version> patch_disc.py IMAGE LINKDIR OUT
+    VERSION=<version> patch_disc.py [--fit] IMAGE LINKDIR OUT
 
 Copies the original disc image IMAGE (a raw .bin of 2352-byte sectors) to
 OUT/disc.bin, writes over it the executable and the AAA/PRO/*.PRO files that
@@ -9,10 +9,15 @@ LINKDIR (build/<version>, or a padding build's build/<version>/pad<pad>)
 holds, and writes OUT/disc.cue for it. The files are written in place, so
 each one must keep its size, as a padding build keeps every section's: the
 rest of the disc (the filesystem, the data, the XA audio and the videos)
-stays as it is. Every sector written gets its Mode 2 Form 1 EDC and ECC
-again. Writing the build itself back gives the original image, byte for
-byte. OUT must be under the repository's build/, so that the copy of the
-disc never ends up anywhere else.
+stays as it is. With --fit, for a build with another toolchain
+(build/<version>/gcc), a file may be smaller, and is padded with zeros to
+its size on the disc: the game loads each of its files as the number of
+sectors that its file table gives, the original's (getFileSectorCount,
+src/engine/file/file_table.c), and the BIOS the executable's .text size from
+its header. Every sector written gets its Mode 2 Form 1 EDC and ECC again.
+Writing the build itself back gives the original image, byte for byte. OUT
+must be under the repository's build/, so that the copy of the disc never
+ends up anywhere else.
 
 The sector layout, the EDC and the ECC follow psx-spx
 (https://psx-spx.consoledev.net/ps1/cdr/cdromformat/#cdrom-sector-encoding),
@@ -142,8 +147,9 @@ def files(image):
     return found
 
 
-def patch(image, linkdir, out):
-    """Writes OUT/disc.bin and OUT/disc.cue, and returns the image's path."""
+def patch(image, linkdir, out, fit=False):
+    """Writes OUT/disc.bin and OUT/disc.cue, and returns the image's path;
+    with FIT, a file smaller than the disc's is padded to its size."""
     out = Path(out).resolve()
     if not out.is_relative_to(ROOT / "build"):
         sys.exit(f"{out} isn't under {ROOT / 'build'}")
@@ -162,8 +168,9 @@ def patch(image, linkdir, out):
         for name in built:
             data = (linkdir / name).read_bytes()
             lba, length = on_disc[name]
-            if len(data) != length:
+            if len(data) != length and not (fit and len(data) < length):
                 sys.exit(f"{name}: {len(data):#x} bytes, {length:#x} on the disc")
+            data += bytes(length - len(data))
             for i in range(0, length, DATA_SIZE):
                 f.seek((lba + i // DATA_SIZE) * SECTOR)
                 sector = bytearray(f.read(SECTOR))
@@ -181,11 +188,12 @@ def patch(image, linkdir, out):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    parser.add_argument("--fit", action="store_true", help="pad a smaller file to its size on the disc")
     parser.add_argument("image", type=Path)
     parser.add_argument("linkdir", type=Path)
     parser.add_argument("out", type=Path)
     args = parser.parse_args()
-    patch(args.image, args.linkdir, args.out)
+    patch(args.image, args.linkdir, args.out, args.fit)
 
 
 if __name__ == "__main__":

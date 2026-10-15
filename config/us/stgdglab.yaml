@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/us/stgdglab
-  src_path: src/stgdglab
+  src_path: src/menus/digimon_lab
   build_path: build/us
 
   ld_script_path: build/us/generated/stgdglab.ld
@@ -57,8 +57,8 @@ segments:
       - [0x1AC, .rodata, party_screen]
       - [0x1DC, .rodata, skill_panel]
       - [0x280, .rodata, entry_list]
-      # the modules (src/stgdglab/), in the order they link
-      - [0x298, c, stgdglab]
+      # the modules (src/menus/digimon_lab/), in the order they link
+      - [0x298, c, scene]
       - [0x684, c, recipe_screen]
       - [0x2914, c, entry_panel]
       - [0x45B4, c, slot_screen]

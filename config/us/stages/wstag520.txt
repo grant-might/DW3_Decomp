@@ -176,3 +176,8 @@ actor37 = 0x800A5C7C;
 actor38 = 0x800A5C90;
 actor39 = 0x800A5CA4;
 actor40 = 0x800A5CB8;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent260 = 0x800A4D94; // type:func
+endEvent261 = 0x800A4DE0; // type:func
+endEvent695 = 0x800A4E14; // type:func

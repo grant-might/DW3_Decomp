@@ -66,3 +66,16 @@ actor0Conditions = 0x800A5F28;
 actor1Conditions = 0x800A5F34;
 actor0 = 0x800A5F40;
 actor1 = 0x800A5F54;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+drawBackground = 0x800A4CA4; // type:func
+updateBackground = 0x800A4E08; // type:func
+createBackground = 0x800A4F10; // type:func
+endEvent1020 = 0x800A5660; // type:func
+endEvent1030 = 0x800A56AC; // type:func
+endEvent1040 = 0x800A56F8; // type:func
+endEvent1041 = 0x800A5724; // type:func
+endEvent1050 = 0x800A5750; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateStageSpots = 0x800A5BD0;

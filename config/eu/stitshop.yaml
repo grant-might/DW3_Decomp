@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/eu/stitshop
-  src_path: src/stitshop
+  src_path: src/menus/item_shop
   build_path: build/eu
 
   ld_script_path: build/eu/generated/stitshop.ld
@@ -55,8 +55,8 @@ segments:
       - [0x400, .rodata, info]
       - [0x4E8, .rodata, shop]
       - [0x548, .rodata, equip]
-      # the modules (src/stitshop/), in the order they link
-      - [0x56C, c, stitshop]
+      # the modules (src/menus/item_shop/), in the order they link
+      - [0x56C, c, scene]
       - [0x95C, c, trade]
       - [0x4778, c, item_list]
       - [0x5DB4, c, info]

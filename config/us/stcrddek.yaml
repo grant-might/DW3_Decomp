@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/us/stcrddek
-  src_path: src/stcrddek
+  src_path: src/cardgame/deck_editor
   build_path: build/us
 
   ld_script_path: build/us/generated/stcrddek.ld
@@ -53,8 +53,8 @@ segments:
       - [0x0, .rodata, editor]
       - [0x100, .rodata, name_entry]
       - [0x3A8, .rodata, screen]
-      # the modules (src/stcrddek/), in the order they link
-      - [0x540, c, stcrddek]
+      # the modules (src/cardgame/deck_editor/), in the order they link
+      - [0x540, c, scene]
       - [0x928, c, deck_cards]
       - [0xCCC, c, editor]
       - [0x3AAC, c, name_entry]

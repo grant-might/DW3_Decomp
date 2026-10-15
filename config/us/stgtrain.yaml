@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/us/stgtrain
-  src_path: src/stgtrain
+  src_path: src/menus/gym
   build_path: build/us
 
   ld_script_path: build/us/generated/stgtrain.ld
@@ -54,9 +54,9 @@ segments:
       - [0xD4, .rodata, result]
       - [0x1A0, .rodata, session]
       - [0x270, .rodata, menu]
-      # the modules (src/stgtrain/), in the order they link
+      # the modules (src/menus/gym/), in the order they link
       - [0x3A8, c, sprite]
-      - [0xC80, c, stgtrain]
+      - [0xC80, c, scene]
       - [0xE3C, c, screen]
       - [0x3498, c, result]
       - [0x5344, c, session]

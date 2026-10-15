@@ -29,3 +29,13 @@ actor3 = 0x800A75B0;
 actor4 = 0x800A75C4;
 actor5 = 0x800A75D8;
 actor6 = 0x800A75EC;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateEvent1602 = 0x800A60FC; // type:func
+startEvent1602 = 0x800A6A68; // type:func
+updateEvent1604 = 0x800A6A94; // type:func
+startEvent1604 = 0x800A7400; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+event1602WindowFrames = 0x800A7A34;
+event1604WindowFrames = 0x800A7A44;

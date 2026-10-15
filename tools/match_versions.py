@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Pair every function of another version (eu) with its us counterpart.
 
-    tools/match_versions.py eu [--seed]
+    tools/match_versions.py eu [--seed] [--ref <version>]
 
 It reads the built ELFs and their maps (make VERSION=<v> first, for us and
 for each version asked for): the us functions with their names, sizes and
@@ -43,6 +43,11 @@ build/<v>/version_pairs.txt, a summary: per binary and per us module the
 share of its functions paired and their mean similarity, and the version's
 functions with no us counterpart, by region.
 
+With --ref, the functions pair with another version's instead of us's
+(jp with eu, which the European release was made from): eu's ELFs give the
+names, as us's do (eu's C has us's names), and the outputs are
+build/<v>/version_pairs_<ref>.tsv, _data.tsv and .txt, beside us's.
+
 With --seed it also writes the names of the confident pairs into
 config/<v>/symbols.txt (the executable's), config/<v>/symbols_<overlay>.txt
 (each overlay's, which its splat config reads) and config/<v>/stages/<stage>.txt
@@ -67,7 +72,7 @@ import Levenshtein
 from elftools.elf.elffile import ELFFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from version import ROOT, overlay_parents, stage_entries  # noqa: E402
+from version import ROOT, overlay_parents, stage_entries, unit_path  # noqa: E402
 
 # confidence thresholds (similarity of the opcode sequences)
 ADJ_SIM = 0.6           # with a neighbour, caller or callee paired
@@ -78,6 +83,10 @@ STR_SIM = 0.4           # shares a string no other function uses
 LOW_SIM = 0.45          # ...or with three callers, callees or neighbours paired
 CAND_SIM = 0.5          # the least a candidate needs
 MOVED_SIM = 0.7         # ...when it is in another binary
+
+# the version the others pair with (--ref): us, or eu for jp. The code calls
+# it "us" throughout, as the reference
+REF = "us"
 MIN_EXACT = 6           # instructions for an exact pair to count on its own
 MIN_OPCODES = 10        # ...and for an opcode-only one
 # a gap between two pairs larger than this (functions × functions) is only
@@ -289,18 +298,20 @@ def analyse(f, words, gp):
 
 def module_ranges(mapfile, version):
     """(start, end, module) of each object's .text in MAPFILE, the module
-    named binary/path as the report does (main/inn, cardgame/cardgame,
-    stages/wstag200; main/text for a version's asm segment)."""
+    named binary/path as the report does (main/inn, cardgame/effect_script,
+    stages/central_sector/wstag200; main/text for a version's asm segment)."""
     out = []
     for m in re.finditer(r"^ \.text\s+0x([0-9a-f]+)\s+0x([0-9a-f]+)\s+(\S+)$", mapfile.read_text(), re.M):
         start, size, obj = int(m[1], 16), int(m[2], 16), m[3]
         if not size:
             continue
-        path = obj
-        for prefix in (f"build/{version}/src/", f"build/{version}/asm/{version}/"):
-            if path.startswith(prefix):
-                path = path[len(prefix):]
-        path = re.sub(r"\.(c|s)\.o$", "", path)
+        path = re.sub(r"\.(c|s)\.o$", "", obj)
+        if path.startswith(f"build/{version}/src/"):
+            # a C file, under its binary's name (src/engine/menu/inn.c is
+            # main/menu/inn)
+            path = unit_path(ROOT / path[len(f"build/{version}/"):])
+        elif path.startswith(f"build/{version}/asm/{version}/"):
+            path = path[len(f"build/{version}/asm/{version}/"):]
         out.append((start, start + size, path))
     return sorted(out)
 
@@ -393,7 +404,7 @@ def load(version, psyq_region=True):
 def call_key(f):
     """A callee as by_calls compares them: us functions (a paired callee
     stands for its us partner) by identity, others never equal."""
-    return ("us", id(f)) if f is not None and f.version == "us" else ("other", id(f))
+    return ("us", id(f)) if f is not None and f.version == REF else ("other", id(f))
 
 
 def similarity(a, b):
@@ -986,8 +997,8 @@ def pair_data(p, us_mem, mem, us_data, us_named):
 def us_symbol_lines():
     """The lines of us's symbol files by name: {name: (file stem, attributes)}."""
     out = {}
-    paths = sorted((ROOT / "config" / "us").glob("symbols*.txt"))
-    paths += sorted((ROOT / "config" / "us" / "stages").glob("*.txt"))
+    paths = sorted((ROOT / "config" / REF).glob("symbols*.txt"))
+    paths += sorted((ROOT / "config" / REF / "stages").glob("*.txt"))
     for path in paths:
         for line in path.read_text().splitlines():
             m = re.match(r"^\s*(\S+)\s*=\s*(0x[0-9A-Fa-f]+|\d+)\s*;\s*(?://\s*(.*))?$", line)
@@ -998,7 +1009,7 @@ def us_symbol_lines():
 
 def us_names(us_funcs, us_data):
     """The names us gives its functions and data, in its symbol files or in
-    its C (src/main/data/ defines most of the executable's data):
+    its C (src/engine/data/ defines most of the executable's data):
     {name: attributes of its symbol line, or "" for a name only the C gives}."""
     out = {name: attrs for name, (_, attrs) in us_symbol_lines().items()}
     for name in [f.name for f in us_funcs] + [n for n, _ in us_data.values()]:
@@ -1016,7 +1027,9 @@ def write_outputs(version, p, target, us, data_pairs):
     funcs, regions, mem = target
     us_funcs = us[0]
     build = ROOT / "build" / version
-    lines = ["\t".join(["addr", "size", "binary", "name", "us_name", "us_addr", "us_module",
+    # us's outputs keep their names; another reference's go beside them
+    suffix = "" if REF == "us" else f"_{REF}"
+    lines = ["\t".join(["addr", "size", "binary", "name", f"{REF}_name", f"{REF}_addr", f"{REF}_module",
                         "score", "method", "confidence"])]
     for f in funcs:
         if f in p.pair:
@@ -1030,10 +1043,10 @@ def write_outputs(version, p, target, us, data_pairs):
         lines.append("\t".join([f"0x{f.addr:08X}", f"0x{f.size:X}", f.binary, f.name,
                                 u.name if u else "", f"0x{u.addr:08X}" if u else "",
                                 u.module if u else "", f"{s:.3f}", m, conf]))
-    (build / "version_pairs.tsv").write_text("\n".join(lines) + "\n")
-    dl = ["\t".join(["binary", "addr", "us_name", "us_addr", "kind"])]
+    (build / f"version_pairs{suffix}.tsv").write_text("\n".join(lines) + "\n")
+    dl = ["\t".join(["binary", "addr", f"{REF}_name", f"{REF}_addr", "kind"])]
     dl += ["\t".join([b, f"0x{a:08X}", n, f"0x{ua:08X}", k]) for b, a, n, ua, k in data_pairs]
-    (build / "version_pairs_data.tsv").write_text("\n".join(dl) + "\n")
+    (build / f"version_pairs{suffix}_data.tsv").write_text("\n".join(dl) + "\n")
 
     def psyq(f):
         """Whether F is SDK code: in an SDK module, or paired with one."""
@@ -1048,7 +1061,7 @@ def write_outputs(version, p, target, us, data_pairs):
         c = "confident" if f in p.pair else "candidate" if f in p.cand else "unpaired"
         cats[(psyq(f), c, "n")] += 1
         cats[(psyq(f), c, "b")] += f.size
-    w(f"# {version} against us\n")
+    w(f"# {version} against {REF}\n")
     w("## functions\n")
     w(f"{'':10} {'game':>18} {'psyq':>18}")
     for c in ("confident", "candidate", "unpaired"):
@@ -1058,9 +1071,9 @@ def write_outputs(version, p, target, us, data_pairs):
     w("\nconfident by method: " + ", ".join(f"{k} {v}" for k, v in methods.most_common()))
 
     # per binary (the stages together)
-    w(f"\n## {version}'s binaries: its functions paired (confident, +candidates), and us's\n")
+    w(f"\n## {version}'s binaries: its functions paired (confident, +candidates), and {REF}'s\n")
     w(f"{'binary':12} {'funcs':>6} {'conf':>6} {'cand':>6} {'conf%':>6} {'bytes%':>6}  "
-      f"{'us funcs':>8} {'paired%':>7}")
+      f"{REF + ' funcs':>8} {'paired%':>7}")
     groups = defaultdict(lambda: [0, 0, 0, 0, 0])
     for f in funcs:
         g = groups[group_of(f.binary)]
@@ -1085,7 +1098,7 @@ def write_outputs(version, p, target, us, data_pairs):
     w(f"\n(stages: the {sum(1 for r in regions if is_stage(r))} stages of {version} together; "
       f"bytes%: the share of the code's bytes in confident pairs)")
 
-    w("\n## us modules: share of functions paired (confident, +candidates) and mean similarity\n")
+    w(f"\n## {REF} modules: share of functions paired (confident, +candidates) and mean similarity\n")
     w(f"{'module':44} {'funcs':>5} {'conf':>5} {'cand':>5} {'exact':>5} {'paired%':>7} {'sim':>5}")
     by_mod = defaultdict(list)
     for u in us_funcs:
@@ -1102,7 +1115,7 @@ def write_outputs(version, p, target, us, data_pairs):
     for r in sorted(rows, key=lambda r: (-r[6], r[0])):
         w(f"{r[0]:44} {r[1]:5} {r[2]:5} {r[3]:5} {r[4]:5} {r[5]:6.1f}% {r[6]:5.2f}")
     w("\n(sim: the mean over the module's functions of the pair's similarity, 0 when unpaired)")
-    w(f"\n## {version} functions with no confident us counterpart, by region\n")
+    w(f"\n## {version} functions with no confident {REF} counterpart, by region\n")
     regs = defaultdict(lambda: [0, 0, 0, 0, Counter()])
     for f in funcs:
         if f in p.pair:
@@ -1115,10 +1128,10 @@ def write_outputs(version, p, target, us, data_pairs):
             r[4][p.cand[f][0].binary] += 1
         else:
             r[3] += f.size
-    w(f"{'region':16} {'funcs':>5} {'bytes':>8} {'cand':>5} {'unpaired B':>10}  candidates' us binaries")
+    w(f"{'region':16} {'funcs':>5} {'bytes':>8} {'cand':>5} {'unpaired B':>10}  candidates' {REF} binaries")
     for reg, (n, b, c, ub, bins) in sorted(regs.items()):
         w(f"{reg:16} {n:5} {b:8} {c:5} {ub:10}  " + ", ".join(f"{k} {v}" for k, v in bins.most_common(4)))
-    w(f"\n## pairs across binaries (code that moved): {version} region -> us module\n")
+    w(f"\n## pairs across binaries (code that moved): {version} region -> {REF} module\n")
     moved = Counter()
     for t in funcs:
         q = p.pair.get(t) or p.cand.get(t)
@@ -1126,19 +1139,23 @@ def write_outputs(version, p, target, us, data_pairs):
             moved[(t.region, q[0].module, "confident" if t in p.pair else "candidate")] += 1
     for (reg, mod, c), n in sorted(moved.items()):
         w(f"{reg:16} {mod:44} {c:10} {n:4}")
-    w(f"\n## us functions inside a function of {version} (splat joined them): {len(p.joined)}\n")
+    w(f"\n## {REF} functions inside a function of {version} (splat joined them): {len(p.joined)}\n")
     for t, off, u in p.joined:
         w(f"{t.binary:16} {t.name}+0x{off:X} (0x{t.addr + off:08X})  {u.module} {u.name}")
     w(f"\n## data named from confident pairs: {len(data_pairs)}")
-    (build / "version_pairs.txt").write_text("\n".join(out) + "\n")
+    (build / f"version_pairs{suffix}.txt").write_text("\n".join(out) + "\n")
     return "\n".join(out)
 
 
 # ---------------------------------------------------------------------------
 # seeding the names
 
-BEGIN = "// names from us (tools/match_versions.py --seed): the same function or datum"
-END = "// end of the names from us"
+def markers():
+    """The lines around the block of names seeded from REF. Each reference
+    has its own block: seeding from eu after us adds only the names us's
+    block lacks, as names outside a block count as given by hand."""
+    return (f"// names from {REF} (tools/match_versions.py --seed): the same function or datum",
+            f"// end of the names from {REF}")
 
 
 def symbol_file(version, binary):
@@ -1155,6 +1172,7 @@ def seed(version, p, data_pairs, names):
     END (replacing what an earlier run wrote there). A name given by hand
     stays: outside the block, or inside it with `manual` in its comment (a
     pair corrected by hand), which is kept in the block as it is."""
+    BEGIN, END = markers()
     bins = [b for b, _, _ in binaries(version)]
     # the names the files already give by hand (outside the block, or marked
     # manual inside it)
@@ -1273,15 +1291,18 @@ def main():
     ap.add_argument("versions", nargs="+", help="the versions to pair with us (eu)")
     ap.add_argument("--seed", action="store_true",
                     help="write the confident pairs' names into config/<version>/symbols*.txt")
+    ap.add_argument("--ref", default="us", help="the version to pair with (us)")
     args = ap.parse_args()
-    us_data = data_symbols("us")
+    global REF
+    REF = args.ref
+    us_data = data_symbols(REF)
     for v in args.versions:
-        if v == "us":
-            sys.exit("us is what the others pair with")
+        if v == REF:
+            sys.exit(f"{REF} is what the others pair with")
         target = load(v)
         # while the version's executable is one asm segment, its SDK is in
         # the executable's region, so us's is too
-        us = load("us", psyq_region=any(r.endswith("/psyq") for r in target[1]))
+        us = load(REF, psyq_region=any(r.endswith("/psyq") for r in target[1]))
         names = us_names(us[0], us_data)
         p = run_pairing(us, target)
         data_pairs = pair_data(p, us[2], target[2], us_data, names)

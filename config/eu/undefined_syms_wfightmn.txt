@@ -5,4 +5,4 @@
    and it wouldn't move with the symbol */
 LD_FEATURE("SANE_EXPR")
 
-func_8008A22C = FIGHTSTG_createScreenFade;
+func_8008A22C = FIGHTSTG_createFader;

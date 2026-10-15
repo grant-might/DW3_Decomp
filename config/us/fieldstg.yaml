@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/us/fieldstg
-  src_path: src/fieldstg
+  src_path: src/field/field_mode
   build_path: build/us
 
   ld_script_path: build/us/generated/fieldstg.ld
@@ -61,7 +61,7 @@ segments:
       - [0x240, .rodata, field]
       - [0x858, .rodata, actor_control]
       - [0xA40, .rodata, field_stage]
-      # the modules (src/fieldstg/), in the order they link
+      # the modules (src/field/field_mode/), in the order they link
       - [0xAD4, c, commands]
       - [0x1058, c, lift]
       - [0x1550, c, choice]

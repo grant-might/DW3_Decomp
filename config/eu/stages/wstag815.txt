@@ -1,18 +1,18 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4CA4 = 0x800A5DE0; // type:func
-func_800A4E08 = 0x800A5F44; // type:func
-func_800A4F10 = 0x800A604C; // type:func
-func_800A5660 = 0x800A679C; // type:func
-func_800A56AC = 0x800A67E8; // type:func
-func_800A56F8 = 0x800A6834; // type:func
-func_800A5724 = 0x800A6860; // type:func
-func_800A5750 = 0x800A688C; // type:func
+drawBackground = 0x800A5DE0; // type:func
+updateBackground = 0x800A5F44; // type:func
+createBackground = 0x800A604C; // type:func
+endEvent1020 = 0x800A679C; // type:func
+endEvent1030 = 0x800A67E8; // type:func
+endEvent1040 = 0x800A6834; // type:func
+endEvent1041 = 0x800A6860; // type:func
+endEvent1050 = 0x800A688C; // type:func
 script1020 = 0x800A69D4;
 script1030 = 0x800A6A50;
 script1040 = 0x800A6ACC;
 script1041 = 0x800A6BF8;
 script1050 = 0x800A6C3C;
-D_800A5BD0 = 0x800A6D14;
+updateStageSpots = 0x800A6D14;
 area0Battle0 = 0x800A6DC0;
 area0Battle1 = 0x800A6DCC;
 area0Battle2 = 0x800A6DD8;

@@ -1,10 +1,10 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4CA4 = 0x800A5DE0; // type:func
-func_800A4E24 = 0x800A5F60; // type:func
-func_800A4E54 = 0x800A5F90; // type:func
-func_800A4F88 = 0x800A60C4; // type:func
-func_800A4FD4 = 0x800A6110; // type:func
-func_800A5020 = 0x800A615C; // type:func
+updateCommand833 = 0x800A5DE0; // type:func
+createCommand833 = 0x800A5F60; // type:func
+handleCommand833 = 0x800A5F90; // type:func
+endEvent375 = 0x800A60C4; // type:func
+endEvent376 = 0x800A6110; // type:func
+endEvent560 = 0x800A615C; // type:func
 func_80084B80 = 0x800853F8;
 script375 = 0x800A626C;
 script376 = 0x800A6314;

@@ -15,3 +15,6 @@ stageEvents = 0x800A52D0;
 script720 = 0x800A4E7C;
 actor0Conditions = 0x800A5148;
 actor0 = 0x800A5154;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent720 = 0x800A4D48; // type:func

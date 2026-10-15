@@ -1,6 +1,6 @@
-D_800A521C = 0x800A521C; // size:0x34
-D_800A5250 = 0x800A5250; // size:0x34
-D_800A5284 = 0x800A5284; // size:0x30
+updateTileAnimsFrames0 = 0x800A521C; // size:0x34
+updateTileAnimsFrames1 = 0x800A5250; // size:0x34
+updateTileAnimsFrames2 = 0x800A5284; // size:0x30
 
 // the names the stages share (the same code or data in each)
 stepLoopingAnimation = 0x800A4CA4; // type:func
@@ -21,6 +21,10 @@ stageActors = 0x800A5C78;
 stageBattles = 0x800A5734;
 
 // named by their place in the stage's tables (tools/name_stage_data.py)
+placePoints1_1Point3 = 0x800A52B4;
+placePoints1_1Point2 = 0x800A52C4;
+placePoints1_1Point1 = 0x800A52D4;
+placePoints1_1Point0 = 0x800A52E4;
 placePoints1_1 = 0x800A52F4;
 placePoints1_2Point3 = 0x800A52FC;
 placePoints1_2Point2 = 0x800A530C;

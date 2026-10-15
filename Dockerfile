@@ -1,4 +1,4 @@
-# The build environment: Ubuntu
+# The build environment of the CI (.github/workflows/build.yaml): Ubuntu
 # 24.04 with the MIPS binutils and cpp, Python 3.12 with requirements.txt,
 # and the compiler and tools that tools/dl_deps.sh downloads, checked
 # against tools/deps.sha256. The tools are x86 Linux binaries.

@@ -1,8 +1,8 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4DE8 = 0x800A5F24; // type:func
-func_800A4E34 = 0x800A5F70; // type:func
-func_800A4E80 = 0x800A5FBC; // type:func
-func_800A4ECC = 0x800A6008; // type:func
+endEvent1267 = 0x800A5F24; // type:func
+endEvent1268 = 0x800A5F70; // type:func
+endEvent1277 = 0x800A5FBC; // type:func
+endEvent1278 = 0x800A6008; // type:func
 stageColor = 0x800A5DE0;
 script1267 = 0x800A618C;
 script1268 = 0x800A61FC;

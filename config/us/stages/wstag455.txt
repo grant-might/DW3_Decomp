@@ -1,4 +1,4 @@
-D_800A5234 = 0x800A5234; // size:0x44
+updateTileTaskFrames = 0x800A5234; // size:0x44
 
 // the names the stages share (the same code or data in each)
 stepAnimationOnce = 0x800A4CA8; // type:func
@@ -62,3 +62,8 @@ actor1Talks = 0x800A554C;
 actor0Conditions = 0x800A557C;
 actor0 = 0x800A558C;
 actor1 = 0x800A55A0;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateTileTask = 0x800A4D80; // type:func
+createCommand828 = 0x800A4ED4; // type:func
+endEvent360 = 0x800A4FF4; // type:func

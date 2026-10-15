@@ -1,8 +1,8 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-D_800A4F6C = 0x800A60B0;
-D_800A4F7C = 0x800A60C0;
-D_800A4F8C = 0x800A60D0;
-D_800A4F9C = 0x800A60E0;
+placePoints1_1Point3 = 0x800A60B0;
+placePoints1_1Point2 = 0x800A60C0;
+placePoints1_1Point1 = 0x800A60D0;
+placePoints1_1Point0 = 0x800A60E0;
 placePoints1_1 = 0x800A60F0;
 placePoints1_2Point3 = 0x800A60F8;
 placePoints1_2Point2 = 0x800A6108;

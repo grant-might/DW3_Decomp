@@ -60,3 +60,6 @@ actor2Conditions = 0x800A521C;
 actor0 = 0x800A5224;
 actor1 = 0x800A5238;
 actor2 = 0x800A524C;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent1463 = 0x800A4D48; // type:func

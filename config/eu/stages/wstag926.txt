@@ -22,3 +22,7 @@ actor0 = 0x800A61CC;
 actor1 = 0x800A61E0;
 actor2 = 0x800A61F4;
 script1606 = 0x800A6424;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateTileTimer = 0x800A5F70; // type:func
+createCommand854 = 0x800A609C; // type:func

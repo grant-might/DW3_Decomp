@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/us/ststatus
-  src_path: src/ststatus
+  src_path: src/menus/field_menu
   build_path: build/us
 
   ld_script_path: build/us/generated/ststatus.ld
@@ -49,7 +49,7 @@ segments:
     align: 4
     subalign: 4
     subsegments:
-      - [0x0, .rodata, ststatus]
+      - [0x0, .rodata, card_screen]
       - [0x19C, .rodata, demo_screen]
       - [0x284, .rodata, equip_panel]
       - [0x358, .rodata, digivolve_panel]
@@ -58,7 +58,7 @@ segments:
       - [0x748, .rodata, item_list]
       - [0x75C, .rodata, tech_screen]
       - [0x840, .rodata, sort_screen]
-      - [0x8A8, c, ststatus]
+      - [0x8A8, c, card_screen]
       - [0x2278, c, demo_screen]
       - [0x3790, c, equip_panel]
       - [0x55F4, c, digivolve_panel]
@@ -71,7 +71,7 @@ segments:
       - [0x16338, c, menu]
       - [0x16E28, c, helpers]
       # each object's data
-      - [0x17650, .data, ststatus]
+      - [0x17650, .data, card_screen]
       - [0x17664, .data, demo_screen]
       - [0x17678, .data, equip_panel]
       - [0x176C8, .data, digivolve_panel]

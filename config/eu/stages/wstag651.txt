@@ -1,5 +1,5 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4D48 = 0x800A5E84; // type:func
+endEvent1462 = 0x800A5E84; // type:func
 script1462 = 0x800A5FB4;
 area0Battle0 = 0x800A6028;
 area0Battle1 = 0x800A6034;

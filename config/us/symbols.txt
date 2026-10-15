@@ -215,7 +215,7 @@ textWindowSetScale = 0x8001A09C; // type:func
 textWindowSetPivot = 0x8001A0B8; // type:func
 textWindowSetDepth = 0x8001A0C4; // type:func
 textWindowSetLines = 0x8001A0CC; // type:func
-textWindowSetUnkC4 = 0x8001A0D4; // type:func
+textWindowSetUnusedC4 = 0x8001A0D4; // type:func
 textWindowIsFinished = 0x8001A0DC; // type:func
 textWindowIsVisible = 0x8001A0E8; // type:func
 textWindowIsWaitingForButton = 0x8001A0F4; // type:func
@@ -381,7 +381,7 @@ ACCESSORY_IDS = 0x800413C4; // size:0x8A
 ITEMS = 0x80041450; // size:0x12D8
 BATTLE_SETUP = 0x80042728; // size:0x68
 BATTLE_RESULT = 0x80042790; // size:0x12
-GET_ITEM = 0x800427A4;
+ITEM_FUNCS = 0x800427A4;
 ITEM_TYPE_CATEGORIES = 0x800427B4;
 ITEM_LISTS = 0x800427D4; // size:0x14
 TECHS = 0x800427E8; // size:0x1F26
@@ -734,6 +734,7 @@ GsSetLightMode = 0x80029B28; // type:func
 gte_init = 0x80029BA8; // type:func
 GsGetTimInfo = 0x80029BF8; // type:func
 Gssub_make_matrix = 0x80029CE8; // type:func
+GsSetRefView2 = 0x80029DB8; // type:func
 GsMulCoord2 = 0x8002A358; // type:func
 gte_rotate_z_matrix = 0x8002A3D8; // type:func
 GsGetLw = 0x8002A498; // type:func
@@ -1062,8 +1063,7 @@ EXIT_CARD_RA = 0x80082028;
 PATCH_GTE_RA = 0x80080BD0;
 INIT_GEOM_RA = 0x80056040;
 // libgs: the world-screen matrix and the light matrix, as libgs.h names them:
-// GsSetFlatLight reads the light one, func_80029DB8 (GsSetRefView2 by its
-// calls) writes the other
+// GsSetFlatLight reads the light one, GsSetRefView2 writes the other
 GsLIGHTWSMATRIX = 0x80080A90;
 GsWSMATRIX = 0x80080AF0;
 // libcd: the stream's ring callback sets it for StCdInterrupt, which the

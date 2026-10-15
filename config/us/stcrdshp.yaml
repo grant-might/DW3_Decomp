@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/us/stcrdshp
-  src_path: src/stcrdshp
+  src_path: src/cardgame/card_packs
   build_path: build/us
 
   ld_script_path: build/us/generated/stcrdshp.ld
@@ -53,12 +53,12 @@ segments:
       - [0x0, .rodata, pack_open]
       - [0xF4, .rodata, buy]
       - [0x1C4, .rodata, shop]
-      # the modules (src/stcrdshp/), in the order they link
+      # the modules (src/cardgame/card_packs/), in the order they link
       - [0x35C, c, pack_open]
       - [0x2694, c, fader]
       - [0x2958, c, card_grid]
       - [0x3354, c, buy]
-      - [0x4E5C, c, stcrdshp]
+      - [0x4E5C, c, scene]
       - [0x4F80, c, shop]
       # each module's data
       - [0x6480, .data, pack_open]

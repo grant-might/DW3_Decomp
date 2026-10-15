@@ -1,11 +1,11 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4CA8 = 0x800A5DE4; // type:func
-func_800A4DFC = 0x800A5F38; // type:func
-func_800A4F38 = 0x800A6074; // type:func
-func_800A4F84 = 0x800A60C0; // type:func
+updateFarSprites = 0x800A5DE4; // type:func
+createFarSprites = 0x800A5F38; // type:func
+endEvent1260 = 0x800A6074; // type:func
+endEvent1261 = 0x800A60C0; // type:func
 script1260 = 0x800A6284;
 script1261 = 0x800A6324;
-D_800A5284 = 0x800A63C8;
+farSpriteSpots = 0x800A63C8;
 battles0Area0Battle0 = 0x800A64E8;
 battles0Area0Battle1 = 0x800A64F4;
 battles0Area0Battle2 = 0x800A6500;

@@ -1,5 +1,5 @@
-D_800A6244 = 0x800A6244; // size:0x50
-D_800A6294 = 0x800A6294; // size:0x50
+updateTileAnimsFrames0 = 0x800A6244; // size:0x50
+updateTileAnimsFrames1 = 0x800A6294; // size:0x50
 
 // names from the C of the modules this version builds (tools/version_symbols.py)
 func_80084B80 = 0x800853F8;
@@ -60,3 +60,6 @@ area3Battle5 = 0x800A6898;
 area3Battle6 = 0x800A68A4;
 area3Battle7 = 0x800A68B0;
 area3Battles = 0x800A68BC;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent1608 = 0x800A6118; // type:func

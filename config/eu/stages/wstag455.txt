@@ -1,9 +1,9 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4D80 = 0x800A5EBC; // type:func
-func_800A4ED4 = 0x800A6010; // type:func
-func_800A4FF4 = 0x800A6130; // type:func
+updateTileTask = 0x800A5EBC; // type:func
+createCommand828 = 0x800A6010; // type:func
+endEvent360 = 0x800A6130; // type:func
 script360 = 0x800A6294;
-D_800A5234 = 0x800A6378; // size:0x44
+updateTileTaskFrames = 0x800A6378; // size:0x44
 area0Battle0 = 0x800A63BC;
 area0Battle1 = 0x800A63C8;
 area0Battle2 = 0x800A63D4;

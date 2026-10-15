@@ -1,11 +1,11 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-D_800A5210 = 0x800A6354; // size:0x34
-D_800A5244 = 0x800A6388; // size:0x34
-D_800A5278 = 0x800A63BC; // size:0x30
-D_800A52A8 = 0x800A63EC;
-D_800A52B8 = 0x800A63FC;
-D_800A52C8 = 0x800A640C;
-D_800A52D8 = 0x800A641C;
+updateTileAnimsFrames0 = 0x800A6354; // size:0x34
+updateTileAnimsFrames1 = 0x800A6388; // size:0x34
+updateTileAnimsFrames2 = 0x800A63BC; // size:0x30
+placePoints1_1Point3 = 0x800A63EC;
+placePoints1_1Point2 = 0x800A63FC;
+placePoints1_1Point1 = 0x800A640C;
+placePoints1_1Point0 = 0x800A641C;
 placePoints1_1 = 0x800A642C;
 placePoints1_2Point3 = 0x800A6434;
 placePoints1_2Point2 = 0x800A6444;

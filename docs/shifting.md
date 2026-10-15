@@ -23,7 +23,7 @@ A binary that points into the binaries it loads links against their
 symbols: the executable against the mode overlays (`MODE_ENTRY_POINTS`),
 FIGHTSTG against WFIGHTMN and WFIGHTTS, FIELDSTG against the stages, whose
 names it takes prefixed with the stage's (`WSTAG931_startStage`,
-`include/stages.h`). `CHILDREN_<binary>` in the Makefile lists them;
+`include/field/stages.h`). `CHILDREN_<binary>` in the Makefile lists them;
 `tools/link_imports.py` writes `build/<version>/<binary>_imports.ld` with
 the names the binary uses and doesn't define, and the children link against
 the binary's own symbols from a first link of it with placeholders for those
@@ -32,7 +32,7 @@ names (`build/<version>/layout/`).
 empty in both versions. FIELDSTG's event and script command tables, which
 point into whichever stage is loaded, name the symbols of the stage each
 entry belongs to: `WSTAG260_script1320`, one of the story events' scripts,
-and `WSTAG780_func_800A5E50`, a function of the stage whose scripts run the
+and `WSTAG780_createCommand800`, a function of the stage whose scripts run the
 command. The list holds an address by where it is and what it holds, with the
 names after a `#`, so that a rename leaves it as it is. `make shiftcheck` warns about those that are fixed (and
 `tools/shiftcheck.py --strict` fails), which `tools/shiftcheck.py -v

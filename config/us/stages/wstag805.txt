@@ -1,7 +1,7 @@
-D_800A6174 = 0x800A6174; // size:0x48
-D_800A61BC = 0x800A61BC; // size:0x48
-D_800A6204 = 0x800A6204; // size:0x58
-D_800A625C = 0x800A625C; // size:0x38
+updateFloaterFrames0 = 0x800A6174; // size:0x48
+updateFloaterFrames2 = 0x800A61BC; // size:0x48
+updateFloaterFrames3 = 0x800A6204; // size:0x58
+updateFloaterFrames1 = 0x800A625C; // size:0x38
 
 // the names the stages share (the same code or data in each)
 isOnScreen = 0x800A5464; // type:func
@@ -64,3 +64,28 @@ actor2Conditions = 0x800A6564;
 actor0 = 0x800A656C;
 actor1 = 0x800A6580;
 actor2 = 0x800A6594;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateFloaterChain = 0x800A4CA8; // type:func
+handleCommand841 = 0x800A4E28; // type:func
+createFloaterChain = 0x800A4E60; // type:func
+stepTileLoop = 0x800A4E90; // type:func
+updateTileQuad = 0x800A4F90; // type:func
+handleCommand840 = 0x800A5288; // type:func
+createTileQuad = 0x800A52E0; // type:func
+stepFloaterPart = 0x800A5310; // type:func
+drawFloaterPart = 0x800A5528; // type:func
+updateFloater = 0x800A55E8; // type:func
+createFloater = 0x800A5854; // type:func
+endEvent880 = 0x800A5A64; // type:func
+endEvent881 = 0x800A5AB0; // type:func
+endEvent882 = 0x800A5ADC; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateFloaterChainSpots = 0x800A5F58;
+floaterChainTimes = 0x800A609C;
+updateTileQuadFrames_0 = 0x800A60D4;
+updateTileQuadFrames_3 = 0x800A610C;
+updateTileQuadFrames_1 = 0x800A6128;
+updateTileQuadFrames_2 = 0x800A6144;
+updateTileQuadFrames = 0x800A6164;

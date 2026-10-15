@@ -29,3 +29,11 @@ actor0Conditions = 0x800A5678;
 actor1Conditions = 0x800A5680;
 actor0 = 0x800A5688;
 actor1 = 0x800A569C;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateTileLift = 0x800A4CC0; // type:func
+handleCommand827 = 0x800A50DC; // type:func
+createCommand827 = 0x800A5150; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+tileLiftShake = 0x800A555C;

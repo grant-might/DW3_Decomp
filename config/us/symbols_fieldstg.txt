@@ -28,16 +28,16 @@ FIELDSTG_slotImages = 0x80096398; // size:0x60
 FIELDSTG_areaNames = 0x800963F8; // size:0x3C0
 FIELDSTG_bannerBoxes = 0x800967B8; // size:0x168
 FIELDSTG_triggerAnims = 0x80096920; // size:0x63
-D_80096983 = 0x80096983; // size:0x1
+FIELDSTG_triggerAnimsPad = 0x80096983; // size:0x1
 FIELDSTG_nearDirs = 0x80096984; // size:0x40
 FIELDSTG_file5DModes = 0x800969C4; // size:0x2C
-FIELDSTG_actorAnim0 = 0x800969F0; // size:0xC
-FIELDSTG_actorAnim1 = 0x800969FC; // size:0x30
-FIELDSTG_actorAnim2 = 0x80096A2C; // size:0x14
-FIELDSTG_actorAnim3 = 0x80096A40; // size:0x3C
-FIELDSTG_actorAnims = 0x80096A7C; // size:0x10
-FIELDSTG_actorPath = 0x80096A8C; // size:0x40
-FIELDSTG_actorPathStep = 0x80096ACC; // size:0x4
+FIELDSTG_iconAnim0 = 0x800969F0; // size:0xC
+FIELDSTG_iconAnim1 = 0x800969FC; // size:0x30
+FIELDSTG_iconAnim2 = 0x80096A2C; // size:0x14
+FIELDSTG_iconAnim3 = 0x80096A40; // size:0x3C
+FIELDSTG_iconAnims = 0x80096A7C; // size:0x10
+FIELDSTG_iconPath = 0x80096A8C; // size:0x40
+FIELDSTG_iconPathStep = 0x80096ACC; // size:0x4
 // FIELDSTG_playBattleTransition's spiral that moves its tiles of the screen
 FIELDSTG_tileMoves = 0x80096AD0; // size:0x168
 FIELDSTG_eventIds = 0x80096C38; // size:0xDC
@@ -100,7 +100,7 @@ FIELDSTG_checkBattle = 0x8009A6E8; // size:0x4
 FIELDSTG_battleFuncs = 0x8009A6EC; // size:0x8
 FIELDSTG_battleRates = 0x8009A6F4; // size:0x18
 // The field's map and the functions that read it, one struct that the data
-// splits in pieces (FieldMap, include/field_map.h, which the stages share)
+// splits in pieces (FieldMap, include/field/field_map.h, which the stages share)
 FIELDSTG_map = 0x8009A70C; // size:0x5C
 FIELDSTG_boxFrame = 0x8009A768; // size:0x4
 FIELDSTG_dirVectors = 0x8009A76C; // size:0x1C0
@@ -111,9 +111,11 @@ FIELDSTG_objectCursor = 0x8009A940; // size:0x4
 FIELDSTG_objectId = 0x8009A944; // size:0x4
 // FIELDSTG_playBattleTransition's tiles of the screen
 FIELDSTG_tiles = 0x8009A948; // size:0xF0
-FIELDSTG_tileRequests = 0x8009AA38; // size:0x4
+FIELDSTG_battleFileStep = 0x8009AA38; // size:0x4
+FIELDSTG_transitionUnused = 0x8009AA3C; // size:0x4
 FIELDSTG_screenRect = 0x8009AA40; // size:0x8
-FIELDSTG_talkVoice = 0x8009AA48; // size:0x4
+FIELDSTG_slideVoice = 0x8009AA48; // size:0x2
+FIELDSTG_slideVoicePad = 0x8009AA4A; // size:0x2
 FIELDSTG_boxes = 0x8009AA4C; // size:0x140
 FIELDSTG_boxCount = 0x8009AB8C; // size:0x4
 

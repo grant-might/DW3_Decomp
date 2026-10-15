@@ -122,3 +122,22 @@ actor19 = 0x800A5FDC;
 actor20 = 0x800A5FF0;
 actor21 = 0x800A6004;
 actor22 = 0x800A6018;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateSpriteField = 0x800A4CA8; // type:func
+createSpriteField = 0x800A4F74; // type:func
+endEvent100 = 0x800A50B4; // type:func
+endEvent101 = 0x800A5100; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+spriteFieldAnims_0 = 0x800A54C4;
+spriteFieldAnims_1 = 0x800A54CC;
+spriteFieldAnims_2 = 0x800A54D4;
+spriteFieldAnims_3 = 0x800A54DC;
+spriteFieldAnims_4 = 0x800A54E8;
+spriteFieldAnims_5 = 0x800A54F0;
+spriteFieldAnims_6 = 0x800A54FC;
+spriteFieldAnims_7 = 0x800A5508;
+spriteFieldAnims_8 = 0x800A5510;
+spriteFieldAnims = 0x800A551C;
+updateSpriteFieldSpots = 0x800A5540;

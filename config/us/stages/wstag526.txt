@@ -1,6 +1,6 @@
-D_800A65A4 = 0x800A65A4; // size:0x14
-D_800A65B8 = 0x800A65B8; // size:0x1C
-D_800A664C = 0x800A664C; // size:0x14
+updateClutTileFrames0 = 0x800A65A4; // size:0x14
+updateClutTileFrames1 = 0x800A65B8; // size:0x1C
+updateStillTileFrames = 0x800A664C; // size:0x14
 
 // the names the stages share (the same code or data in each)
 stepTileAnimation = 0x800A4F1C; // type:func
@@ -73,3 +73,44 @@ actor2Conditions = 0x800A6AF4;
 actor0 = 0x800A6B08;
 actor1 = 0x800A6B1C;
 actor2 = 0x800A6B30;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateCommand829 = 0x800A4CA4; // type:func
+handleCommand829 = 0x800A4EB4; // type:func
+createCommand829 = 0x800A4EEC; // type:func
+updateClutTile = 0x800A503C; // type:func
+fadeOutClutTile = 0x800A5228; // type:func
+createClutTile = 0x800A5244; // type:func
+createClutTileTask = 0x800A5274; // type:func
+updateTileDuo = 0x800A53C0; // type:func
+fadeOutTileDuo = 0x800A5668; // type:func
+createTileDuo = 0x800A5684; // type:func
+createTileDuoTask = 0x800A56B4; // type:func
+updateStillTile = 0x800A5800; // type:func
+fadeOutStillTile = 0x800A59B8; // type:func
+createStillTile = 0x800A59D4; // type:func
+createStillTileTask = 0x800A5A04; // type:func
+isFarFromHome = 0x800A5B50; // type:func
+getAngle = 0x800A5B8C; // type:func
+moveWanderPair = 0x800A5CFC; // type:func
+updateWanderPair = 0x800A5E78; // type:func
+fadeOutWanderPair = 0x800A6210; // type:func
+createWanderPair = 0x800A622C; // type:func
+createWanderPairTask = 0x800A625C; // type:func
+endEvent760 = 0x800A6380; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateTileDuoFrames0_0 = 0x800A65D4;
+updateTileDuoFrames1_0 = 0x800A65F0;
+updateTileDuoFrames0_1 = 0x800A6608;
+updateTileDuoFrames1_1 = 0x800A6624;
+updateTileDuoFrames0 = 0x800A663C;
+updateTileDuoFrames1 = 0x800A6644;
+updateWanderPairFrames0_0 = 0x800A6660;
+updateWanderPairFrames1_0 = 0x800A668C;
+updateWanderPairFrames0_1 = 0x800A66BC;
+updateWanderPairFrames1_1 = 0x800A66E8;
+updateWanderPairFrames0 = 0x800A6718;
+updateWanderPairFrames1 = 0x800A6720;
+wanderPairSpeeds = 0x800A6728;
+angleTangents = 0x800A6730;

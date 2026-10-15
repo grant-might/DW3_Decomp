@@ -1,13 +1,13 @@
-D_800A711C = 0x800A711C; // size:0x24
-D_800A7140 = 0x800A7140; // size:0x20
-D_800A7160 = 0x800A7160; // size:0x1C
-D_800A717C = 0x800A717C; // size:0x20
-D_800A7210 = 0x800A7210; // size:0x70
-D_800A7280 = 0x800A7280; // size:0x34
-D_800A7328 = 0x800A7328; // size:0x64
-D_800A738C = 0x800A738C; // size:0x34
-D_800A73D8 = 0x800A73D8; // size:0x18
-D_800A73F0 = 0x800A73F0; // size:0x58
+updateTileAnimsFrames0 = 0x800A711C; // size:0x24
+updateTileAnimsFrames1 = 0x800A7140; // size:0x20
+updateTileAnimsFrames2 = 0x800A7160; // size:0x1C
+updateTileAnimsFrames3 = 0x800A717C; // size:0x20
+updateTileSixFrames3 = 0x800A7210; // size:0x70
+updateTileSixFrames4 = 0x800A7280; // size:0x34
+updateTileSixWFrames3 = 0x800A7328; // size:0x64
+updateTileSixWFrames4 = 0x800A738C; // size:0x34
+updateEffectFrames1 = 0x800A73D8; // size:0x18
+updateEffectFrames0 = 0x800A73F0; // size:0x58
 
 // the names the stages share (the same code or data in each)
 stepLoopingAnimation = 0x800A4D04; // type:func
@@ -101,3 +101,30 @@ actor8 = 0x800A7904;
 actor9 = 0x800A7918;
 actor10 = 0x800A792C;
 actor11 = 0x800A7940;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateTileSix = 0x800A5094; // type:func
+handleCommand831 = 0x800A545C; // type:func
+createCommand831 = 0x800A5498; // type:func
+createTileSix = 0x800A54D0; // type:func
+updateTileSixW = 0x800A561C; // type:func
+handleCommand832 = 0x800A59E0; // type:func
+createCommand832 = 0x800A5A1C; // type:func
+createTileSixW = 0x800A5A54; // type:func
+drawEffect = 0x800A5DBC; // type:func
+updateEffect = 0x800A5F70; // type:func
+createCommand852 = 0x800A6190; // type:func
+createEffect = 0x800A6758; // type:func
+endEvent680 = 0x800A67B0; // type:func
+endEvent681 = 0x800A6810; // type:func
+endEvent682 = 0x800A685C; // type:func
+endEvent961 = 0x800A6888; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateTileSixFrames0 = 0x800A719C;
+updateTileSixFrames1 = 0x800A71D0;
+updateTileSixFrames2 = 0x800A7204;
+updateTileSixWFrames0 = 0x800A72B4;
+updateTileSixWFrames1 = 0x800A72E8;
+updateTileSixWFrames2 = 0x800A731C;
+updateStageSpots = 0x800A73C0;

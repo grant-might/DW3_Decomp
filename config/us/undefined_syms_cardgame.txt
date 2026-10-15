@@ -5,5 +5,5 @@
 LD_FEATURE("SANE_EXPR")
 
 /* the marked slots per side: bytes 2 and 3 of CARDGAME_slotMoveCounts
-   (cardgame_3.c), a symbol of its own */
+   (data/cardgame_3.c), a symbol of its own */
 CARDGAME_markedCounts = CARDGAME_slotMoveCounts + 2;

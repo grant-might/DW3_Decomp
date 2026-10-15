@@ -14,6 +14,10 @@ stageActors = 0x800A55D4;
 stageBattles = 0x800A53FC;
 
 // named by their place in the stage's tables (tools/name_stage_data.py)
+placePoints1_1Point3 = 0x800A4F7C;
+placePoints1_1Point2 = 0x800A4F8C;
+placePoints1_1Point1 = 0x800A4F9C;
+placePoints1_1Point0 = 0x800A4FAC;
 placePoints1_1 = 0x800A4FBC;
 placePoints1_2Point3 = 0x800A4FC4;
 placePoints1_2Point2 = 0x800A4FD4;

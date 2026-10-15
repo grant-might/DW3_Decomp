@@ -1,4 +1,4 @@
-D_800A50A0 = 0x800A50A0; // size:0x1C
+updateTileAnimsFrames = 0x800A50A0; // size:0x1C
 
 // the names the stages share (the same code or data in each)
 stepLoopingAnimation = 0x800A4CA4; // type:func

@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/eu/main
-  src_path: src/main
+  src_path: src/engine
   asset_path: assets/eu
   build_path: build/eu
 
@@ -45,7 +45,7 @@ options:
   create_data_pads: False
 
 segments:
-  # src/main/header.s, which names the entry point and the size
+  # src/engine/header.s, which names the entry point and the size
   - name: header
     type: header
     start: 0x0
@@ -439,10 +439,20 @@ segments:
       - [0x41A08, .data, sound/sound]
       - [0x46470, .data, system/overlay]
       - [0x46538, data, psyq]
-      - [0x4D350, .data, data/game_3]
+      # the small data (.sdata) of the -G8 units, after all the data; $gp
+      # points at HEAP_START, the first
+      - [0x4D350, .sdata, data/heap_start]
+      - [0x4D354, .sdata, game/items]
+      - [0x4D4A0, .sdata, data/get_digimon]
+      - [0x4D4A4, .sdata, file/file_table]
+      - [0x4D4A8, .sdata, data/eu_settings]
+      - [0x4D4B4, .sdata, system/main]
+      - [0x4D4C0, .sdata, data/all_files_pattern]
+      - [0x4D4D0, .sdata, text/cursor]
       - [0x4D4E0, .sdata, gfx/display]
       - [0x4D4E4, pad]
       - { start: 0x4D4E8, type: .bss, vram: 0x8005CCE8, name: data/game_bss }
+      - { start: 0x4D538, type: .bss, vram: 0x8005CD38, name: sound/sound }
       - { start: 0x6F538, type: bss, vram: 0x8007ED38, name: psyq }
 
   # psylink stores .bss in the file as zeros because a later section follows

@@ -10,7 +10,9 @@ build. MAP is the link's map: each object it loaded must be one of the OBJ
 that the Makefile built for the binary.
 A blob, an object made from a binary file (a .bin, or assembly that
 .incbin's one), has no relocations, so an address in it wouldn't move with
-the code: only those in --blobs may be linked.
+the code: only those in --blobs may be linked, and those shorter than a
+word, which can hold no address (the last bytes of a stage that ends inside
+a word while its data is asm, which splat's data drops: tools/stage_yaml.py).
 """
 import argparse
 import pathlib
@@ -30,8 +32,15 @@ def source(obj):
 
 def is_blob(obj):
     src = source(obj)
-    return src.suffix == ".bin" or (src.suffix == ".s" and src.exists()
-                                    and re.search(r"^\s*\.incbin\b", src.read_text(errors="replace"), re.M))
+    if src.suffix == ".bin":
+        return True
+    if src.suffix != ".s" or not src.exists():
+        return False
+    text = src.read_text(errors="replace")
+    included = re.findall(r'^\s*\.incbin\s+"([^"]+)"\s*$', text, re.M)
+    if len(included) != len(re.findall(r"^\s*\.incbin\b", text, re.M)):
+        return True
+    return any(not pathlib.Path(f).is_file() or pathlib.Path(f).stat().st_size >= 4 for f in included)
 
 
 def main():

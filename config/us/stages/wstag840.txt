@@ -15,6 +15,8 @@ stageColor = 0x800A4CA4;
 stageBattles = 0x800A6618;
 
 // named by their place in the stage's tables (tools/name_stage_data.py)
+placePoints3_1Point1 = 0x800A4FB0;
+placePoints3_1Point0 = 0x800A4FC0;
 placePoints3_1 = 0x800A4FD0;
 placePoints4_1Point1 = 0x800A4FD8;
 placePoints4_1Point0 = 0x800A4FE8;

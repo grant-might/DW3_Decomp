@@ -24,7 +24,7 @@ w=os.path.join(tempfile.mkdtemp(prefix='try_match_'),'draft')
 cc1=os.environ.get('CC1',f'{BIN}/gcc-2.8.1-psx/cc1')
 cflags=os.environ.get('CFLAGS','-O2 -G0 -fsigned-char -fno-builtin -fdollars-in-identifiers')
 mflags=os.environ.get('MASPSXFLAGS','--aspsx-version=2.86')
-cmd=f"mipsel-linux-gnu-cpp -P -undef -D__GNUC__=2 -Dmips -D__mips__ -D__mips -Dpsx -D__psx__ -D__psx -D_PSYQ -D__EXTENSIONS__ -D_MIPSEL -D_LANGUAGE_C -DLANGUAGE_C -I{D}/include -I{D}/external/psyq_headers/psyq_lib47/include -DSKIP_ASM -DVERSION_{version.VERSION.upper()} {src} > {w}.i && {cc1} -quiet -mips1 -mcpu=3000 -mgas -msoft-float -fgnu-linker -Wall -Wno-unused {cflags} -o {w}.s {w}.i && python3 {D}/external/maspsx/maspsx.py {mflags} < {w}.s > {w}.ms.s && mipsel-linux-gnu-as -EL -march=r3000 -no-pad-sections -O1 -G0 -o {w}.o {w}.ms.s"
+cmd=f"mipsel-linux-gnu-cpp -P -undef -D__GNUC__=2 -Dmips -D__mips__ -D__mips -Dpsx -D__psx__ -D__psx -D_PSYQ -D__EXTENSIONS__ -D_MIPSEL -D_LANGUAGE_C -DLANGUAGE_C -I{D}/include -I{D}/external/psyq_headers/psyq_lib47/include -I{D}/src/field/stages -I{D}/src -DSKIP_ASM -DVERSION_{version.VERSION.upper()} {src} > {w}.i && {cc1} -quiet -mips1 -mcpu=3000 -mgas -msoft-float -fgnu-linker -Wall -Wno-unused {cflags} -o {w}.s {w}.i && python3 {D}/external/maspsx/maspsx.py {mflags} < {w}.s > {w}.ms.s && mipsel-linux-gnu-as -EL -march=r3000 -no-pad-sections -O1 -G0 -o {w}.o {w}.ms.s"
 r=subprocess.run(cmd,shell=True,capture_output=True,text=True)
 if r.returncode: print(r.stderr); sys.exit(1)
 if r.stderr.strip(): print(r.stderr.strip())
@@ -64,7 +64,9 @@ for i,(off,name) in enumerate(syms):
     unit=parts[0]
     yaml=f'{version.CONFIG_DIR}/{unit}.yaml'
     if unit=='stages':  # configs made by tools/stage_yaml.py
-        stage=parts[2] if parts[1]=='nonmatchings' else os.path.splitext(parts[-1])[0]
+        # asm/<v>/stages/[nonmatchings/][<area>/]wstag###[.s|/<func>.s]
+        stage=next(p for p in parts if re.fullmatch(r'wstag\d{3}',os.path.splitext(p)[0]))
+        stage=os.path.splitext(stage)[0]
         yaml=f'{version.BUILD_DIR}/generated/stages/{stage}.yaml'
     target=re.search(r'target_path:\s*(\S+)',open(yaml).read()).group(1)
     binary=open(f'{D}/{target}','rb').read()

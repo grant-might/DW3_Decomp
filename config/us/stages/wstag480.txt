@@ -133,3 +133,28 @@ actor0Talk3Actions = 0x800A5E40;
 actor0Talks = 0x800A5E4C;
 actor0Conditions = 0x800A5E88;
 actor0 = 0x800A5E90;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+stepTileSequences = 0x800A4CBC; // type:func
+updateTileCursors = 0x800A4E48; // type:func
+createTileCursors = 0x800A5028; // type:func
+endEvent170 = 0x800A5150; // type:func
+endEvent171 = 0x800A519C; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateTileCursorsFrames_0_0 = 0x800A5538;
+updateTileCursorsFrames_0_12 = 0x800A5548;
+updateTileCursorsFrames_1_0 = 0x800A5560;
+updateTileCursorsFrames_1_12 = 0x800A5570;
+updateTileCursorsFrames_2_0 = 0x800A5588;
+updateTileCursorsFrames_2_12 = 0x800A5598;
+updateTileCursorsFrames_3_0 = 0x800A55B0;
+updateTileCursorsFrames_3_12 = 0x800A55C0;
+updateTileCursorsFrames_4_0 = 0x800A55D8;
+updateTileCursorsFrames_4_12 = 0x800A55E8;
+updateTileCursorsFrames_0 = 0x800A5600;
+updateTileCursorsFrames_1 = 0x800A5638;
+updateTileCursorsFrames_2 = 0x800A5670;
+updateTileCursorsFrames_3 = 0x800A56A8;
+updateTileCursorsFrames_4 = 0x800A56E0;
+updateTileCursorsFrames = 0x800A5718;

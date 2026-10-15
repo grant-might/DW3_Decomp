@@ -113,7 +113,7 @@ STSTATUS_setScrollBarPos = 0x80099464; // type:func
 STSTATUS_updateScrollBar = 0x8009946C; // type:func
 STSTATUS_createScrollBar = 0x80099684; // type:func
 STSTATUS_runScreens = 0x800996EC; // type:func
-STSTATUS_drawBlink = 0x800997D4; // type:func
+STSTATUS_drawBackground = 0x800997D4; // type:func
 STSTATUS_updateMenu = 0x80099894; // type:func
 STSTATUS_createMenu = 0x80099A80; // type:func
 STSTATUS_loadFiles = 0x80099B6C; // type:func
@@ -128,7 +128,7 @@ STSTATUS_listEquipItems = 0x80099FF8; // type:func
 STSTATUS_listItemsOfKind = 0x8009A1BC; // type:func
 STSTATUS_canEquip = 0x8009A344; // type:func
 STSTATUS_equip = 0x8009A3E8; // type:func
-STSTATUS_isLateGame = 0x8009A670; // type:func
+STSTATUS_getGameHalf = 0x8009A670; // type:func
 STSTATUS_getArea = 0x8009A698; // type:func
 STSTATUS_getVisitedAreas = 0x8009A6B8; // type:func
 

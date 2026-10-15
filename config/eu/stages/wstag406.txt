@@ -1,9 +1,9 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4FA4 = 0x800A60E0; // type:func
-func_800A4FF0 = 0x800A612C; // type:func
+endEvent1285 = 0x800A60E0; // type:func
+endEvent1286 = 0x800A612C; // type:func
 script1285 = 0x800A6294;
 script1286 = 0x800A6334;
-D_800A5294 = 0x800A63D8; // size:0x8C
+updateTileAnimsFrames = 0x800A63D8; // size:0x8C
 area0Battle0 = 0x800A6464;
 area0Battle1 = 0x800A6470;
 area0Battle2 = 0x800A647C;

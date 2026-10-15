@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 """Split another version's binaries (eu) into us's modules.
 
-    tools/split_version.py <version> [binary ...]
+    tools/split_version.py <version> [binary ...] [--ref <version>]
 
 A version that is still splat's assembly has each binary as a few big asm
 ranges (its rodata, its code, its data, its bss). This rewrites the
@@ -32,9 +32,13 @@ A segment the version's config already has (by name: the psyq ranges, or
 modules split before) keeps its start, so running it again changes
 nothing, and a module that is C in the version's config stays C.
 Two segments of one name become one. A data-only module (such as the
-executable's data/game_3.c) has no code segment while it is asm: splat
+executable's data/heap_start.c) has no code segment while it is asm: splat
 writes nothing for an asm segment of no size; when it becomes C, add its `c`
 segment where the code ends, as in us. The rest of the config is kept.
+
+With --ref, the modules are another version's (eu's, split into us's
+modules too) and the pairs those of tools/match_versions.py <version> --ref
+<ref> (build/<version>/version_pairs_<ref>.tsv): jp against eu.
 
 It needs us and the version built (make VERSION=<v>: splat's asm in
 asm/<v>/ and the ELFs) and the pairs, and it prints, per binary, what it
@@ -55,6 +59,10 @@ from elftools.elf.elffile import ELFFile
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from match_versions import ROOT, chain, settings  # noqa: E402
+
+# the version whose modules the others are split into (--ref). The code
+# calls it "us" throughout, as the reference
+REF = "us"
 
 LINE = re.compile(r"^(\s*)- \[(0x[0-9A-Fa-f]+), ([.\w]+)(?:, ([\w/]+))?\]\s*$")
 INSN = re.compile(r"^\s*/\* ([0-9A-F]+) ([0-9A-F]{8}) [0-9A-F]{8} \*/\s+(.*)$")
@@ -172,12 +180,16 @@ def functions_refs(version: str, binary: str) -> dict:
 
 
 def read_pairs(version: str) -> list:
-    path = ROOT / "build" / version / "version_pairs.tsv"
+    """The rows of the version's pairs with REF, whose columns name REF's
+    function as us_name, us_addr and us_module."""
+    suffix = "" if REF == "us" else f"_{REF}"
+    path = ROOT / "build" / version / f"version_pairs{suffix}.tsv"
     if not path.exists():
-        sys.exit(f"{path.relative_to(ROOT)} is missing: run tools/match_versions.py {version}")
+        ref = "" if REF == "us" else f" --ref {REF}"
+        sys.exit(f"{path.relative_to(ROOT)} is missing: run tools/match_versions.py {version}{ref}")
     rows = []
     lines = path.read_text().splitlines()
-    head = lines[0].split("\t")
+    head = [("us" + h[len(REF):]) if h.startswith(f"{REF}_") else h for h in lines[0].split("\t")]
     for line in lines[1:]:
         rows.append(dict(zip(head, line.split("\t"))))
     return rows
@@ -186,7 +198,7 @@ def read_pairs(version: str) -> list:
 def split(version: str, binary: str, pairs: list) -> tuple:
     """The version's new subsegments of BINARY, [(offset, type, name)], and
     the lines of the report."""
-    us = Binary("us", binary)
+    us = Binary(REF, binary)
     ver = Binary(version, binary)
     report = []
 
@@ -253,7 +265,7 @@ def split(version: str, binary: str, pairs: list) -> tuple:
     reordered = [n for n in order if n in us_names] != [n for n in us_names if n in order]
 
     # --- rodata and data: votes from the paired functions' references
-    us_refs = functions_refs("us", binary)
+    us_refs = functions_refs(REF, binary)
     ver_refs = functions_refs(version, binary)
     paired = []
     for addr, r in funcs:
@@ -487,13 +499,16 @@ def main() -> None:
     parser.add_argument("version")
     parser.add_argument("binaries", nargs="*")
     parser.add_argument("-n", "--dry-run", action="store_true", help="print the subsegments, don't write them")
+    parser.add_argument("--ref", default="us", help="the version whose modules to follow (us)")
     args = parser.parse_args()
-    if args.version == "us":
-        sys.exit("us is the reference: split another version")
+    global REF
+    REF = args.ref
+    if args.version == REF:
+        sys.exit(f"{REF} is the reference: split another version")
     pairs = read_pairs(args.version)
     binaries = args.binaries or sorted(
         p.stem for p in (ROOT / "config" / args.version).glob("*.yaml")
-        if (ROOT / "config" / "us" / p.name).exists())
+        if (ROOT / "config" / REF / p.name).exists())
     for binary in binaries:
         new, report = split(args.version, binary, pairs)
         print(f"{binary}: {len(new)} subsegments")

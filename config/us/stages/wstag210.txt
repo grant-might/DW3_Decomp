@@ -352,3 +352,16 @@ actor92 = 0x800A84B0;
 actor93 = 0x800A84C4;
 actor94 = 0x800A84D8;
 actor95 = 0x800A84EC;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateListMenu = 0x800A4D38; // type:func
+startEvent8 = 0x800A568C; // type:func
+updateEvent9 = 0x800A56B8; // type:func
+startEvent9 = 0x800A5C54; // type:func
+updateEvent1510 = 0x800A5C80; // type:func
+startEvent1510 = 0x800A621C; // type:func
+endEvent310 = 0x800A636C; // type:func
+endEvent685 = 0x800A63B8; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+listWindowFrames = 0x800A6DE8;

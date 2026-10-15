@@ -1,15 +1,15 @@
-D_800A700C = 0x800A700C; // size:0x24
-D_800A7030 = 0x800A7030; // size:0x20
-D_800A7050 = 0x800A7050; // size:0x1C
-D_800A706C = 0x800A706C; // size:0x20
-D_800A708C = 0x800A708C; // size:0x34
-D_800A70C0 = 0x800A70C0; // size:0x34
-D_800A7100 = 0x800A7100; // size:0x70
-D_800A7170 = 0x800A7170; // size:0x34
-D_800A71A4 = 0x800A71A4; // size:0x34
-D_800A71D8 = 0x800A71D8; // size:0x34
-D_800A7218 = 0x800A7218; // size:0x64
-D_800A727C = 0x800A727C; // size:0x34
+updateTileAnimsFrames0 = 0x800A700C; // size:0x24
+updateTileAnimsFrames1 = 0x800A7030; // size:0x20
+updateTileAnimsFrames2 = 0x800A7050; // size:0x1C
+updateTileAnimsFrames3 = 0x800A706C; // size:0x20
+updateTileSixFrames0 = 0x800A708C; // size:0x34
+updateTileSixFrames1 = 0x800A70C0; // size:0x34
+updateTileSixFrames3 = 0x800A7100; // size:0x70
+updateTileSixFrames4 = 0x800A7170; // size:0x34
+updateTileSixWFrames0 = 0x800A71A4; // size:0x34
+updateTileSixWFrames1 = 0x800A71D8; // size:0x34
+updateTileSixWFrames3 = 0x800A7218; // size:0x64
+updateTileSixWFrames4 = 0x800A727C; // size:0x34
 
 // the names the stages share (the same code or data in each)
 stepLoopingAnimation = 0x800A4D04; // type:func
@@ -98,3 +98,25 @@ actor5 = 0x800A771C;
 actor6 = 0x800A7730;
 actor7 = 0x800A7744;
 actor8 = 0x800A7758;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateTileSix = 0x800A5094; // type:func
+restartTileSix = 0x800A5458; // type:func
+createTileSixWithId = 0x800A54C8; // type:func
+createTileSix = 0x800A54F8; // type:func
+updateTileSixW = 0x800A5644; // type:func
+restartTileSixW = 0x800A5A08; // type:func
+createTileSixWWithId = 0x800A5A78; // type:func
+createTileSixW = 0x800A5AA8; // type:func
+createCommand838 = 0x800A62A8; // type:func
+endEvent931 = 0x800A6324; // type:func
+endEvent932 = 0x800A6384; // type:func
+endEvent933 = 0x800A63D0; // type:func
+endEvent934 = 0x800A63FC; // type:func
+endEvent981 = 0x800A6428; // type:func
+endEvent982 = 0x800A6454; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateTileSixFrames2 = 0x800A70F4;
+updateTileSixWFrames2 = 0x800A720C;
+updateStageSpots = 0x800A72B0;

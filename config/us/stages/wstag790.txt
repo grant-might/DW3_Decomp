@@ -18,3 +18,11 @@ actor0 = 0x800A5680;
 actor1 = 0x800A5694;
 actor2 = 0x800A56A8;
 actor3 = 0x800A56BC;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateTileGroup = 0x800A4CB8; // type:func
+handleCommand809 = 0x800A4F94; // type:func
+createCommand809 = 0x800A4FCC; // type:func
+updateFrameTask = 0x800A4FFC; // type:func
+handleCommand808 = 0x800A50E8; // type:func
+createCommand808 = 0x800A5120; // type:func

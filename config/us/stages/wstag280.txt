@@ -183,3 +183,7 @@ actor46 = 0x800A63B4;
 actor47 = 0x800A63C8;
 actor48 = 0x800A63DC;
 actor49 = 0x800A63F0;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateMenu = 0x800A4CD4; // type:func
+startEvent1522 = 0x800A5270; // type:func

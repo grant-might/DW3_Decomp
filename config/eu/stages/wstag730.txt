@@ -1,6 +1,6 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
 script1235 = 0x800A6170;
-D_800A50A0 = 0x800A61E4; // size:0x1C
+updateTileAnimsFrames = 0x800A61E4; // size:0x1C
 stageImages = 0x800A6200;
 actor0Talk0Actions = 0x800A6280;
 actor2Talk0Conditions = 0x800A6288;

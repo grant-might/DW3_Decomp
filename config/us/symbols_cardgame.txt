@@ -137,7 +137,7 @@ CARDGAME_scoreHand = 0x800A2838; // type:func
 CARDGAME_compareCards = 0x800A34FC; // type:func
 CARDGAME_pickComputerCard = 0x800A387C; // type:func
 
-// the data, which cardgame.c defines
+// the data, which effect_script.c defines
 CARDGAME_cardEffects = 0x800A3CF8; // size:0xA50
 CARDGAME_stepWindowPositions = 0x800A4748; // size:0x60
 CARDGAME_rowSpriteOffsets = 0x800A47A8; // size:0x10

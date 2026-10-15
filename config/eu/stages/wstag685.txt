@@ -1,7 +1,7 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4D78 = 0x800A5EB4; // type:func
-func_800A4D88 = 0x800A5EC4; // type:func
-func_800A4DB4 = 0x800A5EF0; // type:func
+endEvent413 = 0x800A5EB4; // type:func
+endEvent421 = 0x800A5EC4; // type:func
+endEvent690 = 0x800A5EF0; // type:func
 script413 = 0x800A5FF8;
 script421 = 0x800A6098;
 script690 = 0x800A6194;

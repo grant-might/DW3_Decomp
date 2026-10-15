@@ -1,5 +1,5 @@
-D_800A5088 = 0x800A5088; // size:0x50
-D_800A50D8 = 0x800A50D8; // size:0x50
+updateTileAnimsFrames0 = 0x800A5088; // size:0x50
+updateTileAnimsFrames1 = 0x800A50D8; // size:0x50
 
 // the names the stages share (the same code or data in each)
 stepLoopingAnimation = 0x800A4CA4; // type:func

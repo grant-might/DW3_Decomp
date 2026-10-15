@@ -54,3 +54,6 @@ actor0Talk0Actions = 0x800A51F4;
 actor0Talks = 0x800A5204;
 actor0Conditions = 0x800A521C;
 actor0 = 0x800A5228;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent460 = 0x800A4DA8; // type:func

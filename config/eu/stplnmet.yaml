@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/eu/stplnmet
-  src_path: src/stplnmet
+  src_path: src/menus/player_name
   build_path: build/eu
 
   ld_script_path: build/eu/generated/stplnmet.ld
@@ -52,8 +52,8 @@ segments:
       # us's modules, each with its rodata, data and bss (tools/split_version.py)
       # each module's rodata: the ones with jump tables or strings
       - [0x0, .rodata, name_entry]
-      # the modules (src/stplnmet/), in the order they link
-      - [0x2A8, c, stplnmet]
+      # the modules (src/menus/player_name/), in the order they link
+      - [0x2A8, c, scene]
       - [0x494, c, backdrop]
       - [0xAC4, c, welcome]
       - [0x10C0, c, name_entry]

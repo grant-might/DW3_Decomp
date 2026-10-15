@@ -2,10 +2,10 @@
 
 STITSHOP_updateShop = 0x8008BFB0; // type:func
 // config/eu/symbols.txt names three FIELDSTG functions at addresses that fall
-// inside this overlay's STITSHOP_drawShop, STITSHOP_runShop and func_8008B614
+// inside this overlay's STITSHOP_drawShop, STITSHOP_runShop and STITSHOP_updateShop
 STITSHOP_drawShop_part = 0x8008B770; // type:label segment:stitshop version-only
 STITSHOP_runShop_part = 0x8008BFA4; // type:label segment:stitshop version-only
-func_8008B614_part = 0x8008C000; // type:label segment:stitshop version-only
+STITSHOP_updateShop_part = 0x8008C000; // type:label segment:stitshop version-only
 
 // STITSHOP's data, in its order
 STITSHOP_sellLists = 0x8008CAA8; // size:0x10

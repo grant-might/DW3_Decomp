@@ -6,7 +6,7 @@ each, config/<version>/stages.txt lists them with the offsets where their code s
 and ends:
 
     WSTAG200 0x4 0x2B8 [asm | asm-data | head-word | c-rodata]
-    WSTAG260 data
+    WSTAG260 data [asm]
 
 A stage loads at STAGE_VRAM (mk/version/<version>.mk; 0x800A4CA4 in us), after
 the largest main overlay (CARDGAME), on top of FIELDSTG, whose functions it calls. Most stages start right with code; the
@@ -18,16 +18,23 @@ splat's assembly in this version) or "asm-data" (only its data is).
 "c-rodata" takes the bytes before the code (the color, or the jump tables)
 from the stage's C file too (it can follow "asm-data"). "head-word" before it
 takes a color that comes before the jump tables from a C file of its own,
-src/stages/<name>_head.c, linked first: in the stage's C file GCC would align
-the jump tables to 8 bytes after it (WSTAG924).
+<name>_head.c next to the stage's, linked first: in the stage's C file GCC
+would align the jump tables to 8 bytes after it (WSTAG924).
+
+The stage's C file is src/field/stages/<area>/<name>.c, in the folder of its area
+(tools/stage_areas.py), or src/field/stages/<name>.c for one in no area: the
+subsegments are named <area>/<name>, so that splat finds it there and
+writes its assembly to asm/<version>/stages/<area>/.
 
 A stage with no code, "data" (WSTAG260, the story events' scripts that
-FIELDSTG runs), is all data, from its C file.
+FIELDSTG runs), is all data, from its C file, or splat's assembly ("data
+asm").
 
 A stage file that ends inside a word (seven European ones) has its last
 bytes in its C's data too, and no section after them is aligned; one whose
 data is still asm keeps them in a databin of their own ({name}_end), as
-splat's data segment drops them.
+splat's data segment drops them (a blob, which tools/inputcheck.py lets
+the stage link as it is shorter than a word).
 
 usage: stage_yaml.py wstag200 build/us/generated/stages/wstag200.yaml
 (VERSION, as for make, picks the version; eu by default)
@@ -53,7 +60,7 @@ options:
 
   asm_path: asm/{version}/stages
   asset_path: asm/{version}/stages/bin
-  src_path: src/stages
+  src_path: src/field/stages
   build_path: build/{version}
 
   ld_script_path: build/{version}/generated/{name}.ld
@@ -120,7 +127,7 @@ options:
 
   asm_path: asm/{version}/stages
   asset_path: asm/{version}/stages/bin
-  src_path: src/stages
+  src_path: src/field/stages
   build_path: build/{version}
 
   ld_script_path: build/{version}/generated/{name}.ld
@@ -155,12 +162,13 @@ def main():
         words = line.split("#", 1)[0].split()
         if words and words[0].lower() == name:
             found = True
-            # "data": the stage has no code, its C file holds it all
-            data_only = words[1:] == ["data"]
+            # "data": the stage has no code, its C file holds it all ("data
+            # asm": splat's assembly does, in this version)
+            data_only = words[1:2] == ["data"]
             if len(words) == 1 or data_only:
                 blob = not data_only
                 text_start = text_end = 0
-                marks = []
+                marks = words[2:]
             else:
                 text_start, text_end = int(words[1], 16), int(words[2], 16)
                 # "asm": the code and data are still splat's assembly in this
@@ -168,7 +176,7 @@ def main():
                 # before the code are the C file's
                 marks = words[3:]
             if marks != ["asm"] and [m for m in ("asm-data", "head-word", "c-rodata") if m in marks] != marks or (
-                    "head-word" in marks and "c-rodata" not in marks):
+                    "head-word" in marks and "c-rodata" not in marks) or (data_only and marks not in ([], ["asm"])):
                 sys.exit(f"{config}/stages.txt: unknown mark in {line.strip()}")
             code = "asm" if marks == ["asm"] else "c"
             data_type = "data" if "asm" in marks or "asm-data" in marks else ".data"
@@ -186,13 +194,15 @@ def main():
     if os.path.exists(os.path.join(root, f"{config}/stages/{name}.txt")):
         symbols.append(f"{config}/stages/{name}.txt")
 
+    # the stage's C file is src/field/stages/<path>.c (and its head <path>_head.c)
+    path = version.stage_path(name)
     if data_only:
-        subsegments = f"      - [0x0, {data_type}, {name}]\n"
+        subsegments = f"      - [0x0, {data_type}, {path}]\n"
     else:
-        subsegments = ((f"      - [0x0, .rodata, {name}_head]\n" if head_word else "")
-                       + (f"      - [0x{4 if head_word else 0:X}, {rodata_type}, {name}]\n" if text_start else "")
-                       + f"      - [0x{text_start:X}, {code}, {name}]\n"
-                       + f"      - [0x{text_end:X}, {data_type}, {name}]\n")
+        subsegments = ((f"      - [0x0, .rodata, {path}_head]\n" if head_word else "")
+                       + (f"      - [0x{4 if head_word else 0:X}, {rodata_type}, {path}]\n" if text_start else "")
+                       + f"      - [0x{text_start:X}, {code}, {path}]\n"
+                       + f"      - [0x{text_end:X}, {data_type}, {path}]\n")
 
     os.makedirs(os.path.dirname(out), exist_ok=True)
     with open(out, "w") as f:

@@ -84,3 +84,7 @@ actor10 = 0x800A5830;
 actor11 = 0x800A5844;
 stageSlots0 = 0x800A621C;
 stageSlots1 = 0x800A6294;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent530 = 0x800A4D98; // type:func
+endEvent531 = 0x800A4DE4; // type:func

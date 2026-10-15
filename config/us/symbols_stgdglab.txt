@@ -88,4 +88,5 @@ STGDGLAB_closeLabMenu = 0x8008E760; // type:func
 STGDGLAB_labMenuRunning = 0x8008E7BC; // type:func
 STGDGLAB_fadeOutLab = 0x8008E7F0; // type:func
 STGDGLAB_getItemSprite = 0x8008EBFC; // type:func
+STGDGLAB_getItemB = 0x8008EC48; // type:func
 STGDGLAB_updateSkillPanel = 0x8008C234; // type:func

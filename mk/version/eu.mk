@@ -37,112 +37,60 @@ GP_VALUE := 0x8005CB50
 # are split into the USA version's modules (tools/split_version.py), so that
 # their asm lands at the same paths under asm/eu/ as under asm/us/; only the
 # PsyQ libraries and the functions behind INCLUDE_ASM stay asm.
-C_SRC := src/soundtst/soundtst.c
+C_SRC := src/debug/sound_test/sound_test.c
 
 # game: every module of the executable, and its data
-C_SRC += $(shell find src/main -name '*.c')
+C_SRC += $(shell find src/engine -name '*.c')
 
 # menus
-C_SRC += src/stitshop/stitshop.c src/stgdglab/stgdglab.c src/ststatus/ststatus.c
+C_SRC += src/menus/item_shop/scene.c src/menus/digimon_lab/scene.c src/menus/field_menu/card_screen.c
 # stitshop's modules, and its data
-C_SRC += $(addprefix src/stitshop/, trade.c item_list.c info.c shop.c equip.c data/stitshop.c)
+C_SRC += $(addprefix src/menus/item_shop/, trade.c item_list.c info.c shop.c equip.c data/stitshop.c)
 # stgdglab's modules
-C_SRC += $(addprefix src/stgdglab/, recipe_screen.c entry_panel.c slot_screen.c menu.c scroll_bar.c)
-C_SRC += $(addprefix src/stgdglab/, party_screen.c skill_panel.c entry_list.c lab.c)
+C_SRC += $(addprefix src/menus/digimon_lab/, recipe_screen.c entry_panel.c slot_screen.c menu.c scroll_bar.c)
+C_SRC += $(addprefix src/menus/digimon_lab/, party_screen.c skill_panel.c entry_list.c lab.c)
 # ststatus's modules
-C_SRC += $(addprefix src/ststatus/, demo_screen.c equip_panel.c digivolve_panel.c status_screen.c item_screen.c item_list.c tech_screen.c sort_screen.c map_screen.c menu.c helpers.c)
+C_SRC += $(addprefix src/menus/field_menu/, demo_screen.c equip_panel.c digivolve_panel.c status_screen.c item_screen.c item_list.c tech_screen.c sort_screen.c map_screen.c menu.c helpers.c)
 
 # cardgame
-C_SRC += src/cardgame/cardgame.c
-C_SRC += src/cardgame/cardgame_2.c
-C_SRC += src/cardgame/cardgame_3.c
-C_SRC += src/cardgame/cardgame_4.c
+C_SRC += src/cardgame/card_battle/effect_script.c
+# cardgame's other objects and modules (effect_script.c is above), and the
+# second and third objects' data
+C_SRC += $(filter-out src/cardgame/card_battle/effect_script.c,$(wildcard src/cardgame/card_battle/*.c))
+C_SRC += src/cardgame/card_battle/data/cardgame_2.c src/cardgame/card_battle/data/cardgame_3.c
 
-# fightstg's other objects (fightstg.c is with the overlays)
-C_SRC += $(addprefix src/fightstg/, fightstg_2.c fightstg_3.c fightstg_4.c fightstg_5.c fightstg_6.c fightstg_7.c)
+# fightstg's other objects and modules (model_mesh.c is with the overlays)
+C_SRC += $(filter-out src/battle/battle_mode/model_mesh.c,$(wildcard src/battle/battle_mode/*.c))
 
 # small overlays
-C_SRC += src/stgmcard/stgmcard.c src/stfgtrep/stfgtrep.c src/wfightmn/wfightmn.c src/wfightmn/wfightmn_2.c src/stcrdshp/stcrdshp.c src/stplnmet/stplnmet.c src/wfightts/wfightts.c
+C_SRC += src/menus/memory_card/scene.c src/battle/report/scene.c src/battle/report/partner.c src/battle/report/report.c src/battle/report/fade.c src/battle/report/growth.c src/battle/report/data/stfgtrep.c src/battle/normal_battle/loader.c src/battle/normal_battle/setup.c src/battle/normal_battle/menu.c src/battle/normal_battle/techs.c src/battle/normal_battle/data/wfightmn_2.c src/cardgame/card_packs/scene.c src/menus/player_name/scene.c src/debug/battle_test/battle_test.c
 # stcrdshp's modules
-C_SRC += $(addprefix src/stcrdshp/, pack_open.c fader.c card_grid.c buy.c shop.c)
+C_SRC += $(addprefix src/cardgame/card_packs/, pack_open.c fader.c card_grid.c buy.c shop.c)
 # stgmcard's modules, and its data
-C_SRC += $(addprefix src/stgmcard/, info.c panel.c menu.c saves.c screen.c data/stgmcard.c)
+C_SRC += $(addprefix src/menus/memory_card/, info.c panel.c menu.c saves.c screen.c data/stgmcard.c)
 # stplnmet's modules, and its data
-C_SRC += $(addprefix src/stplnmet/, backdrop.c welcome.c name_entry.c confirm.c choice.c screen.c data/stplnmet.c)
+C_SRC += $(addprefix src/menus/player_name/, backdrop.c welcome.c name_entry.c confirm.c choice.c screen.c data/stplnmet.c)
 
 # overlays
-C_SRC += src/shocktst/shocktst.c src/cnty_sel/cnty_sel.c src/stcrdabm/stcrdabm.c
-C_SRC += src/stagslct/stagslct.c src/stdgname/stdgname.c
+C_SRC += src/debug/vibration_test/vibration_test.c src/menus/country_select/country_select.c src/cardgame/album/album.c
+C_SRC += src/debug/stage_select/stage_select.c src/menus/partner_name/scene.c
 # stdgname's modules, and its data
-C_SRC += $(addprefix src/stdgname/, name_entry.c menu.c screen.c data/stdgname.c)
-C_SRC += src/stdwtitl/stdwtitl.c
+C_SRC += $(addprefix src/menus/partner_name/, name_entry.c menu.c screen.c data/stdgname.c)
+C_SRC += src/menus/title/scene.c
 # stdwtitl's modules, and its data
-C_SRC += $(addprefix src/stdwtitl/, logo.c movie.c glint.c splash.c title_loader.c slides.c menu.c)
-C_SRC += $(addprefix src/stdwtitl/, edge_fade.c background.c title.c)
-C_SRC += $(addprefix src/stdwtitl/data/, stdwtitl.c title.c movie.c)
-C_SRC += src/stcrddek/stcrddek.c src/stgtrain/stgtrain.c src/fightstg/fightstg.c
+C_SRC += $(addprefix src/menus/title/, logo.c movie.c glint.c splash.c title_loader.c slides.c menu.c)
+C_SRC += $(addprefix src/menus/title/, edge_fade.c background.c title.c)
+C_SRC += $(addprefix src/menus/title/data/, stdwtitl.c title.c movie.c)
+C_SRC += src/cardgame/deck_editor/scene.c src/menus/gym/scene.c src/battle/battle_mode/model_mesh.c
 # stcrddek's modules, and its data
-C_SRC += $(addprefix src/stcrddek/, deck_cards.c editor.c name_entry.c scroll_bar.c screen.c data/stcrddek.c)
+C_SRC += $(addprefix src/cardgame/deck_editor/, deck_cards.c editor.c name_entry.c scroll_bar.c screen.c data/stcrddek.c)
 # fieldstg's modules, and its data
-C_SRC += $(wildcard src/fieldstg/*.c) src/fieldstg/data/fieldstg.c
+C_SRC += $(wildcard src/field/field_mode/*.c) src/field/field_mode/data/fieldstg.c
 # stgtrain's modules
-C_SRC += $(addprefix src/stgtrain/, sprite.c screen.c result.c session.c actor.c menu.c files.c)
+C_SRC += $(addprefix src/menus/gym/, sprite.c screen.c result.c session.c actor.c menu.c files.c)
 
-# The stages the USA version has, built from its C
-C_SRC += $(addprefix src/stages/, \
-	wstag200.c wstag201.c wstag202.c wstag203.c wstag205.c wstag206.c \
-	wstag210.c wstag211.c wstag212.c wstag218.c wstag219.c wstag220.c \
-	wstag221.c wstag225.c wstag226.c wstag230.c wstag231.c wstag232.c \
-	wstag233.c wstag235.c wstag236.c wstag237.c wstag238.c wstag240.c \
-	wstag241.c wstag245.c wstag246.c wstag250.c wstag251.c wstag255.c \
-	wstag256.c wstag260.c wstag261.c wstag270.c wstag271.c wstag275.c wstag276.c \
-	wstag280.c wstag281.c wstag285.c wstag286.c wstag290.c wstag291.c \
-	wstag295.c wstag296.c wstag300.c wstag301.c wstag305.c wstag306.c \
-	wstag310.c wstag311.c wstag315.c wstag316.c wstag320.c wstag321.c \
-	wstag325.c wstag326.c wstag330.c wstag331.c wstag335.c wstag336.c \
-	wstag340.c wstag341.c wstag345.c wstag346.c wstag350.c wstag351.c \
-	wstag355.c wstag356.c wstag360.c wstag361.c wstag365.c wstag366.c \
-	wstag370.c wstag371.c wstag375.c wstag376.c wstag380.c wstag381.c \
-	wstag385.c wstag386.c wstag395.c wstag396.c wstag400.c wstag401.c \
-	wstag405.c wstag406.c wstag410.c wstag411.c wstag415.c wstag420.c \
-	wstag421.c wstag425.c wstag426.c wstag430.c wstag431.c wstag435.c \
-	wstag436.c wstag440.c wstag441.c wstag445.c wstag446.c wstag450.c \
-	wstag451.c wstag455.c wstag456.c wstag460.c wstag465.c wstag466.c \
-	wstag470.c wstag471.c wstag475.c wstag476.c wstag480.c wstag481.c \
-	wstag485.c wstag486.c wstag490.c wstag491.c wstag495.c wstag496.c \
-	wstag500.c wstag501.c wstag505.c wstag506.c wstag520.c wstag521.c \
-	wstag525.c wstag526.c wstag530.c wstag531.c wstag535.c wstag537.c \
-	wstag538.c wstag540.c wstag545.c wstag550.c wstag551.c wstag555.c \
-	wstag556.c wstag560.c wstag561.c wstag565.c wstag566.c wstag570.c \
-	wstag571.c wstag575.c wstag576.c wstag580.c wstag581.c wstag585.c \
-	wstag586.c wstag590.c wstag591.c wstag595.c wstag596.c wstag600.c \
-	wstag601.c wstag605.c wstag606.c wstag610.c wstag611.c wstag615.c \
-	wstag616.c wstag620.c wstag621.c wstag625.c wstag630.c wstag631.c \
-	wstag635.c wstag636.c wstag640.c wstag641.c wstag645.c wstag646.c \
-	wstag650.c wstag651.c wstag655.c wstag656.c wstag660.c wstag661.c \
-	wstag675.c wstag676.c wstag680.c wstag685.c wstag686.c wstag690.c \
-	wstag691.c wstag695.c wstag696.c wstag700.c wstag701.c wstag705.c \
-	wstag706.c wstag710.c wstag711.c wstag715.c wstag716.c wstag720.c \
-	wstag721.c wstag725.c wstag726.c wstag730.c wstag731.c wstag735.c \
-	wstag736.c wstag740.c wstag741.c wstag745.c wstag746.c wstag750.c \
-	wstag755.c wstag756.c wstag760.c wstag761.c wstag780.c wstag785.c \
-	wstag790.c wstag795.c wstag800.c wstag805.c wstag810.c wstag815.c \
-	wstag820.c wstag825.c wstag830.c wstag835.c wstag840.c wstag845.c \
-	wstag850.c wstag855.c wstag860.c wstag865.c wstag870.c wstag875.c \
-	wstag880.c wstag885.c wstag890.c wstag895.c)
-
-# The stages the USA version doesn't have
-C_SRC += $(addprefix src/stages/, \
-	wstag920.c wstag921.c wstag922.c wstag923.c wstag924.c wstag925.c \
-	wstag926.c wstag927.c wstag928.c wstag929.c wstag930.c wstag931.c \
-	wstag932.c wstag933.c wstag934.c wstag935.c wstag936.c wstag937.c \
-	wstag938.c wstag939.c wstag940.c wstag941.c wstag942.c wstag943.c \
-	wstag944.c wstag945.c wstag946.c wstag947.c wstag948.c wstag949.c \
-	wstag950.c wstag951.c wstag952.c wstag953.c wstag954.c wstag955.c \
-	wstag956.c wstag957.c wstag958.c wstag959.c wstag960.c wstag961.c \
-	wstag962.c wstag963.c wstag964.c wstag965.c wstag966.c wstag967.c \
-	wstag968.c wstag969.c wstag970.c wstag971.c wstag972.c wstag973.c \
-	wstag974.c)
-# WSTAG924's color, in a file of its own before the stage's jump tables
-# (tools/stage_yaml.py)
-C_SRC += src/stages/wstag924_head.c
+# The stages: the USA version's, built from its C, and those it doesn't have,
+# each in the folder of its area (tools/stage_areas.py), with WSTAG924's
+# color in a file of its own before the stage's jump tables (wstag924_head.c,
+# tools/stage_yaml.py)
+C_SRC += $(sort $(shell find src/field/stages -name '*.c' ! -name '*.inc.c'))

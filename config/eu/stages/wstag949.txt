@@ -79,3 +79,10 @@ area3Battle5 = 0x800A6840;
 area3Battle6 = 0x800A684C;
 area3Battle7 = 0x800A6858;
 area3Battles = 0x800A6864;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateFarSprites = 0x800A5DE4; // type:func
+createFarSprites = 0x800A5F38; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+farSpriteSpots = 0x800A6174;

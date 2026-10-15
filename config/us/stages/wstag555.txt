@@ -1,6 +1,6 @@
-D_800A52A0 = 0x800A52A0; // size:0x34
-D_800A52D4 = 0x800A52D4; // size:0x34
-D_800A5308 = 0x800A5308; // size:0x30
+updateTileAnimsFrames0 = 0x800A52A0; // size:0x34
+updateTileAnimsFrames1 = 0x800A52D4; // size:0x34
+updateTileAnimsFrames2 = 0x800A5308; // size:0x30
 
 // the names the stages share (the same code or data in each)
 stepLoopingAnimation = 0x800A4CA4; // type:func
@@ -59,3 +59,6 @@ area3Battle7 = 0x800A5518;
 area3Battles = 0x800A5524;
 actor0Conditions = 0x800A55D4;
 actor0 = 0x800A55DC;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent380 = 0x800A4FF0; // type:func

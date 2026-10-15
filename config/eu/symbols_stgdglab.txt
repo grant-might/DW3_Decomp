@@ -78,7 +78,7 @@ STGDGLAB_updateFade = 0x8008F2C0; // type:func
 STGDGLAB_startLerp = 0x8008F32C; // type:func
 STGDGLAB_updateLerp = 0x8008F36C; // type:func
 STGDGLAB_getItemSprite = 0x8008F3D8; // type:func
-func_8008EC48 = 0x8008F424; // type:func
+STGDGLAB_getItemB = 0x8008F424; // type:func
 STGDGLAB_drawPartyScreen = 0x8008AD98; // type:func
 
 // STGDGLAB's data, in its order

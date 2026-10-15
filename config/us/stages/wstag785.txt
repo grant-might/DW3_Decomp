@@ -1,7 +1,7 @@
-D_800A5FD4 = 0x800A5FD4; // size:0x3C
-D_800A6010 = 0x800A6010; // size:0x34
-D_800A6044 = 0x800A6044; // size:0x1C
-D_800A6060 = 0x800A6060; // size:0x1C
+updateTileSetFrames1 = 0x800A5FD4; // size:0x3C
+updateTileSetFrames2 = 0x800A6010; // size:0x34
+updateTileSetFrames3 = 0x800A6044; // size:0x1C
+updateTileSetFrames0 = 0x800A6060; // size:0x1C
 
 // the names the stages share (the same code or data in each)
 stepAnimation = 0x800A4CA8; // type:func
@@ -44,3 +44,13 @@ actor8 = 0x800A623C;
 actor9 = 0x800A6250;
 actor10 = 0x800A6264;
 actor11 = 0x800A6278;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateTileSet = 0x800A4DC8; // type:func
+createTileSet = 0x800A5068; // type:func
+createCommand835 = 0x800A509C; // type:func
+drawActorMark = 0x800A50CC; // type:func
+updateActorMark = 0x800A5178; // type:func
+createCommand807 = 0x800A53D4; // type:func
+handleCommand807 = 0x800A5404; // type:func
+endEvent1 = 0x800A55D0; // type:func

@@ -2,8 +2,8 @@
 placePoints1_1Point1 = 0x800A60F4;
 placePoints1_1Point0 = 0x800A6104;
 placePoints1_1 = 0x800A6114;
-D_800A4FD8 = 0x800A611C;
-D_800A4FE8 = 0x800A612C;
+placePoints3_1Point1 = 0x800A611C;
+placePoints3_1Point0 = 0x800A612C;
 placePoints3_1 = 0x800A613C;
 placePoints5_1Point1 = 0x800A6144;
 placePoints5_1Point0 = 0x800A6154;

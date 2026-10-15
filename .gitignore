@@ -9,3 +9,5 @@ objdiff.json
 permuter/
 __pycache__/
 .venv/
+compile_commands.json
+.cache/

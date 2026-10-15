@@ -1,13 +1,13 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4DA0 = 0x800A5EDC; // type:func
-func_800A4E9C = 0x800A5FD8; // type:func
-func_800A5140 = 0x800A627C; // type:func
-func_800A5270 = 0x800A63AC; // type:func
+stepRiser = 0x800A5EDC; // type:func
+updateRisers = 0x800A5FD8; // type:func
+handleCommand814 = 0x800A627C; // type:func
+createCommand814 = 0x800A63AC; // type:func
 script412 = 0x800A657C;
-D_800A5618 = 0x800A675C;
-D_800A5628 = 0x800A676C;
-D_800A5638 = 0x800A677C;
-D_800A564C = 0x800A6790;
+updateRisersFrames_0 = 0x800A675C;
+updateRisersFrames_1 = 0x800A676C;
+updateRisersFrames_6 = 0x800A677C;
+updateRisersFrames = 0x800A6790;
 stageImages = 0x800A67BC;
 actor0Conditions = 0x800A682C;
 actor0 = 0x800A6838;

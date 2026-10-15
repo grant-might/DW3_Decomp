@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/eu/stdgname
-  src_path: src/stdgname
+  src_path: src/menus/partner_name
   build_path: build/eu
 
   ld_script_path: build/eu/generated/stdgname.ld
@@ -54,8 +54,8 @@ segments:
       - [0x0, .rodata, name_entry]
       - [0x2A8, .rodata, menu]
       - [0x2C4, .rodata, screen]
-      # the modules (src/stdgname/), in the order they link
-      - [0x2DC, c, stdgname]
+      # the modules (src/menus/partner_name/), in the order they link
+      - [0x2DC, c, scene]
       - [0x6C8, c, name_entry]
       - [0x2770, c, menu]
       - [0x34D4, c, screen]

@@ -7,9 +7,12 @@ matched C needs.
 ## The parts
 
 - The executable's game code is all C, and its rodata. Its data is C too:
-  each module holds its own, and `src/main/data/` the rest (`matrices.c`,
-  `game_3.c` and the `.bss`, `game_bss.c`) until it moves next to the code
-  that uses it.
+  each module holds its own, its small data (`.sdata`) included, and
+  `src/engine/data/` the pieces no module can hold, each file saying why:
+  the matrices nothing in the executable reads (`matrices.c`), the small
+  data of modules the evidence doesn't name (`heap_start.c`,
+  `get_digimon.c`, `eu_settings.c`, `all_files_pattern.c`) and the commons
+  the linker laid out (`game_bss.c`).
 - The PsyQ 4.7 libraries linked into the executable, and `libpress` in
   `STDWTITL`, are Sony's code, not the game's: like other PSX decomps, the
   build takes them from the original as splat's disassembly and the progress
@@ -17,16 +20,19 @@ matched C needs.
 - The 21 overlays are all C. The menu overlays have their own copies of the
   same helpers (the screen fader, the panels' fades, the lerps, the scroll
   bar, and the name entry's keyboard in STCRDDEK, STPLNMET and STDGNAME),
-  built from one file each in `src/menu_common/` that they include, named
-  with each overlay's prefix (`OVL_NAME`).
+  built from one file each in `src/shared/` that they include, named
+  with each overlay's prefix (`OVL_NAME`). STFGTREP has the fader, the
+  fades and the lerps too, and FIGHTSTG the fader's start and drawing.
 - The stages are all C, the 238 USA ones and the 55 of the European version
   alone. Many stages share functions built from the same source, so one
   match often repeats across stages: those have the same name in every
   stage, and the copies that are the same C are one file in
-  `src/stages/common/` that the stages include. The stages' data is
-  C too, as splat's words, at the end of each stage's C file.
-- The European version is the main one: the build's default. It is split
-  into the USA version's files, with the
+  `src/field/stages/common/` that the stages include. The stages' data is
+  C too, as splat's words, at the end of each stage's C file. Each stage
+  is in the folder of its area, `src/field/stages/<area>/` (see
+  [src/field/stages/README.md](../src/field/stages/README.md)).
+- The European version is the main one: the build's default and the one
+  decomp.dev shows first. It is split into the USA version's files, with the
   USA names, and builds all of them from the same C: the executable's game
   code and data (the same 346 functions as the USA version), the overlays,
   the 238 stages the USA version has (1,370 functions and their data), and
@@ -36,7 +42,8 @@ matched C needs.
 ## Progress
 
 Progress is measured by [objdiff](https://github.com/encounter/objdiff), with
-one unit per C file.
+one unit per C file, and tracked on
+[decomp.dev](https://decomp.dev/ReGame-Labs/dw3_decomp).
 
 ```
 # Write objdiff.json and the target objects in expected/<version>/
@@ -49,7 +56,7 @@ make VERSION=eu report
 After `make objdiff`, open the repository in the
 [objdiff](https://github.com/encounter/objdiff) GUI to see each unit's
 functions and data against the original. `tools/objdiff_generate.py` makes one
-unit per C file (`main/system`, `cnty_sel/cnty_sel`, `stages/wstag200`...); a
+unit per C file (`main/system`, `cnty_sel/cnty_sel`, `stages/central_sector/wstag200`...); a
 file `X_2.c`, the second half of one original object, is reported together
 with `X.c`. The units go into the category `game` (the executable), one
 category per overlay, and `stages` for all the stages. The executable's data
@@ -78,12 +85,17 @@ gets one byte changed, so its section only counts once all of it is C. Data
 that splat still has in its own segments (`data` in a config rather than
 `.data`) isn't in the C object, so it counts as still to do.
 
-`make report` writes each version's progress to `build/<version>/report.json`,
-which is where the table above comes from. The checks that read only the source
-and the configs run first: `tools/check_names.py` and `tools/hacks.py`. The
-build then runs `make compare`, the shift checks
-(`tools/shiftcheck.py --strict`, `make padcheck`) and `make lint` for both
-versions.
+The CI (`.github/workflows/build.yaml`) first runs `tools/check_names.py`
+and `tools/hacks.py`, which only read the source and the configs, and
+`make lint` for both versions. It then builds both versions on every push,
+runs `make compare`, the shift checks (`tools/shiftcheck.py --strict`,
+`make padcheck`) and `make report`, and uploads each
+`build/<version>/report.json` as the `SLES_039.36_report` and
+`SLUS_014.36_report` artifacts, which decomp.dev reads; its default version
+is the European one. The original files come from a private repository, so
+pull requests from forks only run the first three checks.
+`.github/workflows/docker.yaml` builds and compares both versions in the
+Docker image whenever the image or what it installs changes.
 
 ## Fake matches and hacks
 
@@ -96,21 +108,22 @@ README's badge counts them: fake matches, then the other kinds together.
 | Kind | Count | Marker |
 |---|---|---|
 | Fake matches | 0 | a comment that starts with `/* fake match:` and says what is forced and why |
-| BEC forms | 1 | a comment that starts with `/* BEC form:` and names a function elsewhere with the same form |
+| BEC forms | 1 | a comment that starts with `/* BEC form:` and names the Digimon World 2 function with the same form |
 | Unused frame locals | 6 | `/* unused, but it is in the original stack frame */` |
-| Form-dependent matches | 182 | a comment that says the `match depends on` the form |
+| Form-dependent matches | 176 | a comment that says the `match depends on` the form |
 | Functions still in assembly | 0 | `INCLUDE_ASM` |
 
 - A fake match is the last resort: a form forced only for the code it makes,
   such as an empty `do {} while (0)` that ends a CSE block or a variable
   that exists only to shape the code. There are none so far.
 - A BEC form is a form the rules take nowhere else, allowed as a one-off
-  exception because another matched decomp, built with the same GCC 2.8.1 at
-  `-O2`, has it. The one so far is STGDGLAB's `STGDGLAB_updateSkillPanel`,
-  whose `skillCount = 6` store is alone in a `do { } while (0)`: its loop
-  notes keep the store before the call's arguments through both schedulers,
-  as that decomp's stage update functions do in theirs. Its comment starts
-  with `/* BEC form:`.
+  exception because Digimon World 2's matched source (BEC's too, built with
+  the same GCC 2.8.1 at `-O2`) has it. The one so far is STGDGLAB's
+  `STGDGLAB_updateSkillPanel`, whose `skillCount = 6` store is alone in a
+  `do { } while (0)`: its loop notes keep the store before the call's
+  arguments through both schedulers, as Digimon World 2's
+  `Stg10_TitleUpdate` and `Stg20_ShopListUpdate` do in theirs. Its comment
+  starts with `/* BEC form:`.
 - An unused frame local is a local that the code never touches, kept because
   the original's stack frame has room for it: without it, the frame is
   smaller than the original's. One is in the game's `drawTalkBoxArrow`, one in STSTATUS's `STSTATUS_runStatusChoice`,
@@ -182,14 +195,14 @@ README's badge counts them: fake matches, then the other kinds together.
   `int` as two-byte character constants, in its `STAGSLCT_showBiosVersion`, the do-while of
   `COUNTDOWN_BORROW`, the statement macro of the timed stages' countdown,
   and the start position that every stage's setup function sets as a
-  `(Vec2){x, y}` constructor (both in `include/stage.h`).
+  `(Vec2){x, y}` constructor (both in `include/field/stage.h`).
 - The functions still in assembly are not in the badge: they would be the
   work left, and there are none.
 
 `tools/hacks.py --list` lists every one with its file, line and function, and
 also what is assembly without being a hack: the rodata still behind
-`INCLUDE_RODATA`, data written as a top-level `__asm__`, and the macros that
-wrap the inline asm C can't say. The CI fails on what the source must never
-have: `NON_MATCHING` code, `#if 0` blocks, and inline asm in place of C.
+`INCLUDE_RODATA` and the macros that wrap the inline asm C can't say. The CI
+fails on what the source must never have: `NON_MATCHING` code, `#if 0`
+blocks, and inline asm in place of C, top-level data asm included.
 `tools/hacks.py --check README.md docs/status.md` checks that the README's
 badge and the table above are up to date.

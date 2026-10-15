@@ -13,6 +13,10 @@ stageImages = 0x800A5408;
 stageBattles = 0x800A53EC;
 
 // named by their place in the stage's tables (tools/name_stage_data.py)
+placePoints1_1Point3 = 0x800A4F6C;
+placePoints1_1Point2 = 0x800A4F7C;
+placePoints1_1Point1 = 0x800A4F8C;
+placePoints1_1Point0 = 0x800A4F9C;
 placePoints1_1 = 0x800A4FAC;
 placePoints1_2Point3 = 0x800A4FB4;
 placePoints1_2Point2 = 0x800A4FC4;

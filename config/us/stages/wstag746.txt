@@ -83,3 +83,15 @@ actor1 = 0x800A5FEC;
 actor2 = 0x800A6000;
 actor3 = 0x800A6014;
 actor4 = 0x800A6028;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateDarkness = 0x800A4CA4; // type:func
+createDarkness = 0x800A4EB8; // type:func
+startEvent8000 = 0x800A4EE8; // type:func
+startEvent8001 = 0x800A4F68; // type:func
+startEvent8002 = 0x800A4FE8; // type:func
+endEvent1297 = 0x800A5790; // type:func
+endEvent1298 = 0x800A57DC; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateStageSpots = 0x800A5A6C;

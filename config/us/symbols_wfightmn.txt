@@ -3,6 +3,7 @@
 WFIGHTMN_createLoader = 0x800A529C; // type:func
 WFIGHTMN_checkEquip = 0x800A57A8; // type:func
 WFIGHTMN_checkParty = 0x800A5840; // type:func
+WFIGHTMN_pairTech = 0x800A69D0; // type:func
 WFIGHTMN_start = 0x800A8E40; // type:func
 FIGHTSTG_battleTableFunc = 0x800A2584; // FIGHTSTG's battle table getter defined:True
 FIGHTSTG_events = 0x800A25F0; // FIGHTSTG's events (EventQueue) defined:True
@@ -40,8 +41,8 @@ WFIGHTMN_digidevolve = 0x800A8494; // type:func
 WFIGHTMN_showWon = 0x800A8610; // type:func
 WFIGHTMN_bringLastEnemy = 0x800A86E0; // type:func
 WFIGHTMN_screen = 0x800A9B58; // size:0x8
-WFIGHTMN_kindEffects = 0x800A9B60; // size:0x78
-WFIGHTMN_unk7Effects = 0x800A9BD8; // size:0x80
+WFIGHTMN_effectVisuals = 0x800A9B60; // size:0x78
+WFIGHTMN_elementVisuals = 0x800A9BD8; // size:0x80
 WFIGHTMN_states = 0x800A9C58; // size:0x6C
 WFIGHTMN_actionEffects = 0x800A9CC4; // size:0x58
 
@@ -83,6 +84,6 @@ FIGHTSTG_queueSpecialEnd = 0x8009C0B0; // defined:True
 FIGHTSTG_weakenEnemy = 0x8009C1C0; // defined:True
 FIGHTSTG_endEnemyWeakness = 0x8009C240; // defined:True
 FIGHTSTG_startCameraTurn = 0x800A120C; // defined:True
-FIGHTSTG_createScreenFade = 0x8008A22C; // defined:True
+FIGHTSTG_createFader = 0x8008A22C; // defined:True
 WFIGHTMN_runConfusedCommand = 0x800A7878; // type:func
 WFIGHTMN_restoreEnemy = 0x800A8A64; // type:func

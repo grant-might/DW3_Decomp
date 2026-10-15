@@ -298,3 +298,10 @@ actor32 = 0x800A73B4;
 actor33 = 0x800A73C8;
 actor34 = 0x800A73DC;
 actor35 = 0x800A73F0;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateEvent1518 = 0x800A4D04; // type:func
+startEvent1518 = 0x800A52A0; // type:func
+updateEvent1520 = 0x800A52CC; // type:func
+startEvent1520 = 0x800A5868; // type:func
+endEvent1415 = 0x800A5938; // type:func

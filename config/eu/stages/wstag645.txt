@@ -1,7 +1,7 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-D_800A50EC = 0x800A6230; // size:0x34
-D_800A5120 = 0x800A6264; // size:0x34
-D_800A5154 = 0x800A6298; // size:0x30
+updateTileAnimsFrames0 = 0x800A6230; // size:0x34
+updateTileAnimsFrames1 = 0x800A6264; // size:0x34
+updateTileAnimsFrames2 = 0x800A6298; // size:0x30
 area0Battle0 = 0x800A62C8;
 area0Battle1 = 0x800A62D4;
 area0Battle2 = 0x800A62E0;

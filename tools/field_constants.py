@@ -11,15 +11,15 @@ Writes the numbers the stages give FIELDSTG with the names of field_map.h.
 - the map given to FIELDSTG_map.setFile, getCell or files[] becomes its
   FIELD_MAP_ name;
 - the type of a StageSlot, the word after its two conditions, becomes its
-  SLOT_ name;
-- a field command of an event script, a pose command (0x101) of
-  FIELD_TASK_COMMANDS, becomes its FIELD_COMMAND_ name.
+  SLOT_ name, and a flag of its conditions, FLAG(0, n), its FIELD_FLAG_ name;
+- a field command of an event script, a script command (SCRIPT_COMMAND,
+  or its word 0x101) of FIELD_TASK_COMMANDS, becomes its FIELD_COMMAND_ name.
 
 It changes no bytes and only rewrites numbers, so it can be run again at any
 time; a stage file it changes that has none of the field's headers gets
 field_map.h after its first include. -n lists what it would change, file by file, without writing:
 
-    tools/field_constants.py [-n] [src/stages/wstag200.c ...]
+    tools/field_constants.py [-n] [src/field/stages/central_sector/wstag200.c ...]
 """
 import argparse
 import difflib
@@ -29,7 +29,7 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-HEADER = ROOT / "include/field_map.h"
+HEADER = ROOT / "include/field/field_map.h"
 NUMBER = r"0x[0-9A-Fa-f]+|\d+"
 
 
@@ -45,6 +45,7 @@ LAYERS = names("FIELD_LAYER_")
 TASKS = names("FIELD_TASK_")
 MAPS = names("FIELD_MAP_")
 SLOTS = names("SLOT_")
+FLAGS = names("FIELD_FLAG_")
 
 
 def commands():
@@ -79,12 +80,13 @@ RULES = [
     (re.compile(rf"\bcreateTaskWithId\([^;]*, {N}\);"), by(TASKS)),
     (re.compile(rf"\bFIELDSTG_map\.(?:setFile|getCell)\({N}"), by(MAPS)),
     (re.compile(rf"\bFIELDSTG_map\.files\[{N}\]"), by(MAPS)),
-    (re.compile(rf"\b0x101, (?P<n>0x32D)\b"), by(TASKS)),
-    (re.compile(rf"\b0x101, FIELD_TASK_COMMANDS, {N}"), by(COMMANDS)),
+    (re.compile(rf"(?:\b0x101, |\bSCRIPT_COMMAND\()(?P<n>0x32D)\b"), by(TASKS)),
+    (re.compile(rf"(?:\b0x101, |\bSCRIPT_COMMAND\()FIELD_TASK_COMMANDS, {N}"), by(COMMANDS)),
 ]
 # a StageSlot table, and the type of each of its records
 SLOT_TABLE = re.compile(r"^(?:static )?StageSlot \w+\[\w*\] = \{.*?^\};", re.M | re.S)
 SLOT_TYPE = re.compile(rf"\{{ \{{ \{{ [^{{}}]+ \}}, \{{ [^{{}}]+ \}} \}}, {N},")
+SLOT_FLAG = re.compile(rf"\bFLAG\(0, {N}\)")
 
 
 HEADERS = re.compile(r'^#include "(?:stage|field_map|fieldstg)\.h"', re.M)
@@ -95,7 +97,7 @@ def rewrite(text):
     """text with the numbers named"""
     for pattern, sub in RULES:
         text = pattern.sub(sub, text)
-    return SLOT_TABLE.sub(lambda m: SLOT_TYPE.sub(by(SLOTS), m.group(0)), text)
+    return SLOT_TABLE.sub(lambda m: SLOT_FLAG.sub(by(FLAGS), SLOT_TYPE.sub(by(SLOTS), m.group(0))), text)
 
 
 def with_header(path, text):
@@ -110,7 +112,7 @@ def main():
     ap.add_argument("files", nargs="*")
     ap.add_argument("-n", "--dry-run", action="store_true", help="only list what would change")
     args = ap.parse_args()
-    paths = args.files or sorted(glob.glob(str(ROOT / "src/stages/**/*.c"), recursive=True))
+    paths = args.files or sorted(glob.glob(str(ROOT / "src/field/stages/**/*.c"), recursive=True))
     changed = 0
     for path in paths:
         old = Path(path).read_text()

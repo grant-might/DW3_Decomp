@@ -59,3 +59,20 @@ actor12 = 0x800A585C;
 actor13 = 0x800A5870;
 actor14 = 0x800A5884;
 actor15 = 0x800A5898;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+resetTileEffect = 0x800A4D7C; // type:func
+updateTileEffect = 0x800A4DB4; // type:func
+handleCommand815 = 0x800A5038; // type:func
+createCommand815 = 0x800A50A4; // type:func
+createTileEffect = 0x800A50D4; // type:func
+endEvent5 = 0x800A51D4; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateTileEffectFrames_0 = 0x800A5444;
+updateTileEffectFrames_2 = 0x800A5458;
+updateTileEffectFrames_1 = 0x800A54A8;
+updateTileEffectFrames = 0x800A54E8;
+tileEffectSortY = 0x800A54F4;
+tileEffectY = 0x800A54F8;
+tileEffectPlaces = 0x800A54FC;

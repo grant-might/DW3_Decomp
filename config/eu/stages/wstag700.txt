@@ -1,5 +1,5 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4D48 = 0x800A5E84; // type:func
+endEvent1460 = 0x800A5E84; // type:func
 script1460 = 0x800A5FA4;
 stageImages = 0x800A6014;
 actor0Talk0Actions = 0x800A6094;

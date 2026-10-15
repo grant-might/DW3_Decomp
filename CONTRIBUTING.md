@@ -1,8 +1,9 @@
 # Contributing
 
-The README explains how to set up and build the project; this file is about
-the work itself: how a function is matched, and the rules on matching,
-versions, code style, names and reports.
+The conventions follow the [Digimon World decomp](https://github.com/jype0/dw_decomp)
+and the [Digimon Digital Card Battle decomp](https://github.com/ReGame-Labs/dcb_decomp),
+so that the Digimon decomps read the same way. The README explains how to
+set up and build the project; this file is about the work itself.
 
 ## Decompiling a function
 
@@ -51,11 +52,12 @@ The folder is relative to `asm/<version>/`, so the function above is
    ```
    make -j$(nproc) && make compare
    make VERSION=us -j$(nproc) && make VERSION=us compare
+   make VERSION=jp -j$(nproc) && make VERSION=jp compare
    ```
-   Every line of both versions has to say `OK`.
+   Every line of every version has to say `OK`.
 5. **Check it in objdiff.** `make objdiff` and the objdiff GUI show the
    function and its data against the original inside the whole unit;
-   `make report` writes the progress report.
+   `make report` writes the progress that decomp.dev will show.
 
 Rodata is migrated into the functions that use it: a function's jump tables
 and strings live in its own `.s` file, so its C version emits them itself, and
@@ -67,16 +69,17 @@ give it real types once the code that uses it is understood.
 ## Matching
 
 - A change only counts if `make compare` still says `OK` for every binary of
-  both versions: the executable, the overlays and the stages have to stay
-  byte for byte identical. Run it for `us` and for `eu` before opening a pull
-  request; the CI runs both.
+  every version: the executable, the overlays and the stages have to stay
+  byte for byte identical. Run it for `us`, `eu` and `jp` before opening a
+  pull request; the CI runs them all.
 - Only byte-identical matches go in. No `NON_MATCHING` code, no `#if 0`
   blocks, no inline assembly in place of C, and no tricks that wouldn't pass
   review. A function that doesn't match yet stays behind its `INCLUDE_ASM`; a
   draft that came close can go in the pull request's description, not in the
   source. `tools/hacks.py` fails the CI on `NON_MATCHING` (or `NONMATCHING`),
   on `#if 0`, on inline asm in a function's body, on a register variable
-  pinned with `asm("$reg")` and on a top-level asm that isn't data.
+  pinned with `asm("$reg")` and on any top-level asm: data, padding
+  included, is written in C.
 - A fake match is the last resort, not a shortcut: only for a function that
   natural C has failed to match after a real search (other source shapes,
   types, statement order, the permuter's legitimate finds), a forced form is
@@ -88,12 +91,13 @@ give it real types once the code that uses it is understood.
   loop ends a CSE block, so GFX's address is loaded again, as in the
   original */`. A forced form without its reason doesn't pass review, and
   the rest of the function stays readable C.
-- A BEC form is a one-off exception for a single function: a form these rules
-  don't take elsewhere (such as a breakless `do { } while (0)`), allowed
-  because another matched decomp built with the same compiler has it. Its
-  comment starts with `/* BEC form:`, says why the match needs it and names
-  the function elsewhere with the same form; `tools/hacks.py` counts these
-  apart from the fake matches.
+- A BEC form is a one-off exception the maintainer grants for a single
+  function: a form these rules don't take elsewhere (such as a breakless
+  `do { } while (0)`), allowed because Digimon World 2's matched source, by
+  the same developer with the same compiler, has it. Its comment starts with
+  `/* BEC form:`, says why the match needs it and names the Digimon World 2
+  function with the same form; `tools/hacks.py` counts these apart from the
+  fake matches.
 - Two lesser workarounds have a standard marker of their own, so that
   `tools/hacks.py` can count them for the README's badge and the table in
   [docs/status.md](docs/status.md#fake-matches-and-hacks):
@@ -116,7 +120,7 @@ give it real types once the code that uses it is understood.
   `tools/hacks.py --check README.md docs/status.md`. `tools/hacks.py --list`
   lists them all.
 - When a form recurs and has a likely origin, give it a name and say so
-  once, as `COUNTDOWN_BORROW` in `include/stage.h` does: a statement macro
+  once, as `COUNTDOWN_BORROW` in `include/field/stage.h` does: a statement macro
   for the timed stages' countdown, whose `do { } while (0)` the match
   depends on. Say it once for a form every copy shares too, as the comment
   above `StageInfo` does for the setup functions' `(Vec2){x, y}`.
@@ -146,7 +150,7 @@ how to fix what they find:
   name what the address points to (a declaration of the symbol, or a name
   in the symbol file so that splat writes a label), and for a binary that
   loads later, use its symbol as the binary imports it (`CHILDREN_<binary>`
-  in the Makefile: `WSTAG931_startStage`, `include/stages.h`).
+  in the Makefile: `WSTAG931_startStage`, `include/field/stages.h`).
   `config/<version>/shiftcheck.txt`, the addresses left to fix, is empty and
   may only get shorter; when the check warns that a listed one is fixed,
   `tools/shiftcheck.py -v <version> --update` drops it.
@@ -174,17 +178,20 @@ until the first menu (the title screen, or the European language menu),
 then watches it for an exception or code that runs outside the BIOS, the
 kernel and the build.
 `make PAD=0x10004 smoke` boots a padding build, which shows that the code
-and data that moved still work. It needs `DISC=` (the original image, a
+and data that moved still work, and `make TOOLCHAIN=gcc smoke` the modern
+GCC's ([docs/toolchain.md](docs/toolchain.md#modern-gcc-build)), whose
+files may be smaller than the original's and are padded to them. It needs `DISC=` (the original image, a
 `.bin`), `BIOS=` (a directory with a PlayStation BIOS) and, if DuckStation
 isn't `duckstation-qt`, `DUCKSTATION=`, on the command line or in
 `local.mk`.
 
 ## Versions
 
-The same source builds every version of the game (`make VERSION=eu`, the default, or `us`).
-The Makefile passes one `-DVERSION_<VERSION>`, and `include/version.h`
-(through `common.h`) makes `VERSION_US` and `VERSION_EU` both defined, each 0
-or 1; the assembly gets the same names from `--defsym`.
+The same source builds every version of the game (`make VERSION=eu`, the
+default, `us` or `jp`). The Makefile passes one `-DVERSION_<VERSION>`, and
+`include/version.h` (through `common.h`) makes `VERSION_US`, `VERSION_EU`
+and `VERSION_JP` all defined, each 0 or 1; the assembly gets the same names
+from `--defsym`.
 
 - Test a version with `#if`, never `#ifdef` or `defined()`: `#if VERSION_EU`.
   A misspelt name is then a `-Wundef` warning instead of silently false.
@@ -196,18 +203,20 @@ or 1; the assembly gets the same names from `--defsym`.
   version, its `#if` blocks name only the versions that build it from C.
 - Each version lists the C files it builds in `mk/version/<version>.mk`
   (`C_SRC`), and the Makefile builds nothing else. `us` builds every C file
-  under `src/`; `eu` the ones it shares (all of them so far) and its own
-  stages'. The rest of `eu`'s executable and overlays is split into the USA
-  files as asm segments with the same names (`tools/split_version.py`).
-- To build a file for `eu` too: add it to `eu`'s `C_SRC`, make its segments
-  in `config/eu/` `c` (with `.rodata` and `.data` when those are C in
-  `us`), then name what the C uses at the European addresses:
+  under `src/`; `eu` and `jp` the ones they share (all of them so far) and
+  the extra stages'. Their executables and overlays are split into the USA
+  files with the same names (`tools/split_version.py`), as asm segments
+  until a file is C in that version.
+- To build a file for `eu` or `jp` too: add it to the version's `C_SRC`,
+  make its segments in `config/<version>/` `c` (with `.rodata` and `.data`
+  when those are C in `us`), then name what the C uses at the version's
+  addresses:
 
   ```
   tools/match_versions.py eu      # with both versions built: build/eu/version_pairs.tsv
-  tools/version_symbols.py eu src/<binary>/<file>.c --write
-  make VERSION=eu generate build/eu/src/<binary>/<file>.c.o
-  tools/version_symbols.py eu src/<binary>/<file>.c --write
+  tools/version_symbols.py eu src/<folder>/<file>.c --write
+  make VERSION=eu generate build/eu/src/<folder>/<file>.c.o
+  tools/version_symbols.py eu src/<folder>/<file>.c --write
   make VERSION=eu regenerate && make VERSION=eu && make VERSION=eu compare
   ```
 
@@ -216,8 +225,8 @@ or 1; the assembly gets the same names from `--defsym`.
   every function and datum it reads from where the original has them.
   `version_symbols.py` lists what it can't name: a name whose reads
   disagree, or one of splat's names from `us` (`D_80081E20`) that the
-  European asm has at another address. For a stage, drop the `asm` mark of
-  its line in `config/eu/stages.txt` once it has a C file there.
+  version's asm has at another address. For a stage, drop the `asm` mark of
+  its line in `config/<version>/stages.txt` once it has a C file there.
 - A file whose contents differ throughout between versions gets one copy per
   version instead of an `#if` around all of it, named after the version
   (`<module>_eu.c` next to `<module>.c`).
@@ -234,6 +243,9 @@ does:
 
 - Four spaces, no tabs; the opening brace on the same line; braces around
   every `if`, `for` and `while` body, even a one-line one.
+  `.clang-format` has this layout for clang-format 18:
+  `make format FILES=<file>` lays out a file you've changed
+  ([docs/toolchain.md](docs/toolchain.md#formatter)).
 - Comments are `/* */`. A function gets a one-line comment above it that
   says what it does or returns (`/* Advances a panel animation; 1 once it has
   finished */`), and a block of code a comment for what isn't obvious from
@@ -249,7 +261,7 @@ does:
       /* 0x50 */ void *owner;
   } StageTask;
   ```
-  A task's struct starts with `TASK_HEADER(Type)` (`include/dw3/task.h`),
+  A task's struct starts with `TASK_HEADER(Type)` (`include/engine/task.h`),
   and its state machine uses `TASK_INIT`, `TASK_RUN`, `TASK_DONE` and
   `TASK_KILL`.
 - The engine is reached through its tables, as the original does:
@@ -260,31 +272,57 @@ does:
   to struct fields past the load of a scalar's function pointer.
 - In a `-G8` file, the small variables the code reads through `$gp` are
   declared `static` at the top of the file.
-- Headers: `include/game.h` includes the engine's headers, one per module in
-  `include/dw3/<module>.h`, each with its own types and prototypes;
-  `include/<overlay>.h` has an overlay's, and `include/stage.h` what the
-  stages share. Every header has an `#ifndef <NAME>_H` guard, and most a
+- Headers: `include/engine/game.h` includes the engine's headers, one per module in
+  `include/engine/<module>.h`, each with its own types and prototypes;
+  `include/<group>/<folder>.h` has an overlay's (in the groups of `src/`),
+  and `include/field/stage.h` what the stages share. A large overlay's are
+  split by module into `include/<group>/<folder>/*.h` (FIGHTSTG, CARDGAME):
+  `types.h` first, with the types the others point to before they are
+  defined, and `include/<group>/<folder>.h` includes them all. Every header has an `#ifndef <NAME>_H` guard, and most a
   comment at the top that says what the module or overlay is.
-- A `.c` file keeps the externs and prototypes only it uses at its top,
-  after the includes. Anything a second file needs moves to a header.
+- Every function that isn't `static` has its prototype in the header of
+  its module or overlay, next to those of the functions defined around it,
+  even when only its own file calls it (`make lint` checks it). A function
+  defined old-style is declared with the promoted types its callers pass
+  (`s32` for an `s16`), the types it narrows to in a comment. The stages
+  are the exception: a stage is one file, and its functions keep splat's
+  names, the same in many stages, so it declares one only where a use
+  comes first. A `.c` file keeps the externs only it uses at its top,
+  after the includes; anything a second file needs moves to a header.
+- A `case` that runs into the next one ends with `/* fallthrough */`, at the
+  indentation of its statements. `make lint` checks this too, and that
+  nothing declares a local or a label it doesn't use, except for the
+  marked stack frame locals, which its list keeps.
 
 ## Layout
 
-- One folder per binary under `src/`: `src/main/` for the executable,
-  `src/<overlay>/` for each overlay, and `src/stages/` with one
-  `wstag###.c` per stage.
+- One folder per binary under `src/`: `src/engine/` for the executable,
+  `src/<group>/<overlay>/` for each overlay, grouped by the part of the game
+  it runs (`field/`, `battle/`, `cardgame/`, `menus/`, `debug/`) and named
+  after what it is: `src/menus/item_shop/` is STITSHOP.PRO
+  ([src/README.md](src/README.md) lists them with their files on the disc).
+  The disc's name stays the binary's: its config (`config/<version>/stitshop.yaml`,
+  whose `src_path` gives the folder), its asm, its functions' prefix
+  (`STITSHOP_`) and its unit in the report. `src/field/stages/` has one
+  `wstag###.c` per stage, in the folder of the area FIELDSTG names when
+  the player enters it (`src/field/stages/asuka_city/wstag210.c`): the 18 areas
+  and their stages are listed in [src/field/stages/README.md](src/field/stages/README.md),
+  which `tools/stage_areas.py` writes as it moves a stage there.
+  `wstag260.c` (the story events' scripts, in no area) and `common/` stay in
+  `src/field/stages/`. A stage includes the shared code as `"common/<file>.inc.c"`
+  (`-Isrc/field/stages`).
 - Code that several binaries have, each its own copy of the same C, is one
   `.inc.c` file that their C files include where the function is, named
-  after it: `src/stages/common/` for the stages, `src/menu_common/` for the
-  menu overlays. An overlay's copy keeps the overlay's prefix: its header
+  after it: `src/field/stages/common/` for the stages, `src/shared/` for the
+  menu overlays (included as `"shared/<file>.inc.c"`, `-Isrc`) (and STFGTREP's and FIGHTSTG's copies of their functions). An overlay's copy keeps the overlay's prefix: its header
   defines `OVL_NAME(name)` (`STGMCARD_##name`), and the shared file names
   its functions with it (`void OVL_NAME(drawFader)(ScreenFade *task)` is
   `STGMCARD_drawFader` in STGMCARD). A copy that differs in a constant
   takes it from a macro that the including file defines just before the
   include (`FADER_DEPTH` for `create_fader.inc.c`).
-- The executable is split into modules, a folder each under `src/main/`:
+- The executable is split into modules, a folder each under `src/engine/`:
 
-  | Folder | What | Header (`include/dw3/`) |
+  | Folder | What | Header (`include/engine/`) |
   |---|---|---|
   | `system/` | the boot and the frame loop (`main.c`), the heap, the random numbers, the modes' overlays | `overlay.h`, `heap.h`, `random.h` |
   | `task/` | the tasks' methods and creation, the task registry | `task.h` |
@@ -305,13 +343,13 @@ does:
   in order (and a datum that starts a file is word-aligned). The modules cut
   from a `-G8` object keep `-G8` (`G8_SRC` in the Makefile). Each module
   declares its types, functions and data once, in its header;
-  `include/game.h` includes them all.
+  `include/engine/game.h` includes them all.
 - The SDK, Sony's code, isn't in `src/`: the build takes it from the
   original as splat's disassembly (`asm/<version>/main/psyq/`), and the C
   decompiled of it earlier is in this repository's history.
 - An overlay's file `X_2.c` is the second half of an original object that
   the splat config splits in two; the report counts both halves as the unit `X`.
-- The executable's data is in `src/main/data/` until it moves to the module
+- The executable's data is in `src/engine/data/` until it moves to the module
   that defines it. Its European tables differ all over (file numbers,
   screen positions, overlay addresses) and splat names them at other
   addresses: they are `data_to_c.py`'s output for `asm/eu/` next to the USA
@@ -321,7 +359,7 @@ does:
   datum where the rest can wait: give it a `.data` subsegment
   of its own in both versions' `main.yaml` (`[0x2F1D8, .data, menu/inn]`).
   What is left on each side stays
-  in `src/main/data/`, one file per range, listed in address order in
+  in `src/engine/data/`, one file per range, listed in address order in
   `GAME_DATA` (`tools/objdiff_generate.py`) and in `mk/version/eu.mk`. A
   struct that splat sees as several labels (the code reads some of its
   fields by their own names) needs its size in the symbol files, and those
@@ -370,21 +408,22 @@ The stages are all loaded at the same address and many have functions at the
 same addresses, so their functions keep splat's names for now; the
 Makefile already reads a stage's own symbol file,
 `config/<version>/stages/<stage>.txt`, when there is one. Their data is
-named after where the tables of `include/stage.h` put it (`actor3Talks`,
+named after where the tables of `include/field/stage.h` put it (`actor3Talks`,
 `area0Battle2`, `script50`): `tools/name_stage_data.py` names it in the C
 and in both versions' symbol files, and can be run again after new data
 comes in.
 
 The versions share their names: a function or datum is called the same in
-every version, each at its own address, and a name in `eu`'s symbol files
-means what that name means in `us`'s. The CI runs `tools/check_names.py`,
-which fails when a name in `eu`'s symbol files isn't `us`'s name in the same
-binary (a function there if it is one here), or is named twice. splat's
-automatic names (`func_`, `D_`) and the binaries `us` doesn't have (`eu`'s
-own stages) aren't checked. So a rename touches every version's symbol
-files the same way: `tools/rename.py OLD NEW` renames in every version's
-symbol files, `src/` and `include/` (an overlay's name keeps its prefix),
-then `make VERSION=<version> regenerate` each version.
+every version, each at its own address, and a name in `eu`'s or `jp`'s
+symbol files means what that name means in `us`'s. The CI runs
+`tools/check_names.py`, which fails when a name in their symbol files isn't
+`us`'s name in the same binary (a function there if it is one here), or is
+named twice. splat's automatic names (`func_`, `D_`) and the binaries `us`
+doesn't have (the stages `WSTAG920`-`974`) aren't checked. So a rename
+touches every version's symbol files the same way: `tools/rename.py OLD NEW`
+renames in every version's symbol files, `src/` and `include/` (an overlay's
+name keeps its prefix), then `make VERSION=<version> regenerate` each
+version.
 
 - A name only one version has, for its own code, says so with
   `version-only` in its comment:
@@ -395,14 +434,15 @@ then `make VERSION=<version> regenerate` each version.
   that binary's names in `us`:
   `drawWindow = 0x800A5123; // type:func us-main`.
 
-The European version's names come from `us`: `tools/match_versions.py eu`
-pairs its functions with the USA ones (by their instructions with the
-addresses masked, their order, their calls and their strings) and the data
-they read, and `--seed` writes the USA names of the confident pairs into
-`config/eu/symbols*.txt`, between the lines it marks, keeping the names
-written by hand. Name a function in `us` and run it again to give `eu` the
-name too; a function whose code differs too much to pair is named by hand,
-above the seeded block.
+The European and Japanese versions' names come from `us`:
+`tools/match_versions.py eu` (or `jp`) pairs their functions with the USA
+ones (by their instructions with the addresses masked, their order, their
+calls and their strings) and the data they read, and `--seed` writes the USA
+names of the confident pairs into `config/<version>/symbols*.txt`, between
+the lines it marks, keeping the names written by hand. Name a function in
+`us` and run it again to give the other versions the name too; a function
+whose code differs too much to pair is named by hand, above the seeded
+block.
 
 ## Clean code
 
@@ -443,13 +483,14 @@ breaks a function or datum in either version.
   belongs to". Add a body when the change
   needs explaining: what was found, why a form matches. No trailers.
 - A pull request is small and about one thing. Matches, renames and moving
-  code around go in separate pull requests: a renamed or moved function
-  otherwise shows as broken under its old name, and new under the new one.
+  code around go in separate pull requests: decomp.dev shows a renamed or
+  moved function as broken under its old name and new under the new one.
 - A pull request that renames things lists every rename in a table
   (address, old name, new name).
 - Before opening one, run `make compare` for both versions; both must print
   only `OK`. Run `tools/hacks.py --check README.md docs/status.md` and
-  `tools/check_names.py` too, and make sure both pass.
+  `tools/check_names.py` too, which the CI runs first. The CI builds and compares `eu` and `us`, and uploads both
+  reports that decomp.dev reads.
 - Pull requests are squash-merged, titled "Title (#N)": "Build the overlays
   and decompile CNTY_SEL (#12)". The title says what the pull request does,
   like a commit message.

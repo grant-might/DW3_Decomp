@@ -227,3 +227,12 @@ actor20 = 0x800A6178;
 actor21 = 0x800A618C;
 actor22 = 0x800A61A0;
 actor23 = 0x800A61B4;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateFarSprites = 0x800A4CA8; // type:func
+createFarSprites = 0x800A4DFC; // type:func
+endEvent1260 = 0x800A4F38; // type:func
+endEvent1261 = 0x800A4F84; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+farSpriteSpots = 0x800A5284;

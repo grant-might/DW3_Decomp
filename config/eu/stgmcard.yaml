@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/eu/stgmcard
-  src_path: src/stgmcard
+  src_path: src/menus/memory_card
   build_path: build/eu
 
   ld_script_path: build/eu/generated/stgmcard.ld
@@ -52,8 +52,8 @@ segments:
       # us's modules, each with its rodata, data and bss (tools/split_version.py)
       # each module's rodata: the ones with jump tables or strings
       - [0x0, .rodata, menu]
-      # the modules (src/stgmcard/), in the order they link
-      - [0x20, c, stgmcard]
+      # the modules (src/menus/memory_card/), in the order they link
+      - [0x20, c, scene]
       - [0x408, c, info]
       - [0xF28, c, panel]
       - [0x145C, c, menu]

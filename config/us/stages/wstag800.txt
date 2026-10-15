@@ -1,6 +1,6 @@
-D_800A64CC = 0x800A64CC; // size:0x2C
-D_800A6514 = 0x800A6514; // size:0x4C
-D_800A6560 = 0x800A6560; // size:0x4C
+updateTilePair16Frames2 = 0x800A64CC; // size:0x2C
+updateTileOnceFrames_0 = 0x800A6514; // size:0x4C
+updateTileOnceFrames_1 = 0x800A6560; // size:0x4C
 
 // the names the stages share (the same code or data in each)
 stepTileAnimation = 0x800A4CA4; // type:func
@@ -90,3 +90,24 @@ actor3 = 0x800A6A80;
 actor4 = 0x800A6A94;
 actor5 = 0x800A6AA8;
 actor6 = 0x800A6ABC;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateTilePair16 = 0x800A4DC4; // type:func
+handleCommand837 = 0x800A5038; // type:func
+createTilePair16 = 0x800A5084; // type:func
+createTilePair16Done = 0x800A50B4; // type:func
+updateTileOnce = 0x800A5208; // type:func
+createCommand839 = 0x800A53D4; // type:func
+drawTimer = 0x800A5404; // type:func
+updateTimer = 0x800A554C; // type:func
+createTimer = 0x800A571C; // type:func
+endEvent850 = 0x800A5EA4; // type:func
+endEvent870 = 0x800A5EF0; // type:func
+endEvent871 = 0x800A5F3C; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateTilePair16Frames0 = 0x800A64C0;
+updateTilePair16Frames1 = 0x800A64F8;
+updateTileOnceFrames = 0x800A65AC;
+timerDigitX = 0x800A65B4;
+updateStageSpots = 0x800A65BC;

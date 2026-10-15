@@ -14,7 +14,7 @@ stageSlots = 0x800A6588;
 stageImages = 0x800A63DC;
 stageActors = 0x800A64A4;
 stageEvents = 0x800A65BC;
-D_800A67C4 = 0x800A67C4; // defined:True
+tileEffectY = 0x800A67C4; // defined:True
 
 // named by their place in the stage's tables (tools/name_stage_data.py)
 actor1Talks = 0x800A645C;
@@ -22,3 +22,16 @@ actor0Conditions = 0x800A6474;
 actor0 = 0x800A647C;
 actor1 = 0x800A6490;
 script1600 = 0x800A65E4;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent1600 = 0x800A5EC0; // type:func
+resetTileEffect = 0x800A60D8; // type:func
+updateTileEffect = 0x800A6110; // type:func
+createCommand855 = 0x800A639C; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateTileEffectFrames_0 = 0x800A6710;
+updateTileEffectFrames_2 = 0x800A6724;
+updateTileEffectFrames_1 = 0x800A6774;
+updateTileEffectFrames = 0x800A67B4;
+tileEffectSortY = 0x800A67C0;

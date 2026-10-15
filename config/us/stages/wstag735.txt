@@ -101,3 +101,10 @@ actor9 = 0x800A5CDC;
 actor10 = 0x800A5CF0;
 actor11 = 0x800A5D04;
 actor12 = 0x800A5D18;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent790 = 0x800A53BC; // type:func
+endEvent791 = 0x800A5408; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateStageSpots = 0x800A5698;

@@ -1,16 +1,16 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4D7C = 0x800A5EB8; // type:func
-func_800A4E78 = 0x800A5FB4; // type:func
-func_800A5638 = 0x800A6774; // type:func
-func_800A5680 = 0x800A67BC; // type:func
-func_800A56B8 = 0x800A67F4; // type:func
-func_800A5704 = 0x800A6840; // type:func
-func_800A5730 = 0x800A686C; // type:func
+updateTileTask = 0x800A5EB8; // type:func
+createCommand853 = 0x800A5FB4; // type:func
+createStageEffectWithId = 0x800A6774; // type:func
+handleCommand845 = 0x800A67BC; // type:func
+endEvent1060 = 0x800A67F4; // type:func
+endEvent1070 = 0x800A6840; // type:func
+endEvent1080 = 0x800A686C; // type:func
 script1060 = 0x800A69AC;
 script1070 = 0x800A6B60;
 script1080 = 0x800A6C54;
-D_800A5FD8 = 0x800A711C; // size:0x90
-D_800A6068 = 0x800A71AC;
+updateTileTaskFrames = 0x800A711C; // size:0x90
+updateStageSpots = 0x800A71AC;
 area0Battle0 = 0x800A724C;
 area0Battle1 = 0x800A7258;
 area0Battle2 = 0x800A7264;

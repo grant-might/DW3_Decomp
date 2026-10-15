@@ -9,7 +9,7 @@ options:
   compiler: GCC
 
   asm_path: asm/eu/stdwtitl
-  src_path: src/stdwtitl
+  src_path: src/menus/title
   build_path: build/eu
 
   ld_script_path: build/eu/generated/stdwtitl.ld
@@ -55,8 +55,8 @@ segments:
       - [0x38, .rodata, menu]
       - [0x4C, .rodata, title]
       - [0x70, rodata, libpress]
-      # the modules (src/stdwtitl/), in the order they link
-      - [0xC0, c, stdwtitl]
+      # the modules (src/menus/title/), in the order they link
+      - [0xC0, c, scene]
       - [0x3A4, c, logo]
       - [0x788, c, movie]
       - [0x12D0, c, glint]

@@ -53,3 +53,6 @@ area3Battles = 0x800A5250;
 actor0Talks = 0x800A5300;
 actor0Conditions = 0x800A5318;
 actor0 = 0x800A5320;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+endEvent422 = 0x800A4D94; // type:func

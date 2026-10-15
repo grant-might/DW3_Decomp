@@ -1,10 +1,10 @@
 // names from the C of the modules this version builds (tools/version_symbols.py)
-func_800A4CB8 = 0x800A5DF4; // type:func
-func_800A4F94 = 0x800A60D0; // type:func
-func_800A4FCC = 0x800A6108; // type:func
-func_800A4FFC = 0x800A6138; // type:func
-func_800A50E8 = 0x800A6224; // type:func
-func_800A5120 = 0x800A625C; // type:func
+updateTileGroup = 0x800A5DF4; // type:func
+handleCommand809 = 0x800A60D0; // type:func
+createCommand809 = 0x800A6108; // type:func
+updateFrameTask = 0x800A6138; // type:func
+handleCommand808 = 0x800A6224; // type:func
+createCommand808 = 0x800A625C; // type:func
 script4 = 0x800A6454;
 stageImages = 0x800A6714;
 actor1Conditions = 0x800A67B4;

@@ -2,7 +2,7 @@
 """
 Names a stage's data after where its tables put it.
 
-The tables setupStage gives FIELDSTG (include/stage.h) point at the rest of a
+The tables setupStage gives FIELDSTG (include/field/stage.h) point at the rest of a
 stage's data, which splat named by address (D_800A5424). This names each
 datum by the place the structure gives it, and nothing else:
 
@@ -18,7 +18,11 @@ datum by the place the structure gives it, and nothing else:
       without stageSlots
     stageEvents[k].script             script<id>      (the event's id)
     placePoints[k], ids a and b       placePoints<a>_<b>  (StagePoints)
-      .points, then each next         placePoints<a>_<b>Point<n>
+      .points, then each next         placePoints<a>_<b>Point<n> (a chain that
+                                        several places share: the first's)
+    the FieldTalk tables left (the    talks<k>, talks<k>Talk<j>Conditions...
+      characters differ between       and actorConditions<k> for the
+      versions, or share them)        characters' conditions, in order
 
 A stage with several places in stageBattles names their battles after the
 place's id: place<id>Area<a>Battles. A datum that two of these name
@@ -38,14 +42,21 @@ import sys
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent.parent
-SRC = ROOT / "src" / "stages"
+SRC = ROOT / "src" / "field" / "stages"
 CONFIG = ROOT / "config"
 VERSIONS = ("us", "eu")
 AUTO = re.compile(r"^D_([0-9A-F]{8})$")
 DEFINITION = re.compile(
-    r"^(?:static\s+)?(?:const\s+)?(\w+)\s*(\*?)\s*(\w+)\s*((?:\[[^\]]*\])*)\s*=\s*",
+    r"^(?:static\s+)?(?:const\s+)?(\w+)\s*(\**)\s*(\w+)\s*((?:\[[^\]]*\])*)\s*=\s*",
     re.M,
 )
+
+
+def stage_sources():
+    """{stage: its C file}: src/field/stages/<area>/wstag###.c (tools/stage_areas.py),
+    or src/field/stages/wstag###.c for a stage in no area"""
+    paths = sorted(SRC.glob("wstag[0-9][0-9][0-9].c")) + sorted(SRC.glob("*/wstag[0-9][0-9][0-9].c"))
+    return {p.stem: p for p in paths}
 
 
 def stage_list(version):
@@ -137,7 +148,7 @@ def definitions(text):
             init, _ = parse_initializer(text, m.end())
         except IndexError:
             continue
-        out[m.group(3)] = (m.group(1), m.group(2) == "*", init)
+        out[m.group(3)] = (m.group(1), m.group(2) != "", init)
     return out
 
 
@@ -226,19 +237,51 @@ def structural_names(defs):
         places = [p for p in places if p in defs and defs[p][0] == "StagePoints"
                   and isinstance(defs[p][2], list) and len(defs[p][2]) == 3]
         keys = [f"{int(defs[p][2][0], 0)}_{int(defs[p][2][1], 0)}" for p in places]
+        # a chain that several places share is named after the first of them
+        seen = set()
         for place, key in zip(places, keys):
             if keys.count(key) > 1:
                 continue
             name(place, f"placePoints{key}")
             point = target(defs[place][2][2])
             n = 0
-            seen = set()
             while point is not None and point in defs and point not in seen:
                 seen.add(point)
                 name(point, f"placePoints{key}Point{n}")
                 n += 1
                 pinit = defs[point][2]
                 point = target(pinit[6]) if isinstance(pinit, list) and len(pinit) == 7 else None
+    return out
+
+
+def shared_lists(defs, named):
+    """The characters' lists that the stage's tables don't name (a stage whose
+    characters differ between versions, or share them): its FieldTalk tables
+    and its characters' conditions, in order"""
+    talks = [s for s, d in defs.items() if d[0] == "FieldTalk" and AUTO.match(s) and s not in named]
+    conditions = set()
+    for d in defs.values():
+        if d[0] == "FieldActorEntry" and isinstance(d[2], list) and d[2]:
+            sym = target(d[2][0])
+            if sym in defs and defs[sym][0] == "u16" and AUTO.match(sym) and sym not in named:
+                conditions.add(sym)
+    return talks, [s for s in defs if s in conditions]
+
+
+def shared_names(defs, talks, conditions):
+    """[(symbol, name)] for those lists that every version has: talks<k> for
+    the FieldTalk tables, with talks<k>Talk<j>Conditions and ...Actions, and
+    actorConditions<k> for the characters' conditions"""
+    out = []
+    for k, table in enumerate(talks):
+        out.append((table, f"talks{k}"))
+        for j, talk in enumerate(defs[table][2] if isinstance(defs[table][2], list) else []):
+            if isinstance(talk, list) and len(talk) >= 2:
+                for leaf, part in ((talk[0], "Conditions"), (talk[1], "Actions")):
+                    sym = target(leaf)
+                    if sym in defs and AUTO.match(sym):
+                        out.append((sym, f"talks{k}Talk{j}{part}"))
+    out.extend((sym, f"actorConditions{k}") for k, sym in enumerate(conditions))
     return out
 
 
@@ -269,6 +312,19 @@ def stage_names(stage, text, versions):
         if new in taken:
             continue
         out[sym] = new
+    # then the characters' lists the tables leave, if every version names them alike
+    shared = []
+    lists = [shared_lists(defs, out) for defs, _ in per_version]
+    talks = [s for s in lists[0][0] if all(s in t for t, _ in lists[1:])]
+    conditions = [s for s in lists[0][1] if all(s in c for _, c in lists[1:])]
+    for defs, _ in per_version:
+        names = {}
+        for sym, new in shared_names(defs, talks, conditions):
+            names.setdefault(sym, new)
+        shared.append(names)
+    for sym, new in shared[0].items():
+        if all(names.get(sym) == new for names in shared[1:]) and new not in taken:
+            out[sym] = new
     # Two symbols given one name (a table pointed at twice) keep theirs
     counts = {}
     for new in out.values():
@@ -289,8 +345,9 @@ def elf_addresses(version, stage):
     return {w[2]: int(w[0], 16) for w in (l.split() for l in out.splitlines()) if len(w) == 3}
 
 
-def update_symbols(path, renames, addresses):
-    """Renames symbols in a stage's symbol file, adding those it hasn't at addresses"""
+def update_symbols(path, renames, addresses, header=HEADER, suffix=""):
+    """Renames symbols in a stage's symbol file, adding those it hasn't at addresses
+    under header (with suffix, such as // type:func)"""
     lines = path.read_text().split("\n") if path.exists() else []
     if lines and lines[-1] == "":
         lines.pop()
@@ -302,21 +359,21 @@ def update_symbols(path, renames, addresses):
             lines[i] = m.group(1) + renames[m.group(2)] + m.group(3) + m.group(4) + m.group(5)
     added = sorted((addresses[s], renames[s]) for s in renames if s not in present and s in addresses)
     if added:
-        if HEADER not in lines:
+        if header not in lines:
             if lines:
                 lines.append("")
-            lines.append(HEADER)
+            lines.append(header)
         at = len(lines)
         for i, line in enumerate(lines):
-            if line == HEADER:
+            if line == header:
                 at = i + 1
                 while at < len(lines) and SYMBOL_LINE.match(lines[at]):
                     at += 1
                 break
-        block = [f"{new} = 0x{addr:08X};" for addr, new in added]
+        block = [f"{new} = 0x{addr:08X};{suffix}" for addr, new in added]
         lines[at:at] = block
         # keep the block in address order
-        start = lines.index(HEADER) + 1
+        start = lines.index(header) + 1
         end = start
         while end < len(lines) and SYMBOL_LINE.match(lines[end]):
             end += 1
@@ -329,10 +386,11 @@ def main():
     parser.add_argument("stages", nargs="*")
     args = parser.parse_args()
     has = {v: stage_list(v) for v in VERSIONS}
-    stages = args.stages or sorted(p.stem for p in SRC.glob("wstag[0-9][0-9][0-9].c"))
+    sources = stage_sources()
+    stages = args.stages or sorted(sources)
     total = 0
     for stage in stages:
-        path = SRC / f"{stage}.c"
+        path = sources[stage]
         text = path.read_text()
         versions = [v for v in VERSIONS if stage in has[v]]
         if not versions:

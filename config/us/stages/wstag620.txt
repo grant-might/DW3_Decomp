@@ -107,3 +107,22 @@ actor18 = 0x800A6BFC;
 actor19 = 0x800A6C10;
 actor20 = 0x800A6C24;
 actor21 = 0x800A6C38;
+
+// functions named by what calls them (tools/name_stage_funcs.py)
+updateTileSeqs8 = 0x800A4DC4; // type:func
+createCommand849 = 0x800A505C; // type:func
+endEvent532 = 0x800A5234; // type:func
+endEvent534 = 0x800A5280; // type:func
+endEvent540 = 0x800A5290; // type:func
+endEvent551 = 0x800A52DC; // type:func
+
+// named by the function or table that uses them (tools/name_stage_uses.py)
+updateTileSeqs8Steps_0_0 = 0x800A63AC;
+updateTileSeqs8Steps_0_1 = 0x800A63D0;
+updateTileSeqs8Steps_0_2 = 0x800A641C;
+updateTileSeqs8Steps_1_0 = 0x800A6440;
+updateTileSeqs8Steps_1_1 = 0x800A6454;
+updateTileSeqs8Steps_1_2 = 0x800A647C;
+updateTileSeqs8Steps_2 = 0x800A6490;
+updateTileSeqs8Steps_3 = 0x800A64D8;
+updateTileSeqs8Steps = 0x800A6504;

@@ -2,21 +2,23 @@
 """Boots a build in DuckStation and checks that the game reaches its first menu.
 
     VERSION=<version> smoke.py --disc IMAGE --bios DIR [--pad PAD]
-                               [--emulator DUCKSTATION]
+                               [--build DIR] [--emulator DUCKSTATION]
 
 `make smoke` runs it: an optional check, on your machine only, that the
 build boots. It writes the build (build/<version>, or the padding build's
-build/<version>/pad<pad>) into a copy of the original disc image
-(tools/patch_disc.py), boots that in DuckStation under xvfb-run, with no
-window, and reads GAME.mode through DuckStation's GDB server until the game
-waits in the first screen that needs a button: the title screen (USA) or the
-language menu (Europe). Then it watches the game for HOLD seconds: it passes
-if the game takes no exception that the kernel leaves unresolved (all but
-interrupts and system calls), never jumps to 0, runs only known code (the
-BIOS, the kernel, the build's binaries), keeps drawing frames and stays in
-that screen, with the code of one of the build's mode overlays where the
-executable loads them. A padding build moves every binary, so a pass with
-PAD=0x10004 means that the code and data that moved still work.
+build/<version>/pad<pad>; with --build, another toolchain's, such as
+build/<version>/gcc, whose files may be smaller) into a copy of the original
+disc image (tools/patch_disc.py), boots that in DuckStation under xvfb-run,
+with no window, and reads GAME.mode through DuckStation's GDB server until
+the game waits in the first screen that needs a button: the title screen
+(USA) or the language menu (Europe). Then it watches the game for HOLD
+seconds: it passes if the game takes no exception that the kernel leaves
+unresolved (all but interrupts and system calls), never jumps to 0, runs
+only known code (the BIOS, the kernel, the build's binaries), keeps drawing
+frames and stays in that screen, with the code of one of the build's mode
+overlays where the executable loads them. A padding build moves every
+binary, so a pass with PAD=0x10004 means that the code and data that moved
+still work.
 
 DuckStation runs with HOME in build/.../smoke/home, so that it reads the
 settings written there and never yours, nor your memory cards. It reads the
@@ -31,6 +33,7 @@ import socket
 import subprocess
 import sys
 import time
+from pathlib import Path
 
 from elftools.elf.elffile import ELFFile
 
@@ -38,13 +41,13 @@ from gdb_rsp import GdbClient
 from patch_disc import patch
 from version import BUILD_DIR, EXE_NAME, VERSION
 
-# GAME.mode (include/dw3/game_state.h), and the mode in which the game waits
+# GAME.mode (include/engine/game_state.h), and the mode in which the game waits
 # for a button on its first screen: STDWTITL's title screen, or the
 # European language menu (CNTY_SEL), which comes before it
 MODE_OFFSET = {"us": 0x26BC, "eu": 0x26C4}[VERSION]
 FIRST_MENU = {"us": 0xE01, "eu": 0x1600}[VERSION]
 
-# GFX.frameCount (include/dw3/graphics.h): the frames that drawFrame ended
+# GFX.frameCount (include/engine/graphics.h): the frames that drawFrame ended
 FRAME_COUNT_OFFSET = 0x08
 
 TIMEOUT = 120  # seconds until the first menu
@@ -259,6 +262,8 @@ def main():
     parser.add_argument("--disc", required=True, help="the original disc image (.bin)")
     parser.add_argument("--bios", required=True, help="a directory with a PlayStation BIOS")
     parser.add_argument("--pad", default="0", help="the padding build to boot, as make's PAD")
+    parser.add_argument("--build", type=Path, default=BUILD_DIR,
+                        help="the build, as make's BUILDDIR (build/<version>/gcc for TOOLCHAIN=gcc)")
     parser.add_argument("--emulator", default="duckstation-qt", help="DuckStation (Qt)")
     args = parser.parse_args()
 
@@ -267,9 +272,10 @@ def main():
     emulator_path = shutil.which(args.emulator)
     if not emulator_path:
         sys.exit(f"DuckStation isn't {args.emulator}: give its path with DUCKSTATION=")
-    linkdir = BUILD_DIR if args.pad == "0" else BUILD_DIR / f"pad{args.pad}"
+    build = args.build.resolve()
+    linkdir = build if args.pad == "0" else build / f"pad{args.pad}"
     out = linkdir / "smoke"
-    disc = patch(args.disc, linkdir, out)
+    disc = patch(args.disc, linkdir, out, fit=build != BUILD_DIR)
     if same_file(disc, args.disc):
         print("the image is the original disc")
     exe = linkdir / f"{EXE_NAME}.elf"
@@ -298,7 +304,8 @@ def main():
     finally:
         stop(emulator)
 
-    where = f"{VERSION}" + (f" PAD={args.pad}" if args.pad != "0" else "")
+    where = f"{VERSION}" + (f" {os.path.relpath(build, BUILD_DIR)}" if build != BUILD_DIR else "") + \
+        (f" PAD={args.pad}" if args.pad != "0" else "")
     if seconds is None:
         last = "none" if mode is None else f"{mode:#x}"
         sys.exit(f"smoke {where}: no first menu ({FIRST_MENU:#x}) in {TIMEOUT} s, "

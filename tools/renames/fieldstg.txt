@@ -1,6 +1,6 @@
 # FIELDSTG's renames (tools/renames.py), in the order they were made
 
-# the field's map and state, which the stages use too (include/field_map.h)
+# the field's map and state, which the stages use too (include/field/field_map.h)
 D_8009A70C FIELDSTG_map
 D_800990B4 FIELDSTG_state
 
@@ -114,3 +114,10 @@ FIELDSTG_map.unk58 FIELDSTG_map.isTileFree
 # FIELDSTG's rodata
 D_80082624 FIELDSTG_noOffset
 D_80082E88 FIELDSTG_startColor
+
+# Round 3
+FIELDSTG_talkVoice FIELDSTG_slideVoice
+
+# Final round: the two data FIELDSTG never reads
+D_80096983 FIELDSTG_triggerAnimsPad
+D_8009AA3C FIELDSTG_transitionUnused

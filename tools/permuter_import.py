@@ -47,7 +47,7 @@ def main():
     out = f"{ROOT}/permuter/{func}"
     os.makedirs(out, exist_ok=True)
 
-    inc = f"-I{ROOT}/include -I{ROOT}/external/psyq_headers/psyq_lib47/include"
+    inc = f"-I{ROOT}/include -I{ROOT}/external/psyq_headers/psyq_lib47/include -I{ROOT}/src/field/stages -I{ROOT}/src"
     base = subprocess.run(
         f"mipsel-linux-gnu-cpp -P -undef {DEFINES} {inc} {draft}",
         shell=True, check=True, capture_output=True, text=True,
